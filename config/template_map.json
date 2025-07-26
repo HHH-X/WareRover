@@ -1,0 +1,28 @@
+{
+  "map": {
+    "width": 20,
+    "height": 15
+  },
+  "boxes": [
+    { "box_id": 0, "position": [5, 5], "goods_ids": [0, 1] },
+    { "box_id": 1, "position": [6, 5], "goods_ids": [2] }
+  ],
+  "receivers": [
+    { "receiver_id": 0, "position": [0, 0] },
+    { "receiver_id": 1, "position": [19, 0] }
+  ],
+  "wait_zones": [
+    { "wait_zone_id": 0, "position": [1, 1] },
+    { "wait_zone_id": 1, "position": [2, 1] }
+  ],
+  "agvs": [
+    { "agv_id": 0, "init_wait_zone_id": 0 },
+    { "agv_id": 1, "init_wait_zone_id": 1 }
+  ],
+  "obstacles": [
+    [10, 10],
+    [10, 11],
+    [11, 10],
+    [11, 11]
+  ]
+}
