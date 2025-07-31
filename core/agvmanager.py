@@ -22,7 +22,15 @@ class AGVManager:
     # 获取指定 ID 的 AGV 实例
     def get_agv(self, agv_id: int) -> AGV:
         return self._agvs[agv_id]
+    
+    def get_agv_speed(self, agv_id: int) -> float:
+        agv = self._agvs.get(agv_id)
+        return agv.max_speed
 
+    def get_real_position(self, agv_id:int) -> Tuple[float, float]:
+        agv = self._agvs.get(agv_id)
+        return agv.real_pos
+    
     # 获取所有 AGV 实例（生成器）
     def all_agvs(self) -> Generator[AGV, None, None]:
         yield from self._agvs.values()
