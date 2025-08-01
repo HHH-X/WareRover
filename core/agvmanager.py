@@ -59,6 +59,14 @@ class AGVManager:
     # 获取所有 AGV 下一步的目标坐标（行动计划的首个点）
     def get_all_next_pos(self) -> Dict[int, Tuple[int, int]]:
         return {agv_id: agv.get_next_pos() for agv_id, agv in self._agvs.items()}
+    
+    # 获取所有 AGV 的真实位置（浮点坐标）
+    def get_all_real_positions(self) -> Dict[int, Tuple[float, float]]:
+        return {agv_id: agv.real_pos for agv_id, agv in self._agvs.items()}
+    
+    # 获取所有 AGV 的最大速度
+    def get_all_speeds(self) -> Dict[int, float]:
+        return {agv_id: agv.max_speed for agv_id, agv in self._agvs.items()}
 
     # 获取所有 AGV 的 action queue（路径队列），用于 Planner 使用
     def get_all_action_queues(self) -> Dict[int, List[Tuple[int, int]]]:

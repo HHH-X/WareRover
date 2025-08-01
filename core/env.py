@@ -1,7 +1,7 @@
 from typing import Dict, Tuple, Set
 from core.gridmap import GridMap
 from core.agvmanager import AGVManager
-
+epsilon = 1e-6  # 精度容差，可调
 
 class Env:
     def __init__(self, agv_manager: AGVManager, map_inst: GridMap):
@@ -15,42 +15,86 @@ class Env:
     def resolve_conflicts(self) -> Dict[int, Tuple[int, int]]:
         current_pos = self.agv_manager.get_all_current_pos()
         next_pos = self.agv_manager.get_all_next_pos()
+        real_pos = self.agv_manager.get_all_real_positions()
         carrying_status = self.agv_manager.get_carrying_status()
 
-        # 初始假设所有 AGV 都能执行下一步动作
         final_next_pos: Dict[int, Tuple[int, int]] = dict(next_pos)
 
+        # 1. 分类 AGV
+        in_center, not_in_center = self.classify_by_grid_center(real_pos)
+
+        # 2. 初始化顶点占用字典：位置 -> 占用该位置的 agv_id 集合
+        vertex_conflict_dict: Dict[Tuple[int, int], Set[int]] = dict()
+
+        # 3. 固定不在中心的 AGV，并构建初始冲突字典（静态阶段）
+        for agv_id in not_in_center:
+            cur = current_pos[agv_id]
+            tgt = final_next_pos[agv_id]
+            occ = self._get_next_occupied_positions(agv_id, cur, tgt)
+
+            for pos in occ:
+                if pos not in vertex_conflict_dict:
+                    vertex_conflict_dict[pos] = set()
+                if vertex_conflict_dict[pos]:
+                    raise ValueError(f"Conflict in static phase for AGV {agv_id} at {pos}")
+                vertex_conflict_dict[pos].add(agv_id)
+
+        # 4. 将中心AGV初始设为原地不动
+        for agv_id in in_center:
+            final_next_pos[agv_id] = current_pos[agv_id]
+
+        # 5. 多轮迭代解决中心AGV冲突
         while True:
             changed = False
-            target_count: Dict[Tuple[int, int], Set[int]] = {}
-            occupied_edges: Set[Tuple[Tuple[int, int], Tuple[int, int]]] = set()
+            # 顶点冲突检测副本：深拷贝当前 vertex_conflict_dict
+            cur_vertex_dict: Dict[Tuple[int, int], Set[int]] = {
+                k: set(v) for k, v in vertex_conflict_dict.items()
+            }
 
-            # 收集所有当前移动决策产生的占用
-            for agv_id, tgt in final_next_pos.items():
-                cur = current_pos[agv_id]
-                occ = self._get_next_occupied_positions(agv_id, cur, tgt)
-                for pos in occ:
-                    target_count.setdefault(pos, set()).add(agv_id)
-                if cur != tgt:
-                    occupied_edges.add((cur, tgt))
+            edge_conflict_set: Set[Tuple[Tuple[int, int], Tuple[int, int]]] = set()
 
-            # 一次遍历检查所有 AGV 是否因冲突而需要停止
-            for agv_id in sorted(final_next_pos.keys()):
+            # 初始化当前所有已决策的动作占用
+            for agv_id in in_center:
                 cur = current_pos[agv_id]
                 tgt = final_next_pos[agv_id]
+                occ = self._get_next_occupied_positions(agv_id, cur, tgt)
+                for pos in occ:
+                    if pos not in cur_vertex_dict:
+                        cur_vertex_dict[pos] = set()
+                    cur_vertex_dict[pos].add(agv_id)
+                if cur != tgt:
+                    edge_conflict_set.add((cur, tgt))
+
+            # 遍历所有中心AGV
+            for agv_id in in_center:
+                cur = current_pos[agv_id]
+                tgt = next_pos[agv_id]
                 carrying = carrying_status.get(agv_id, False)
 
-                if abs(cur[0] - tgt[0]) + abs(cur[1] - tgt[1]) > 1:
-                    raise ValueError(f"Illegal move from {cur} to {tgt}: not adjacent")
+                if tgt == cur:
+                    continue
 
                 walkable = self.map.is_walkable(tgt, cur, carrying)
-                vertex_conflict = len(target_count[tgt]) > 1
-                edge_conflict = (tgt, cur) in occupied_edges
+                occ = self._get_next_occupied_positions(agv_id, cur, tgt)
 
-                if tgt != cur and (not walkable or vertex_conflict or edge_conflict):
+                # 顶点冲突判断：目标位置不能被他人占用（自己除外）
+                vertex_occupied = cur_vertex_dict.get(tgt, set())
+                has_vertex_conflict = len(vertex_occupied - {agv_id}) > 0
+
+                # 交换冲突判断
+                has_edge_conflict = (tgt, cur) in edge_conflict_set
+                if walkable and not has_vertex_conflict and not has_edge_conflict:
+                    if final_next_pos[agv_id] != tgt:
+                        final_next_pos[agv_id] = tgt
+                        changed = True
+                    for pos in occ:
+                        if pos not in cur_vertex_dict:
+                            cur_vertex_dict[pos] = set()
+                        cur_vertex_dict[pos].add(agv_id)
+                    edge_conflict_set.add((cur, tgt))
+                else:
                     final_next_pos[agv_id] = cur
-                    self.agv_manager.increment_block_count(agv_id)
-                    changed = True
+                    edge_conflict_set.add((cur, cur))
 
             if not changed:
                 break
@@ -66,7 +110,6 @@ class Env:
         real_pos = self.agv_manager.get_real_position(agv_id)
         speed = self.agv_manager.get_agv_speed(agv_id)
         time_step = 1
-        epsilon = 1e-6  # 精度容差，可调
 
         offset = speed * time_step
         x, y = real_pos
@@ -92,6 +135,25 @@ class Env:
             occupied.add(cur)
 
         return occupied
+
+    def classify_by_grid_center(self, real_positions: Dict[int, Tuple[float, float]]) -> Tuple[Set[int], Set[int]]:
+        """
+        根据 AGV 是否在网格中心将其划分为两个集合。
+        网格中心定义为坐标的 x 和 y 均为 **.5。
+        返回：
+            in_center: 在中心的 AGV ID 集合
+            not_in_center: 不在中心的 AGV ID 集合
+        """
+        in_center = set()
+        not_in_center = set()
+
+        for agv_id, (x, y) in real_positions.items():
+            if abs(x % 1 - 0.5) < epsilon and abs(y % 1 - 0.5) < epsilon:
+                in_center.add(agv_id)
+            else:
+                not_in_center.add(agv_id)
+
+        return in_center, not_in_center
 
     def reset(self):
         # TODO: 可按需扩展重置逻辑
