@@ -97,6 +97,9 @@ class Env:
                     edge_conflict_set.add((cur, cur))
 
             if not changed:
+                for agv_id in in_center:
+                    if final_next_pos[agv_id] != next_pos[agv_id]:
+                        self.agv_manager.increment_block_count(agv_id)
                 break
 
         return final_next_pos

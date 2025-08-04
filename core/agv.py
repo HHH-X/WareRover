@@ -71,6 +71,8 @@ class AGV:
                     self._handover_box(extra)
 
                 replan_required = True
+        elif not self.action_queue and not self.is_resting:
+            replan_required = True
 
         return replan_required
 
