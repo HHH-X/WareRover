@@ -9,11 +9,12 @@ from visualizer.visualizer import MapVisualizer
 from visualizer.control_panel import ControlPanel
 
 class MainView:
-    def __init__(self, cfg: SimConfig, gridmap: GridMap, agv_manager: AGVManager, cell_size=40, fps=10):
+    def __init__(self, cfg: SimConfig, gridmap: GridMap, agv_manager: AGVManager):
+        cell_size = cfg.cell_size
         self.map_width = cfg.width * cell_size
         self.map_height = cfg.height * cell_size
         self.panel_width = cfg.panel_width
-        self.fps = fps
+        self.fps = 10
 
         pygame.init()
         self.screen = pygame.display.set_mode((self.map_width + self.panel_width, self.map_height))
@@ -30,10 +31,7 @@ class MainView:
                 self.panel.handle_click(event.pos)
 
         self.screen.fill((255, 255, 255))
-        self.map_visualizer.draw_grid()
-        self.map_visualizer.draw_map_elements()
-        self.map_visualizer.draw_shelves()
-        self.map_visualizer.draw_agvs()
+        self.map_visualizer.draw()
         self.panel.draw(self.screen)
 
         pygame.display.flip()

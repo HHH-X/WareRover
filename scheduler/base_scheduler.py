@@ -10,7 +10,8 @@ class Scheduler:
     def __init__(self, order_manager: OrderManager, map_instance: GridMap):
         self.order_manager = order_manager
         self.map = map_instance
-        self.order_generator = self.order_manager.order_generator()
+        self.orders = self.order_manager.get_all_orders()
+        self.order_iter = iter(self.orders)
 
     def assign_tasks(self, idle_agv_ids: Set[int]) -> Dict[int, List[Tuple[Tuple[int, int], AGVAction, int]]]:
         """
@@ -22,8 +23,7 @@ class Scheduler:
         for agv_id in idle_agv_ids:
             try:
                 # 获取一个订单
-                order: Order = next(self.order_generator)
-                self.order_manager.mark_orders_processing([order.order_id])
+                order: Order = next(self.order_iter)
             except StopIteration:
                 # 所有订单已经分配完毕
                 break
