@@ -35,7 +35,8 @@ class Simulator:
         idle_agv_set = self.agv_manager.get_idle_agv_ids()
         if idle_agv_set:
             agv_tasks = self.scheduler.assign_tasks(idle_agv_set)
-            self.agv_manager.assign_tasks(agv_tasks)
+            if(agv_tasks):
+                self.agv_manager.assign_tasks(agv_tasks)
 
         # 2. 分配休息区给任务完成的AGV
         agvs_needing_rest = self.agv_manager.get_need_rest_agv_ids()

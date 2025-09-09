@@ -9,6 +9,7 @@ class Order:
     order_id: int
     goods_id: int
     receiver_id: int
+    box_id: Optional[int] = None  # 初始为 None，可在规划阶段动态赋值，规划时可选
 
 class OrderManager:
     def __init__(self, config: SimConfig, map_inst: GridMap):
