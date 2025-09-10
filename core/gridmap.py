@@ -84,19 +84,12 @@ class GridMap:
 
         return neighbors
 
-
-    # ========= 货箱接口 =========
-    def get_box_position(self, box_id: int) -> Optional[Tuple[int, int]]:
-        return self.box_positions.get(box_id)
-        
+    # ========= 地图实时信息（map_grid）接口 =========
     def get_box_id_at(self, pos: Tuple[int, int]) -> Optional[int]:
         x, y = pos
         box_id = self.map_grid[y][x]
         return box_id if box_id >= 0 else None
-
-    def get_goods_by_box(self, box_id: int) -> List[int]:
-        return self.box_to_goods.get(box_id, [])
-
+    
     def pick_box_at(self, pos: Tuple[int, int]) -> Optional[int]:
         x, y = pos
         box_id = self.map_grid[y][x]
@@ -112,6 +105,13 @@ class GridMap:
             self.map_grid[y][x] = box_id
             return True
         return False
+    
+    # ========= 货箱接口 =========
+    def get_box_position(self, box_id: int) -> Optional[Tuple[int, int]]:
+        return self.box_positions.get(box_id)
+        
+    def get_goods_by_box(self, box_id: int) -> List[int]:
+        return self.box_to_goods.get(box_id, [])
 
     # ========= 货物接口 =========
     def get_boxes_by_goods(self, goods_id: int) -> List[int]:

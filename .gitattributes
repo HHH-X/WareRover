@@ -1,1 +1,9 @@
-* text=auto eol=lf
+# 所有文本文件使用 LF 换行
+* text=auto
+
+# 针对 Python 文件强制 LF
+*.py text eol=lf
+
+# 针对 Windows 脚本文件保留 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf

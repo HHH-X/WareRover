@@ -9,7 +9,6 @@ class Order:
     order_id: int
     goods_id: int
     receiver_id: int
-    box_id: Optional[int] = None  # 初始为 None，可在规划阶段动态赋值，规划时可选
 
 class OrderManager:
     def __init__(self, config: SimConfig, map_inst: GridMap):
@@ -18,7 +17,7 @@ class OrderManager:
         self.total_orders = config.num_orders
 
         self.all_orders: List[Order] = []
-        # 三个订单状态管理：order_id -> Order
+        # 两个订单状态管理：order_id -> Order
         self.unprocessed_orders: Dict[int, Order] = {}
         self.finished_orders: Dict[int, Order] = {}
 
@@ -47,6 +46,9 @@ class OrderManager:
     # ========== 第二块功能：订单管理 ==========
     def get_all_orders(self) -> List[Order]:
         return self.all_orders
+    
+    def get_unprocessed_orders(self) -> List[Order]:
+        return list(self.unprocessed_orders.values())
     
     def complete_order(self, order_id: int, agv_id: int, box_id: Optional[int], agv_pos: Tuple[int, int]) -> bool:
         if order_id not in self.unprocessed_orders:

@@ -26,7 +26,12 @@ class AGVManager:
     def get_agv_speed(self, agv_id: int) -> float:
         agv = self._agvs.get(agv_id)
         return agv.max_speed
-
+    
+    # 获取指定 ID 的 AGV 当前网格位置
+    def get_grid_position(self, agv_id:int) -> Tuple[int, int]:
+        agv = self._agvs.get(agv_id)
+        return agv.grid_pos
+    
     def get_real_position(self, agv_id:int) -> Tuple[float, float]:
         agv = self._agvs.get(agv_id)
         return agv.real_pos
