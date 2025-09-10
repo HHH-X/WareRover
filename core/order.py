@@ -17,8 +17,9 @@ class OrderManager:
         self.total_orders = config.num_orders
 
         self.all_orders: List[Order] = []
-        # 两个订单状态管理：order_id -> Order
+        # 三个订单状态管理：order_id -> Order
         self.unprocessed_orders: Dict[int, Order] = {}
+        self.processing_orders: Dict[int, Order] = {}
         self.finished_orders: Dict[int, Order] = {}
 
         # 日志记录（异常信息）
@@ -50,17 +51,32 @@ class OrderManager:
     def get_unprocessed_orders(self) -> List[Order]:
         return list(self.unprocessed_orders.values())
     
+    def mark_order_as_processing(self, order_id: int) -> bool:
+        order = self.unprocessed_orders.pop(order_id)
+        self.processing_orders[order_id] = order
+        return True
+    
     def complete_order(self, order_id: int, agv_id: int, box_id: Optional[int], agv_pos: Tuple[int, int]) -> bool:
-        if order_id not in self.unprocessed_orders:
-            self.logs.append(f"[ERROR] Order {order_id} not in processing orders.")
+        """
+        完成订单，从 processing_orders 或 unprocessed_orders 移动到 finished_orders
+        """
+        # 确定订单来源
+        if order_id in self.processing_orders:
+            order_source = self.processing_orders
+        elif order_id in self.unprocessed_orders:
+            order_source = self.unprocessed_orders
+        else:
+            self.logs.append(f"[ERROR] Order {order_id} not found in processing or unprocessed orders.")
             return False
 
-        order = self.unprocessed_orders[order_id]
+        order = order_source[order_id]
         goods_list = self.map.get_goods_by_box(box_id) if box_id is not None else []
         receiver_pos = self.map.get_receiver_position(order.receiver_id)
 
         if order.goods_id in goods_list and agv_pos == receiver_pos:
-            self.finished_orders[order_id] = self.unprocessed_orders.pop(order_id)
+            # 从源字典中移除并添加到完成订单
+            self.finished_orders[order_id] = order_source.pop(order_id)
+            print(f"完成订单{order_id}")
             return True
         else:
             self.logs.append(
@@ -68,12 +84,11 @@ class OrderManager:
                 f"Expected goods {order.goods_id} at receiver {receiver_pos}, "
                 f"but got goods {goods_list} at {agv_pos} with box_id={box_id}."
             )
-            
+
             return False
     
     def is_all_orders_completed(self) -> bool:
-        return len(self.unprocessed_orders) == 0
-
+        return len(self.unprocessed_orders) == 0 and len(self.processing_orders) == 0
 
     # ========== 日志访问 ==========
 

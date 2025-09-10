@@ -29,7 +29,8 @@ class Simulator:
         - 执行AGV动作与冲突检测
         """
         
-        print(f"\n--- Simulator Step {self.step_count} ---")
+        if self.step_count % 20 == 0:
+            print(f"\n--- Simulator Step {self.step_count} ---")
 
         # 1. 获取空闲AGV并尝试分配任务
         idle_agv_set = self.agv_manager.get_idle_agv_ids()

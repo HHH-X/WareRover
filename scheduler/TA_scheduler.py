@@ -165,6 +165,10 @@ class TA_Scheduler(Scheduler):
 
             # 调用 orders_to_tasks
             agv_task_map[agv_id] = orders_to_tasks(copied_orders, self.map)
+            
+            # **标记原始订单为正在处理**
+            for original_order in orders:
+                self.order_manager.mark_order_as_processing(original_order.order_id)
 
         return agv_task_map
     
