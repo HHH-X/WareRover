@@ -164,26 +164,35 @@ class FixedWindowCBSPlanner(BasePlanner):
         return path
 
     # ---------------- Conflict detection -----------------
-
     def _detect_conflict(self, paths: Dict[int, List[Tuple[int, int]]]):
-        max_len = max(len(p) for p in paths.values())
+        max_len = max((len(p) for p in paths.values()), default=0)
         ids = list(paths.keys())
         for t in range(max_len):
             positions = {}
+            # 顶点冲突检测
             for agv_id in ids:
-                pos = paths[agv_id][t] if t < len(paths[agv_id]) else paths[agv_id][-1]
+                if t >= len(paths[agv_id]):  
+                    # 这个 AGV 在 t 时刻已经“消失”，不参与检测
+                    continue
+                pos = paths[agv_id][t]
                 if pos in positions:
                     return positions[pos], agv_id, t, [pos]
                 positions[pos] = agv_id
 
+            # 边冲突检测
             if t > 0:
                 for i in range(len(ids)):
                     for j in range(i + 1, len(ids)):
                         ai, aj = ids[i], ids[j]
-                        prev_i = paths[ai][t - 1] if t - 1 < len(paths[ai]) else paths[ai][-1]
-                        cur_i = paths[ai][t] if t < len(paths[ai]) else paths[ai][-1]
-                        prev_j = paths[aj][t - 1] if t - 1 < len(paths[aj]) else paths[aj][-1]
-                        cur_j = paths[aj][t] if t < len(paths[aj]) else paths[aj][-1]
+                        if t >= len(paths[ai]) or t >= len(paths[aj]):
+                            # 任意一方路径不足，不检测
+                            continue
+                        prev_i = paths[ai][t - 1] if t - 1 < len(paths[ai]) else None
+                        cur_i = paths[ai][t]
+                        prev_j = paths[aj][t - 1] if t - 1 < len(paths[aj]) else None
+                        cur_j = paths[aj][t]
+                        if prev_i is None or prev_j is None:
+                            continue
                         if prev_i == cur_j and prev_j == cur_i and cur_i != cur_j:
                             return ai, aj, t, [prev_i, cur_i]
         return None
