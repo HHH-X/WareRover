@@ -4,14 +4,14 @@ from config.settings import SimConfig
 from core.gridmap import GridMap
 from core.agvmanager import AGVManager
 from core.env import Env
-from scheduler.base_scheduler import Scheduler
-from planner.base_planner import Planner
+from scheduler.base_scheduler import BaseScheduler
+from planner.base_planner import BasePlanner
 
 
 class Simulator:
     def __init__(self, sim_config: SimConfig, map_inst: GridMap,
                  agv_manager: AGVManager, env: Env,
-                 scheduler: Scheduler, planner: Planner):
+                 scheduler: BaseScheduler, planner: BasePlanner):
         self.config = sim_config
         self.map = map_inst
         self.agv_manager = agv_manager

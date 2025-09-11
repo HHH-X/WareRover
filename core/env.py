@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Set
+from typing import Dict, Tuple, Set, List
 from core.gridmap import GridMap
 from core.agvmanager import AGVManager
 epsilon = 1e-6  # 精度容差，可调
@@ -7,6 +7,80 @@ class Env:
     def __init__(self, agv_manager: AGVManager, map_inst: GridMap):
         self.agv_manager = agv_manager
         self.map = map_inst
+
+    def get_env_info(self):
+        """
+        获取当前环境的综合信息，用于状态表示或规划器决策。
+
+        Returns:
+            Dict[str, Any]: 包含环境关键信息的字典，具体包含以下键值对：
+                - 'grid': np.ndarray
+                    地图网格数据，形状为 (height, width) 的整数数组。
+                    取值含义：
+                        -3: 障碍物（所有情况下都不可通行）
+                        -2: 空格（所有情况下都可通行）
+                        -1: 空货架（是否可通行取决于AGV的来源方向和载货状态）
+                        >=0: 有货箱的货架（载货时不可通行，不载货时可通行）
+                
+                - 'carrying_status': Dict[int, bool]
+                    所有AGV的载货状态字典。
+                    键为AGV的ID（整数），值为布尔值：
+                        True: 表示该AGV正在携带货箱
+                        False: 表示该AGV未携带货箱
+                
+                - 'action_queues': Dict[int, List[Tuple[int, int]]]
+                    所有AGV的动作队列（路径队列）字典。
+                    键为AGV的ID（整数），值为坐标元组列表：
+                        对于正在休息的AGV：返回包含10个休息目标位置的列表
+                        对于活跃的AGV：返回其当前的动作队列（路径点列表）
+        """
+        grid = self.map.map_grid
+        carrying_status = self.agv_manager.get_carrying_status()
+        action_queues = self.agv_manager.get_all_action_queues()
+
+        return {
+            'grid': grid,
+            'carrying_status': carrying_status,
+            'action_queues': action_queues
+        }
+    
+    def get_walkable_neighbors(self, pos: Tuple[int, int], carrying_goods: bool) -> List[Tuple[int, int]]:
+        """
+        获取指定位置在当前载货状态下可通行的相邻位置。
+
+        该方法通过检查当前位置的四个方向（上、下、左、右），判断每个相邻位置是否可通行，
+        并返回所有可通行的相邻位置坐标列表。
+
+        Args:
+            pos: 当前所在位置的坐标元组 (x, y)
+            carrying_goods: AGV当前的载货状态，True表示正在载货，False表示空载
+
+        Returns:
+            List[Tuple[int, int]]: 可通行的相邻位置坐标列表，每个元素为 (x, y) 元组
+        """
+        return self.map.get_walkable_neighbors(pos, carrying_goods)
+    
+    def is_walkable(self, to_pos: Tuple[int, int], from_pos: Tuple[int, int], carrying_goods: bool) -> bool:
+        """
+        判断从当前位置移动到目标位置是否可行。
+
+        判断逻辑基于地图网格的单元格类型和AGV的载货状态：
+        1. 首先检查目标位置是否在地图边界内
+        2. 根据目标位置的单元格类型进行判断：
+           - 障碍物(-3): 永远不可通行
+           - 空格(-2): 永远可通行
+           - 空货架(-1): 空载时可通行；载货时只能从空格走向空货架
+           - 有货箱(>=0): 空载时可通行，载货时不可通行
+
+        Args:
+            to_pos: 目标位置的坐标元组 (x, y)
+            from_pos: 当前位置的坐标元组 (x, y)
+            carrying_goods: AGV当前的载货状态，True表示正在载货，False表示空载
+
+        Returns:
+            bool: True表示可通行，False表示不可通行
+        """
+        return self.map.is_walkable(to_pos, from_pos, carrying_goods)
 
     def step(self):
         next_positions = self.resolve_conflicts()

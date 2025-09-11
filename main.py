@@ -4,11 +4,12 @@ from core.gridmap import load_map_from_config
 from core.order import OrderManager
 from core.env import Env
 from core.simulator import Simulator
-
-from scheduler.base_scheduler import Scheduler
-from planner.base_planner import Planner
 from visualizer.main_view import MainView
-from scheduler.TA_scheduler import TA_Scheduler
+
+from scheduler.TA_scheduler import TAScheduler
+from scheduler.random_scheduler import RandomScheduler
+from planner.astar_planner import AStarPlanner
+from planner.cbs_fw_planner import FixedWindowCBSPlanner
 
 def main():
     cfg = init_sim_config("config/test_map.json")
@@ -17,8 +18,10 @@ def main():
     agv_manager = load_agvs_from_config(cfg,grid_map,ordermanager)
     env = Env(agv_manager,grid_map)
 
-    scheduler = TA_Scheduler(ordermanager,grid_map,agv_manager)
-    planner = Planner(agv_manager,grid_map,env)
+    scheduler = RandomScheduler(ordermanager,grid_map)
+    # scheduler = TAScheduler(ordermanager,grid_map,agv_manager)
+    planner = FixedWindowCBSPlanner(env, window_size=8)
+    # planner = AStarPlanner(env)
 
     simulator = Simulator(cfg, grid_map,agv_manager, env,scheduler, planner)
 

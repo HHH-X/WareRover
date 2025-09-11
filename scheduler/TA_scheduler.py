@@ -6,12 +6,12 @@ from core.gridmap import GridMap
 from core.order import OrderManager, Order
 from core.agv import AGVAction
 from core.agvmanager import AGVManager
-from scheduler.base_scheduler import Scheduler
+from scheduler.base_scheduler import BaseScheduler
 from scipy.optimize import linear_sum_assignment
 from utils.base_utils import orders_to_tasks
 import random
 
-class TA_Scheduler(Scheduler):
+class TAScheduler(BaseScheduler):
     def __init__(self, order_manager: OrderManager, map_instance: GridMap, agv_manager:AGVManager):
         self.map = map_instance
         self.order_manager = order_manager
