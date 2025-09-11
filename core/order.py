@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple, Optional, Generator
 import random
 from config.settings import SimConfig
 from core.gridmap import GridMap
-
+from utils.logger import global_logger
 @dataclass
 class Order:
     order_id: int
@@ -76,7 +76,7 @@ class OrderManager:
         if order.goods_id in goods_list and agv_pos == receiver_pos:
             # 从源字典中移除并添加到完成订单
             self.finished_orders[order_id] = order_source.pop(order_id)
-            print(f"完成订单{order_id}")
+            global_logger.add_runtime_log(f"finish order: {order_id}")
             return True
         else:
             self.logs.append(

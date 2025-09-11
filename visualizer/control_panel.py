@@ -2,6 +2,7 @@
 import pygame
 from typing import Tuple, List
 from config.settings import SimConfig
+from utils.logger import global_logger
 
 BLACK_TEXT = (0, 0, 0)
 BUTTON_COLOR = (180, 180, 180)
@@ -33,8 +34,9 @@ class ControlPanel:
 
         # 各部分绘制
         self._draw_buttons(surface)
-        self._draw_order_info(surface)
-        # self._draw_metrics(surface)
+        self._draw_config_info(surface)   # 配置信息
+        self._draw_runtime_logs(surface)
+        self._draw_metrics(surface)
 
     def _draw_buttons(self, surface: pygame.Surface):
         """绘制控制按钮"""
@@ -47,25 +49,36 @@ class ControlPanel:
         step_text_surf = self.font_medium.render("Step", True, BLACK_TEXT)
         surface.blit(step_text_surf, (self.step_button_rect.x + 10, self.step_button_rect.y + 10))
 
-    def _draw_order_info(self, surface: pygame.Surface):
-        """绘制订单完成信息"""
-        y_offset = 140  # 按钮下面开始绘制
-        surface.blit(self.font_large.render("Orders", True, BLACK_TEXT), (self.left_offset + 10, y_offset))
+    def _draw_config_info(self, surface: pygame.Surface):
+        """绘制运行配置（算法名、关键参数）"""
+        y_offset = 140
+        surface.blit(self.font_large.render("Config", True, BLACK_TEXT), (self.left_offset + 10, y_offset))
         y_offset += 25
-        for idx, order in enumerate(self.order_list[:10]):
-            order_text = f"Order {order['id']}: {order['status']}"
-            surface.blit(self.font_medium.render(order_text, True, BLACK_TEXT), (self.left_offset + 10, y_offset))
+        config_info = global_logger.get_config()
+        for key, value in config_info.items():
+            text = f"{key}: {value}"
+            surface.blit(self.font_medium.render(text, True, BLACK_TEXT), (self.left_offset + 10, y_offset))
             y_offset += 20
 
+    def _draw_runtime_logs(self, surface: pygame.Surface):
+        """绘制运行日志"""
+        y_offset = 380
+        surface.blit(self.font_large.render("Logs", True, BLACK_TEXT), (self.left_offset + 10, y_offset))
+        y_offset += 25
+
+        logs = global_logger.get_runtime_logs(n=8)
+        for log in logs:
+            surface.blit(self.font_small.render(log, True, BLACK_TEXT), (self.left_offset + 10, y_offset))
+            y_offset += 15
+
     def _draw_metrics(self, surface: pygame.Surface):
-        """绘制运行指标"""
-        y_offset = 400  # 固定在下面
+        y_offset = 600
         surface.blit(self.font_large.render("Metrics", True, BLACK_TEXT), (self.left_offset + 10, y_offset))
         y_offset += 25
 
-        # 遍历显示指标（外部赋值 self.metrics = {...}）
-        for key, value in self.metrics.items():
-            metric_text = f"{key}: {value}"
+        metrics = global_logger.get_metrics()
+        for key, value in metrics.items():
+            metric_text = f"{key}: {value:.2f}"
             surface.blit(self.font_medium.render(metric_text, True, BLACK_TEXT), (self.left_offset + 10, y_offset))
             y_offset += 20
 
