@@ -44,7 +44,9 @@ class FixedWindowCBSPlanner(BasePlanner):
         carrying_status: Dict[int, bool],
         fixed_agents: Dict[int, List[Tuple[int, int]]],
     ) -> Dict[int, List[Tuple[int, int]]]:
-        # 初始化根节点：无约束，目标agent单独规划
+        planning_agents = set(targets.keys())
+
+        # 初始化根节点
         root = {
             'constraints': [],
             'paths': {},
@@ -53,11 +55,11 @@ class FixedWindowCBSPlanner(BasePlanner):
         for agv_id, (start, goal) in targets.items():
             path = self._a_star_with_constraints(agv_id, start, goal, carrying_status[agv_id], [], goal)
             if path is None:
-                raise ValueError(f"Agent {agv_id} cannot find path")
+                path = [start]  # 退化路径
             root['paths'][agv_id] = path
             root['cost'] += len(path) - 1
 
-        # 加入固定agents的路径（来自action_queue，不做重规划）
+        # 加入固定agents的路径（只截取窗口大小）
         for agv_id, path in fixed_agents.items():
             root['paths'][agv_id] = path[: self.window_size + 1]
 
@@ -67,18 +69,20 @@ class FixedWindowCBSPlanner(BasePlanner):
 
         while open_list:
             cost, _, node = heapq.heappop(open_list)
-            conflict = self._detect_conflict(node['paths'])
+            conflict = self._detect_conflict(node['paths'], planning_agents, set(fixed_agents.keys()))
             if conflict is None:
-                # 裁剪路径：只返回窗口大小的部分
+                # 剪裁窗口返回
                 clipped = {}
                 for agv_id, path in node['paths'].items():
                     clipped[agv_id] = path[: self.window_size + 1]
                 return clipped
 
             a1, a2, time, loc = conflict
+
+            # 只给 planning_agents 加约束
             for agent, constraint in zip((a1, a2), self._build_constraints(a1, a2, time, loc)):
-                if agent in fixed_agents:
-                    continue  # 不对固定AGV加约束
+                if agent not in planning_agents:
+                    continue  # fixed_agents 永远不加约束
                 child = {
                     'constraints': node['constraints'] + [constraint],
                     'paths': dict(node['paths']),
@@ -93,7 +97,17 @@ class FixedWindowCBSPlanner(BasePlanner):
                 heapq.heappush(open_list, (child['cost'], node_id, child))
                 node_id += 1
 
-        raise ValueError("No conflict-free solution found in window")
+        # CBS 搜索失败，退化返回独立路径
+        fallback = {}
+        for agv_id, (start, goal) in targets.items():
+            path = self._a_star_with_constraints(agv_id, start, goal, carrying_status[agv_id], [], goal)
+            if path is None:
+                path = [start]
+            fallback[agv_id] = path[: self.window_size + 1]
+        for agv_id, path in fixed_agents.items():
+            fallback[agv_id] = path[: self.window_size + 1]
+        return fallback
+
 
     # ---------------- A* with constraints -----------------
 
@@ -164,36 +178,44 @@ class FixedWindowCBSPlanner(BasePlanner):
         return path
 
     # ---------------- Conflict detection -----------------
-    def _detect_conflict(self, paths: Dict[int, List[Tuple[int, int]]]):
-        max_len = max((len(p) for p in paths.values()), default=0)
-        ids = list(paths.keys())
+    def _detect_conflict(self, paths: Dict[int, List[Tuple[int, int]]], planning_agents: set, fixed_agents: set):
+        """
+        检测冲突：
+        - planning vs planning -> 冲突
+        - planning vs fixed    -> 冲突（只修改 planning）
+        - fixed vs fixed       -> 忽略
+        """
+        agents = set(paths.keys())
+        max_len = max((len(paths[aid]) for aid in agents), default=0)
+
         for t in range(max_len):
             positions = {}
-            # 顶点冲突检测
-            for agv_id in ids:
-                if t >= len(paths[agv_id]):  
-                    # 这个 AGV 在 t 时刻已经“消失”，不参与检测
+            for agv_id, path in paths.items():
+                if t >= len(path):
                     continue
-                pos = paths[agv_id][t]
+                pos = path[t]
                 if pos in positions:
-                    return positions[pos], agv_id, t, [pos]
+                    other = positions[pos]
+                    # fixed vs fixed 冲突忽略
+                    if agv_id in fixed_agents and other in fixed_agents:
+                        continue
+                    return other, agv_id, t, [pos]
                 positions[pos] = agv_id
 
-            # 边冲突检测
+            # 边冲突
             if t > 0:
+                ids = list(agents)
                 for i in range(len(ids)):
                     for j in range(i + 1, len(ids)):
                         ai, aj = ids[i], ids[j]
                         if t >= len(paths[ai]) or t >= len(paths[aj]):
-                            # 任意一方路径不足，不检测
                             continue
-                        prev_i = paths[ai][t - 1] if t - 1 < len(paths[ai]) else None
-                        cur_i = paths[ai][t]
-                        prev_j = paths[aj][t - 1] if t - 1 < len(paths[aj]) else None
-                        cur_j = paths[aj][t]
-                        if prev_i is None or prev_j is None:
-                            continue
+                        prev_i, cur_i = paths[ai][t - 1], paths[ai][t]
+                        prev_j, cur_j = paths[aj][t - 1], paths[aj][t]
                         if prev_i == cur_j and prev_j == cur_i and cur_i != cur_j:
+                            # fixed vs fixed 冲突忽略
+                            if ai in fixed_agents and aj in fixed_agents:
+                                continue
                             return ai, aj, t, [prev_i, cur_i]
         return None
 
