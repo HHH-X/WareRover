@@ -71,10 +71,10 @@ class FixedWindowCBSPlanner(BasePlanner):
             cost, _, node = heapq.heappop(open_list)
             conflict = self._detect_conflict(node['paths'], planning_agents, set(fixed_agents.keys()))
             if conflict is None:
-                # 剪裁窗口返回
+                # 剪裁窗口返回（去掉第一个位置）
                 clipped = {}
                 for agv_id, path in node['paths'].items():
-                    clipped[agv_id] = path[: self.window_size + 1]
+                    clipped[agv_id] = self._trim_path(path, self.window_size)
                 return clipped
 
             a1, a2, time, loc = conflict
@@ -103,11 +103,10 @@ class FixedWindowCBSPlanner(BasePlanner):
             path = self._a_star_with_constraints(agv_id, start, goal, carrying_status[agv_id], [], goal)
             if path is None:
                 path = [start]
-            fallback[agv_id] = path[: self.window_size + 1]
+            fallback[agv_id] = self._trim_path(path, self.window_size)
         for agv_id, path in fixed_agents.items():
-            fallback[agv_id] = path[: self.window_size + 1]
+            fallback[agv_id] = self._trim_path(path, self.window_size)
         return fallback
-
 
     # ---------------- A* with constraints -----------------
 
@@ -176,6 +175,16 @@ class FixedWindowCBSPlanner(BasePlanner):
             cur = parents.get(cur)
         path.reverse()
         return path
+
+    # ---------------- Path trimming -----------------
+    def _trim_path(self, path: List[Tuple[int, int]], window_size: int) -> List[Tuple[int, int]]:
+        """
+        去掉路径中的第一个位置（起点），并限制在窗口大小内。
+        如果路径长度 <= 1，则返回空路径。
+        """
+        if len(path) <= 1:
+            return []
+        return path[1: window_size + 1]
 
     # ---------------- Conflict detection -----------------
     def _detect_conflict(self, paths: Dict[int, List[Tuple[int, int]]], planning_agents: set, fixed_agents: set):
