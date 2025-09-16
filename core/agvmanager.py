@@ -36,6 +36,10 @@ class AGVManager:
         agv = self._agvs.get(agv_id)
         return agv.real_pos
     
+    def get_agv_size(self, agv_id:int)-> int:
+        agv = self._agvs.get(agv_id)
+        return agv.size
+    
     # 获取所有 AGV 实例（生成器）
     def all_agvs(self) -> Generator[AGV, None, None]:
         yield from self._agvs.values()
@@ -161,8 +165,9 @@ def load_agvs_from_config(cfg: SimConfig, map_inst: GridMap, order_manager:Order
     for agv_entry in agv_data:
         agv_id = agv_entry["agv_id"]
         wait_id = agv_entry["init_wait_zone_id"]
+        agv_size = agv_entry["size"]
         init_grid = wait_zones[wait_id]
-        agv = AGV(agv_id=agv_id, init_grid_pos=init_grid, map_inst=map_inst, order_manager=order_manager)
+        agv = AGV(agv_id=agv_id, size=agv_size, init_grid_pos=init_grid, map_inst=map_inst, order_manager=order_manager)
         agv_list.append(agv)
 
     return AGVManager(agv_list)

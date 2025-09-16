@@ -17,12 +17,16 @@ class AGV:
     def __init__(
         self,
         agv_id: int,
+        size:int,
         init_grid_pos: Tuple[int, int],
         map_inst: GridMap,
         order_manager: OrderManager,
     ):
         self.id: int = agv_id
+        # AGV的大小
+        self.size: int  = size
         # AGV 当前网格位置 (x, y)
+        # 对于size大于1的agv来说，坐标为左上角
         self.grid_pos: Tuple[int, int] = init_grid_pos
         # 精确位置 (x, y)
         self.real_pos: Tuple[float, float] = (init_grid_pos[0] + 0.5, init_grid_pos[1] + 0.5)

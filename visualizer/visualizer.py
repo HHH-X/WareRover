@@ -64,22 +64,39 @@ class MapVisualizer:
 
     def draw_agvs(self):
         for agv in self.agv_manager.all_agvs():
-            x, y = agv.real_pos  
-            # screen_x = int(x * self.cell_size + self.cell_size // 2)
-            # screen_y = int(y * self.cell_size + self.cell_size // 2)
-            screen_x = int(x * self.cell_size)
-            screen_y = int(y * self.cell_size)
+            x, y = agv.real_pos   # size=1: 格子中心; size=2: 左上格子中心
+            size = getattr(agv, "size", 1)
 
-            # 画 AGV 圆形
-            pygame.draw.circle(self.screen, AGV_COLOR, (screen_x, screen_y), self.cell_size // 3)
-            # pos = (screen_x, screen_y - self.cell_size // 3 - 6)
-            pos = (screen_x, screen_y)
-            self._draw_text(str(agv.id), pos, self.font_medium, BLACK_TEXT, center=True)
+            if size == 1:
+                # 单格 AGV（中心点）
+                screen_x = int(x * self.cell_size)
+                screen_y = int(y * self.cell_size)
+                center = (screen_x, screen_y)
 
-            # 显示携带的 box ID（下方）
-            if agv.carried_box_id is not None:
-                pos = (screen_x, screen_y - self.cell_size // 3 - 6)
-                self._draw_text(str(agv.carried_box_id), pos, self.font_medium, BLACK_TEXT, center=True)
+                pygame.draw.circle(self.screen, AGV_COLOR, center, self.cell_size // 3)
+                self._draw_text(str(agv.id), center, self.font_medium, BLACK_TEXT, center=True)
+
+                if agv.carried_box_id is not None:
+                    pos = (center[0], center[1] - self.cell_size // 2 - 6)
+                    self._draw_text(str(agv.carried_box_id), pos, self.font_medium, BLACK_TEXT, center=True)
+
+            else:
+                # size>=2 的 AGV (左上格子中心)
+                rect_size = size * self.cell_size
+
+                # 左上角像素坐标 = 左上格子中心 - 半格
+                rect_left = int(x * self.cell_size - self.cell_size / 2)
+                rect_top = int(y * self.cell_size - self.cell_size / 2)
+
+                rect = pygame.Rect(rect_left, rect_top, rect_size, rect_size)
+                pygame.draw.rect(self.screen, AGV_COLOR, rect)
+
+                center = rect.center
+                self._draw_text(str(agv.id), center, self.font_medium, BLACK_TEXT, center=True)
+
+                if agv.carried_box_id is not None:
+                    pos = (center[0], rect.top - 10)
+                    self._draw_text(str(agv.carried_box_id), pos, self.font_medium, BLACK_TEXT, center=True)
 
     def _draw_cell(self, pos: Tuple[int, int], color: Tuple[int, int, int]):
         x, y = pos

@@ -97,10 +97,10 @@ class Env:
         # 1. 分类 AGV
         in_center, not_in_center = self.classify_by_grid_center(real_pos)
 
-        # 2. 初始化顶点占用字典：位置 -> 占用该位置的 agv_id 集合
+        # 2. 初始化顶点占用字典：格子 -> 占用该位置的 agv_id 集合
         vertex_conflict_dict: Dict[Tuple[int, int], Set[int]] = dict()
 
-        # 3. 固定不在中心的 AGV，并构建初始冲突字典（静态阶段）
+        # 3. 固定不在中心的 AGV，并构建初始冲突字典
         for agv_id in not_in_center:
             cur = current_pos[agv_id]
             tgt = final_next_pos[agv_id]
@@ -120,11 +120,9 @@ class Env:
         # 5. 多轮迭代解决中心AGV冲突
         while True:
             changed = False
-            # 顶点冲突检测副本：深拷贝当前 vertex_conflict_dict
             cur_vertex_dict: Dict[Tuple[int, int], Set[int]] = {
                 k: set(v) for k, v in vertex_conflict_dict.items()
             }
-
             edge_conflict_set: Set[Tuple[Tuple[int, int], Tuple[int, int]]] = set()
 
             # 初始化当前所有已决策的动作占用
@@ -151,12 +149,15 @@ class Env:
                 walkable = self.map.is_walkable(tgt, cur, carrying)
                 occ = self._get_next_occupied_positions(agv_id, cur, tgt)
 
-                # 顶点冲突判断：目标位置不能被他人占用（自己除外）
-                vertex_occupied = cur_vertex_dict.get(tgt, set())
-                has_vertex_conflict = len(vertex_occupied - {agv_id}) > 0
+                # 顶点冲突判断：占用区域不能和他人重叠
+                has_vertex_conflict = any(
+                    (cell in cur_vertex_dict and len(cur_vertex_dict[cell] - {agv_id}) > 0)
+                    for cell in occ
+                )
 
-                # 交换冲突判断
+                # 交换冲突判断（基于左上角坐标）
                 has_edge_conflict = (tgt, cur) in edge_conflict_set
+
                 if walkable and not has_vertex_conflict and not has_edge_conflict:
                     if final_next_pos[agv_id] != tgt:
                         final_next_pos[agv_id] = tgt
@@ -181,8 +182,17 @@ class Env:
     def _get_next_occupied_positions(
         self, agv_id: int, cur: Tuple[int, int], tgt: Tuple[int, int]
     ) -> Set[Tuple[int, int]]:
+        """
+        返回 AGV 从 cur 移动到 tgt 过程中，所占用的所有格子（考虑 size）
+        """
+        size = self.agv_manager.get_agv_size(agv_id)  # 新增: 从管理器获取 AGV 的 size
+
+        def footprint(pos: Tuple[int, int]) -> Set[Tuple[int, int]]:
+            x, y = pos
+            return {(x + dx, y + dy) for dx in range(size) for dy in range(size)}
+
         if cur == tgt:
-            return {cur}
+            return footprint(cur)
 
         real_pos = self.agv_manager.get_real_position(agv_id)
         speed = self.agv_manager.get_agv_speed(agv_id)
@@ -193,23 +203,26 @@ class Env:
         dx = tgt[0] - cur[0]
         dy = tgt[1] - cur[1]
 
+        # 当前和目标 footprint
+        cur_fp = footprint(cur)
+        tgt_fp = footprint(tgt)
+
         occupied: Set[Tuple[int, int]] = set()
 
         if dx != 0:
-            target_x = tgt[0] + 0.5  # 格子中心
+            target_x = tgt[0] + 0.5
             if abs(target_x - x) <= offset + epsilon:
-                occupied.add(tgt)
+                occupied |= tgt_fp
             else:
-                occupied.update([cur, tgt])
+                occupied |= (cur_fp | tgt_fp)
         elif dy != 0:
             target_y = tgt[1] + 0.5
             if abs(target_y - y) <= offset + epsilon:
-                occupied.add(tgt)
+                occupied |= tgt_fp
             else:
-                occupied.update([cur, tgt])
+                occupied |= (cur_fp | tgt_fp)
         else:
-            # 不移动，原地等待
-            occupied.add(cur)
+            occupied |= cur_fp
 
         return occupied
 
