@@ -44,7 +44,7 @@ function createScene() {
   const ambient = new THREE.AmbientLight(0xaaaaaa, 0.5);
   scene.add(ambient);
   // ---------------- 坐标轴辅助线 ----------------
-  const axesHelper = new THREE.AxesHelper(20);
+  const axesHelper = new THREE.AxesHelper(25);
   scene.add(axesHelper);
 
   // ---------------- 世界容器 ----------------
@@ -63,29 +63,47 @@ function createScene() {
     addMap(mapSize) {
       this.mapSize = mapSize;
 
-      // 网格
-      const gridHelper = new THREE.GridHelper(
-        Math.max(mapSize.width, mapSize.height),
-        Math.max(mapSize.width, mapSize.height)
-      );
-      // 网格默认中心在原点，我们平移到左上角在原点
-      gridHelper.position.x = mapSize.width / 2;
-      gridHelper.position.z = mapSize.height / 2;
-      
-      this.scene.add(gridHelper);
+      //  自定义网格
+      const grid = new THREE.Group();
+      const material = new THREE.LineBasicMaterial({ color: 0x888888 });
+
+      // 画竖线
+      for (let x = 0; x <= mapSize.width; x++) {
+        const points = [
+          new THREE.Vector3(x, 0.01, 0), // y=0.01 避免和地板重叠闪烁
+          new THREE.Vector3(x, 0.01, mapSize.height)
+        ];
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const line = new THREE.Line(geometry, material);
+        grid.add(line);
+      }
+
+      // 画横线
+      for (let z = 0; z <= mapSize.height; z++) {
+        const points = [
+          new THREE.Vector3(0, 0.01, z),
+          new THREE.Vector3(mapSize.width, 0.01, z)
+        ];
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const line = new THREE.Line(geometry, material);
+        grid.add(line);
+      }
+
+      this.scene.add(grid);
 
       // 地板
       const geometry = new THREE.PlaneGeometry(mapSize.width, mapSize.height);
-      const material = new THREE.MeshPhongMaterial({ color: 0xeeeeee });
-      const floor = new THREE.Mesh(geometry, material);
+      const materialFloor = new THREE.MeshPhongMaterial({ color: 0xeeeeee });
+      const floor = new THREE.Mesh(geometry, materialFloor);
       floor.rotation.x = -Math.PI / 2;
-      
+
       // 平移地板，使左上角在原点
       floor.position.x = mapSize.width / 2;
       floor.position.z = mapSize.height / 2;
       console.log("添加地板:", floor.position);
       this.scene.add(floor);
     },
+
 
     // ---------------- AGV ----------------
     addAGV(agv) {
@@ -95,18 +113,21 @@ function createScene() {
 
     // ---------------- 货架 ----------------
     addShelf(shelf) {
+      console.log("添加货架",shelf.mesh.position)
       this.shelves.set(shelf.id, shelf);
       this.scene.add(shelf.mesh);
     },
 
     // ---------------- 货箱 ----------------
     addBox(box) {
+      console.log("添加box",box.mesh.position)
       this.boxes.set(box.id, box);
       this.scene.add(box.mesh);
     },
 
     // ---------------- 障碍物 ----------------
     addObstacle(obstacle, key = null) {
+      console.log("添加障碍物",obstacle.mesh.position)
       const id = key || `${obstacle.mesh.position.x},${obstacle.mesh.position.z}`;
       this.obstacles.set(id, obstacle);
       this.scene.add(obstacle.mesh);
