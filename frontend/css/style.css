@@ -1,0 +1,17 @@
+body {
+  margin: 0;
+  display: flex;
+}
+
+#container {
+  flex: 3;
+  background: #eee;
+}
+
+#panel {
+  flex: 1;
+  padding: 10px;
+  background: #f4f4f4;
+  font-family: Arial, sans-serif;
+  overflow-y: auto;
+}
