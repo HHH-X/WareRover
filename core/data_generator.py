@@ -27,16 +27,19 @@ def generate_send_data(map:GridMap, agvmanager:AGVManager, data_type: str = "ini
 
         # 2. AGV 初始位置
         # 返回 {agv_id: (x, y)}
-        data['agv_positions'] = agvmanager.get_all_real_positions()
-
-        # 你可以在这里增加其他初始化信息，比如货架信息、箱子信息等
-        # data['shelves'] = ...
-        # data['boxes'] = ...
+        data['agvs'] = agvmanager.get_all_real_positions()
+        data['boxes'] = map.box_positions
+        data['receivers'] = map.receiver_zones
+        data['wait_zones'] = map.wait_zones
+        data['obstacles'] = list(map.obstacles)
 
     elif data_type == "update":
+
         # 更新数据，可能只包含动态变化的信息
         # 例如 AGV 的位置、状态等
-        data['agv_positions'] = env.agvmanager.get_all_real_positions()
+        data['type'] = 'update'
+        data['agv_pos'] = agvmanager.get_all_real_positions()
+        data['agv_carrying'] = agvmanager.get_carrying_status()
 
         # 如果有其他动态信息也可以加进来
         # data['agv_status'] = ...

@@ -15,3 +15,8 @@ body {
   font-family: Arial, sans-serif;
   overflow-y: auto;
 }
+
+#toggleBtn {
+  width: 100px;  /* 固定宽度 */
+  text-align: center;  /* 文字居中 */
+}

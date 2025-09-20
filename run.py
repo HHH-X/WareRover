@@ -59,10 +59,11 @@ async def simulator_loop(websocket):
             STATE["step_trigger"] = False
 
             # 每步生成并发送状态
-            # step_data = simulator.get_state()
-            # await websocket.send(json.dumps(step_data))
+            step_data = generate_send_data(grid_map, agv_manager, data_type="update")
+            # print('发送数据',step_data)
+            await websocket.send(json.dumps(step_data))
 
-        await asyncio.sleep(cfg.sim_step_interval)
+        await asyncio.sleep(0.1)    # 控制循环频率
 
 
 async def ws_handler(websocket):
@@ -75,6 +76,7 @@ async def ws_handler(websocket):
         async for message in websocket:
             try:
                 msg = json.loads(message)
+                print("收到消息:", msg)
                 cmd = msg.get("cmd")
                 if cmd == "pause":
                     STATE["paused"] = True

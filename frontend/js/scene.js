@@ -8,7 +8,6 @@ import { ReceiveArea } from './entities/receiveArea.js';
 import { OrbitControls } from "https://unpkg.com/three@0.112/examples/jsm/controls/OrbitControls.js";
 // import * as THREE from 'https://unpkg.com/three@0.112/build/three.module.js';
 function createScene() {
-  console.log("创建场景");
 
   // ---------------- 场景 & 渲染器 ----------------
   const scene = new THREE.Scene();
@@ -20,8 +19,8 @@ function createScene() {
     0.1, 
     1000
   );
-  camera.position.set(20, 30, 20);
-  camera.lookAt(0, 0, 0);
+  camera.position.set(25, 8, 20);
+  camera.lookAt(15, 0, 15);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth * 0.7, window.innerHeight);
@@ -44,7 +43,7 @@ function createScene() {
   const ambient = new THREE.AmbientLight(0xaaaaaa, 0.5);
   scene.add(ambient);
   // ---------------- 坐标轴辅助线 ----------------
-  const axesHelper = new THREE.AxesHelper(25);
+  const axesHelper = new THREE.AxesHelper(30);
   scene.add(axesHelper);
 
   // ---------------- 世界容器 ----------------
@@ -100,7 +99,6 @@ function createScene() {
       // 平移地板，使左上角在原点
       floor.position.x = mapSize.width / 2;
       floor.position.z = mapSize.height / 2;
-      console.log("添加地板:", floor.position);
       this.scene.add(floor);
     },
 
@@ -113,21 +111,18 @@ function createScene() {
 
     // ---------------- 货架 ----------------
     addShelf(shelf) {
-      console.log("添加货架",shelf.mesh.position)
       this.shelves.set(shelf.id, shelf);
       this.scene.add(shelf.mesh);
     },
 
     // ---------------- 货箱 ----------------
     addBox(box) {
-      console.log("添加box",box.mesh.position)
       this.boxes.set(box.id, box);
       this.scene.add(box.mesh);
     },
 
     // ---------------- 障碍物 ----------------
     addObstacle(obstacle, key = null) {
-      console.log("添加障碍物",obstacle.mesh.position)
       const id = key || `${obstacle.mesh.position.x},${obstacle.mesh.position.z}`;
       this.obstacles.set(id, obstacle);
       this.scene.add(obstacle.mesh);

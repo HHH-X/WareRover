@@ -36,8 +36,10 @@ class GridMap:
             self.map_grid[y][x] = box_id
 
         # ====== 添加障碍物 ======
+        self.obstacles: Set[Tuple[int, int]] = set()
         for x, y in map_data.get("obstacles", []):
             self.map_grid[y][x] = -3
+            self.obstacles.add((x, y))
 
         # ====== 初始化接收区 ======
         self.receiver_zones: Dict[int, Tuple[int, int]] = {}
