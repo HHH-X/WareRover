@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 class ReceiveArea {
   constructor(logicX, logicY, size = 1) {
     this.logicX = logicX;

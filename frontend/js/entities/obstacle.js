@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 class Obstacle {
   constructor(logicX, logicY, size = 0.8) {
     this.logicX = logicX; // 保存逻辑坐标

@@ -4,9 +4,14 @@
   <meta charset="UTF-8">
   <title>AGV Simulation</title>
   <link rel="stylesheet" href="css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/build/three.min.js"></script>
-  <!-- <script src="https://cdn.jsdelivr.net/npm/three@0.146.0/examples/js/controls/OrbitControls.js"></script> -->
-
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.146.0/build/three.module.js",
+        "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.146.0/examples/jsm/"
+      }
+    }
+  </script>
 </head>
 <body>
   <div id="container"></div>

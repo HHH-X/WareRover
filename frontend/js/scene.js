@@ -7,6 +7,7 @@ import { RestArea } from './entities/restArea.js';
 import { ReceiveArea } from './entities/receiveArea.js';
 import { OrbitControls } from "https://unpkg.com/three@0.112/examples/jsm/controls/OrbitControls.js";
 // import * as THREE from 'https://unpkg.com/three@0.112/build/three.module.js';
+import * as THREE from 'three';
 function createScene() {
 
   // ---------------- 场景 & 渲染器 ----------------

@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 class Box {
   constructor(id, logicX, logicY, size = 0.8) {
     this.id = id;
