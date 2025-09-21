@@ -27,9 +27,7 @@ class Shelf {
     );
   }
 
-  addBox(box) {
-    box.attachToShelf(this);
-  }
+
 }
 
 export { Shelf };

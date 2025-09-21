@@ -34,29 +34,25 @@ def generate_send_data(map:GridMap, agvmanager:AGVManager, data_type: str = "ini
         data['obstacles'] = list(map.obstacles)
 
     elif data_type == "update":
-
-        # 更新数据，可能只包含动态变化的信息
-        # 例如 AGV 的位置、状态等
         data['type'] = 'update'
+        agv_pos = agvmanager.get_all_real_positions()
+        data['agv_pos'] = agv_pos
         carrying_status = agvmanager.get_carried_box_ids()
-        data['agv_pos'] = agvmanager.get_all_real_positions()
-        # ---------------- 额外添加 box 归属关系 ----------------
-        box_on_agv = {}
-        for agv_id, box_id in carrying_status.items():
-            if box_id is not None:   # 说明这个 agv 搬着一个 box
-                box_on_agv[str(box_id)] = agv_id
 
-        # 所有 box id
-        all_box_ids = set(map.goods_id_set) 
+        boxes_on_agv = {}
+        boxes_on_shelf = {}
 
-        # 没有被 agv 搬运的 box，就认为它在 shelf 上
-        box_on_shelf = {
-            box_id: box_id   # 在你的逻辑里 shelf_id = box_id
-            for box_id in all_box_ids - set(box_on_agv.keys())
-        }
-        data['box_on_agv'] = box_on_agv
-        data['box_on_shelf'] = box_on_shelf
-    else:
-        raise ValueError(f"Unknown data_type: {data_type}")
+        # 遍历所有 box
+        for box_id in map.goods_id_set:
+            # 判断是否被 AGV 搬运
+            agv_carrying_box = next((agv_id for agv_id, b_id in carrying_status.items() if b_id == box_id), None)
+            if agv_carrying_box is not None:
+                boxes_on_agv[box_id] = agv_pos[agv_carrying_box]
+            else:
+                x, y = map.get_box_position(box_id)
+                boxes_on_shelf[box_id] = (x + 0.5, y + 0.5)
+
+        data['boxes_on_agv'] = boxes_on_agv
+        data['boxes_on_shelf'] = boxes_on_shelf
 
     return data

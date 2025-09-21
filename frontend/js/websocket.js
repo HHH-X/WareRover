@@ -59,9 +59,7 @@ function connectWebSocket(world) {
         });
       }
     }
-
     if (data.type === "update") {
-    
       // 更新 AGV 位置
       if (data.agv_pos) {
         for (const key in data.agv_pos) {
@@ -70,40 +68,22 @@ function connectWebSocket(world) {
           if (agv) agv.update(pos);
         }
       }
-    
-      // 更新 Box 归属关系
-      if (data.box_on_agv) {
-        console.log("box on agv : ", data.box_on_agv)
-        for (const [boxId, agvId] of Object.entries(data.box_on_agv)) {
+
+      // 直接更新 Box 坐标（AGV 上和 shelf 上分开处理）
+      if (data.boxes_on_agv) {
+        for (const [boxId, pos] of Object.entries(data.boxes_on_agv)) {
           const box = world.boxes.get(parseInt(boxId));
-          const agv = world.agvs.get(parseInt(agvId));
-        
-          if (box && agv) {
-            if (box.mesh.parent !== agv.mesh) {
-              agv.mesh.add(box.mesh);
-              box.mesh.position.set(0, agv.height, 0); // 放到 AGV 顶上
-              console.log('成功修改:',agv.mesh,box.mesh)
-            }
-          }
+          if (box) box.setXYZ(pos[0], 0.5, pos[1]); // y = 0.5 高度
         }
       }
-    
-      if (data.box_on_shelf) {
-        for (const [boxId, shelfId] of Object.entries(data.box_on_shelf)) {
+
+      if (data.boxes_on_shelf) {
+        for (const [boxId, pos] of Object.entries(data.boxes_on_shelf)) {
           const box = world.boxes.get(parseInt(boxId));
-          const shelf = world.shelves.get(parseInt(shelfId));
-        
-          if (box && shelf) {
-            if (box.mesh.parent !== shelf.mesh) {
-              shelf.mesh.add(box.mesh);
-              box.mesh.position.set(0, shelf.height, 0); // 放到 shelf 顶上
-            }
-          }
+          if (box) box.setXYZ(pos[0], 0.5, pos[1]); // y = 0.5 高度
         }
       }
     }
-
-    
   };
 }
 

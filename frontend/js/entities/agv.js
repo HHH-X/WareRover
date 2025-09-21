@@ -26,13 +26,6 @@ class AGV {
     }
   }
 
-  addBox(box) {
-    box.attachToAGV(this);
-  }
-
-  removeBox(box) {
-    this.mesh.remove(box.mesh);
-  }
 }
 
 export { AGV };
