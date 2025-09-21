@@ -7,18 +7,17 @@ class Shelf {
     this.logicX = logicX;
     this.logicY = logicY;
 
-    // 占位，避免 mesh=null
     this.mesh = new THREE.Group();
     this.mesh.position.set(logicX + 0.5, 0, logicY + 0.5);
 
     const loader = new GLTFLoader();
-    const SCALE_FACTOR = 1.5; // 根据模型大小调整
+    const SCALE_FACTOR = 1.5;
     loader.load(
       modelPath,
       (gltf) => {
         const model = gltf.scene;
-        model.scale.set(SCALE_FACTOR, 2, SCALE_FACTOR); // 按需调整
-        model.position.set(0, 0, 0);    // 相对 Group 原点
+        model.scale.set(SCALE_FACTOR, 2, SCALE_FACTOR);
+        model.position.set(0, 0, 0);
         this.mesh.add(model);
       },
       undefined,
@@ -26,6 +25,10 @@ class Shelf {
         console.error('加载Shelf模型失败:', error);
       }
     );
+  }
+
+  addBox(box) {
+    box.attachToShelf(this);
   }
 }
 

@@ -11,7 +11,14 @@ function connectWebSocket(world) {
   ws = new WebSocket("ws://localhost:8765");
 
   ws.onmessage = (event) => {
+    // try {
+    //   const data = JSON.parse(event.data);
+    //   console.log("收到数据:", data);
+    // } catch (err) {
+    //   console.error("JSON 解析失败:", event.data, err);
+    // }
     const data = JSON.parse(event.data);
+    console.log("get data: ",data)
     if (data.type === "init") {
       // 初始化地图和对象 ...
       world.addMap(data.map_size);
@@ -21,6 +28,7 @@ function connectWebSocket(world) {
           const pos = data.boxes[key];
           world.addBox(new Box(parseInt(key), pos[0], pos[1]));
           world.addShelf(new Shelf(parseInt(key), pos[0], pos[1]));
+          
         }
       }
 
@@ -53,22 +61,49 @@ function connectWebSocket(world) {
     }
 
     if (data.type === "update") {
-      console.log("Received update:", data);
-      if (data.agv_status) {
-        for (const key in data.agv_status) {
+    
+      // 更新 AGV 位置
+      if (data.agv_pos) {
+        for (const key in data.agv_pos) {
+          const pos = data.agv_pos[key];
           const agv = world.agvs.get(parseInt(key));
-          if (agv) {
-            const agvInfo = data.agv_status[key];
-            agv.update(agvInfo.position);
-            if (agvInfo.carried_box_id !== null && agvInfo.carried_box_id !== undefined) {
-              console.log('AGV', agv.id, 'carrying box', agvInfo.carried_box_id);
-              const box = world.boxes.get(agvInfo.carried_box_id);
-              box.setPosition(agvInfo.position[0], agvInfo.position[1]);
+          if (agv) agv.update(pos);
+        }
+      }
+    
+      // 更新 Box 归属关系
+      if (data.box_on_agv) {
+        console.log("box on agv : ", data.box_on_agv)
+        for (const [boxId, agvId] of Object.entries(data.box_on_agv)) {
+          const box = world.boxes.get(parseInt(boxId));
+          const agv = world.agvs.get(parseInt(agvId));
+        
+          if (box && agv) {
+            if (box.mesh.parent !== agv.mesh) {
+              agv.mesh.add(box.mesh);
+              box.mesh.position.set(0, agv.height, 0); // 放到 AGV 顶上
+              console.log('成功修改:',agv.mesh,box.mesh)
+            }
+          }
+        }
+      }
+    
+      if (data.box_on_shelf) {
+        for (const [boxId, shelfId] of Object.entries(data.box_on_shelf)) {
+          const box = world.boxes.get(parseInt(boxId));
+          const shelf = world.shelves.get(parseInt(shelfId));
+        
+          if (box && shelf) {
+            if (box.mesh.parent !== shelf.mesh) {
+              shelf.mesh.add(box.mesh);
+              box.mesh.position.set(0, shelf.height, 0); // 放到 shelf 顶上
             }
           }
         }
       }
     }
+
+    
   };
 }
 

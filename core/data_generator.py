@@ -38,18 +38,24 @@ def generate_send_data(map:GridMap, agvmanager:AGVManager, data_type: str = "ini
         # 更新数据，可能只包含动态变化的信息
         # 例如 AGV 的位置、状态等
         data['type'] = 'update'
-        real_positions = agvmanager.get_all_real_positions()
         carrying_status = agvmanager.get_carried_box_ids()
+        data['agv_pos'] = agvmanager.get_all_real_positions()
+        # ---------------- 额外添加 box 归属关系 ----------------
+        box_on_agv = {}
+        for agv_id, box_id in carrying_status.items():
+            if box_id is not None:   # 说明这个 agv 搬着一个 box
+                box_on_agv[str(box_id)] = agv_id
 
-        data['agv_status'] = {
-            agv_id: {
-                "position": real_positions.get(agv_id),
-                "carried_box_id": carrying_status.get(agv_id),
-            }
-            for agv_id in set(real_positions.keys()) | set(carrying_status.keys())
+        # 所有 box id
+        all_box_ids = set(map.goods_id_set) 
+
+        # 没有被 agv 搬运的 box，就认为它在 shelf 上
+        box_on_shelf = {
+            box_id: box_id   # 在你的逻辑里 shelf_id = box_id
+            for box_id in all_box_ids - set(box_on_agv.keys())
         }
-
-
+        data['box_on_agv'] = box_on_agv
+        data['box_on_shelf'] = box_on_shelf
     else:
         raise ValueError(f"Unknown data_type: {data_type}")
 
