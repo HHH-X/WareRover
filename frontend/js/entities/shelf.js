@@ -1,12 +1,32 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 class Shelf {
-  constructor(id, x, y) {
+  constructor(id, logicX, logicY, modelPath = '/frontend/models/shelf.glb') {
     this.id = id;
-    const geometry = new THREE.BoxGeometry(1, 2, 1);
-    const material = new THREE.MeshPhongMaterial({ color: 0x8b4513 });
-    this.mesh = new THREE.Mesh(geometry, material);
-    this.mesh.position.set(x, 1, y);
+    this.logicX = logicX;
+    this.logicY = logicY;
+
+    // 占位，避免 mesh=null
+    this.mesh = new THREE.Group();
+    this.mesh.position.set(logicX + 0.5, 0, logicY + 0.5);
+
+    const loader = new GLTFLoader();
+    const SCALE_FACTOR = 1.5; // 根据模型大小调整
+    loader.load(
+      modelPath,
+      (gltf) => {
+        const model = gltf.scene;
+        model.scale.set(SCALE_FACTOR, 2, SCALE_FACTOR); // 按需调整
+        model.position.set(0, 0, 0);    // 相对 Group 原点
+        this.mesh.add(model);
+      },
+      undefined,
+      (error) => {
+        console.error('加载Shelf模型失败:', error);
+      }
+    );
   }
 }
+
 export { Shelf };

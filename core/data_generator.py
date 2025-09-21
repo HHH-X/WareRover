@@ -38,12 +38,17 @@ def generate_send_data(map:GridMap, agvmanager:AGVManager, data_type: str = "ini
         # 更新数据，可能只包含动态变化的信息
         # 例如 AGV 的位置、状态等
         data['type'] = 'update'
-        data['agv_pos'] = agvmanager.get_all_real_positions()
-        data['agv_carrying'] = agvmanager.get_carrying_status()
+        real_positions = agvmanager.get_all_real_positions()
+        carrying_status = agvmanager.get_carried_box_ids()
 
-        # 如果有其他动态信息也可以加进来
-        # data['agv_status'] = ...
-        # data['box_status'] = ...
+        data['agv_status'] = {
+            agv_id: {
+                "position": real_positions.get(agv_id),
+                "carried_box_id": carrying_status.get(agv_id),
+            }
+            for agv_id in set(real_positions.keys()) | set(carrying_status.keys())
+        }
+
 
     else:
         raise ValueError(f"Unknown data_type: {data_type}")

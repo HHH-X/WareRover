@@ -92,6 +92,13 @@ class GridMap:
         box_id = self.map_grid[y][x]
         return box_id if box_id >= 0 else None
     
+    def get_all_box_status(self) -> Dict[int, bool]:
+        """返回所有货箱的状态字典，True表示货箱在原位，False表示货箱被取走"""
+        status = {}
+        for box_id, (x, y) in self.box_positions.items():
+            status[box_id] = (self.map_grid[y][x] >= 0)
+        return status
+    
     def pick_box_at(self, pos: Tuple[int, int]) -> Optional[int]:
         x, y = pos
         box_id = self.map_grid[y][x]

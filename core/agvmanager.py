@@ -60,6 +60,13 @@ class AGVManager:
             agv_id: agv.carried_box_id is not None
             for agv_id, agv in self._agvs.items()
         }
+    
+    # 获取所有 AGV 携带的货箱 ID（如果未携带货箱则为 None）
+    def get_carried_box_ids(self) -> Dict[int, Optional[int]]:
+        return {
+            agv_id: agv.carried_box_id
+            for agv_id, agv in self._agvs.items()
+        }
 
     # 获取所有 AGV 当前的网格坐标
     def get_all_current_pos(self) -> Dict[int, Tuple[int, int]]:

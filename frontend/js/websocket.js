@@ -15,11 +15,12 @@ function connectWebSocket(world) {
     if (data.type === "init") {
       // 初始化地图和对象 ...
       world.addMap(data.map_size);
-
+      
       if (data.boxes) {
         for (const key in data.boxes) {
           const pos = data.boxes[key];
-          world.addBox(new Box(key, pos[0], pos[1]));
+          world.addBox(new Box(parseInt(key), pos[0], pos[1]));
+          world.addShelf(new Shelf(parseInt(key), pos[0], pos[1]));
         }
       }
 
@@ -52,20 +53,18 @@ function connectWebSocket(world) {
     }
 
     if (data.type === "update") {
-      if (data.agv_pos) {
-        for (const key in data.agv_pos) {
+      console.log("Received update:", data);
+      if (data.agv_status) {
+        for (const key in data.agv_status) {
           const agv = world.agvs.get(parseInt(key));
           if (agv) {
-            agv.update(data.agv_pos[key]);
-          }
-        }
-      }
-
-      if (data.agv_carrying) {
-        for (const key in data.agv_carrying) {
-          const agv = world.agvs.get(parseInt(key));
-          if (agv) {
-            agv.setCarryingStatus(data.agv_carrying[key]);
+            const agvInfo = data.agv_status[key];
+            agv.update(agvInfo.position);
+            if (agvInfo.carried_box_id !== null && agvInfo.carried_box_id !== undefined) {
+              console.log('AGV', agv.id, 'carrying box', agvInfo.carried_box_id);
+              const box = world.boxes.get(agvInfo.carried_box_id);
+              box.setPosition(agvInfo.position[0], agvInfo.position[1]);
+            }
           }
         }
       }

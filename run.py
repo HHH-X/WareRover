@@ -60,7 +60,7 @@ async def simulator_loop(websocket):
 
             # 每步生成并发送状态
             step_data = generate_send_data(grid_map, agv_manager, data_type="update")
-            # print('发送数据',step_data)
+            print('发送数据',step_data)
             await websocket.send(json.dumps(step_data))
 
         await asyncio.sleep(0.1)    # 控制循环频率
