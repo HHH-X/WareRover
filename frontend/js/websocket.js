@@ -73,14 +73,14 @@ function connectWebSocket(world) {
       if (data.boxes_on_agv) {
         for (const [boxId, pos] of Object.entries(data.boxes_on_agv)) {
           const box = world.boxes.get(parseInt(boxId));
-          if (box) box.setXYZ(pos[0], 0.5, pos[1]); // y = 0.5 高度
+          if (box) box.setXYZ(pos[0], 0.65, pos[1]); // y = 0.5 高度
         }
       }
 
       if (data.boxes_on_shelf) {
         for (const [boxId, pos] of Object.entries(data.boxes_on_shelf)) {
           const box = world.boxes.get(parseInt(boxId));
-          if (box) box.setXYZ(pos[0], 0.5, pos[1]); // y = 0.5 高度
+          if (box) box.setXYZ(pos[0], 0.7, pos[1]); // y = 0.5 高度
         }
       }
     }
