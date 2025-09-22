@@ -11,7 +11,7 @@ class Shelf {
     this.mesh.position.set(logicX + 0.5, 0, logicY + 0.5);
 
     const loader = new GLTFLoader();
-    const SCALE_FACTOR = 1.5;
+    const SCALE_FACTOR = 1.8;
 
     loader.load(
       modelPath,

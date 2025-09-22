@@ -1,7 +1,7 @@
 from typing import Dict, Tuple, Set, List
 from core.gridmap import GridMap
 from core.agvmanager import AGVManager
-epsilon = 1e-6  # 精度容差，可调
+epsilon = 1e-4  # 精度容差，可调
 
 class Env:
     def __init__(self, agv_manager: AGVManager, map_inst: GridMap):
@@ -94,6 +94,15 @@ class Env:
 
         final_next_pos: Dict[int, Tuple[int, int]] = dict(next_pos)
 
+        for agv_id, tgt in next_pos.items():
+            cur = current_pos[agv_id]
+            dx = abs(tgt[0] - cur[0])
+            dy = abs(tgt[1] - cur[1])
+            if dx + dy > 1:
+                # 超出一步，强制停在原地
+                print(f"[Warning] AGV {agv_id} invalid move {cur} -> {tgt}, forced to stay.")
+                next_pos[agv_id] = cur
+
         # 1. 分类 AGV
         in_center, not_in_center = self.classify_by_grid_center(real_pos)
 
@@ -110,6 +119,10 @@ class Env:
                 if pos not in vertex_conflict_dict:
                     vertex_conflict_dict[pos] = set()
                 if vertex_conflict_dict[pos]:
+                    print("current_pos:", current_pos)
+                    print("next_pos:", next_pos)
+                    print("real_pos:", real_pos)
+                    print("conflict at:", pos, "by agv:", agv_id, "and agv(s):", vertex_conflict_dict[pos])
                     raise ValueError(f"Conflict in static phase for AGV {agv_id} at {pos}")
                 vertex_conflict_dict[pos].add(agv_id)
 

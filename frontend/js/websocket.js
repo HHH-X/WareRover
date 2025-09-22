@@ -73,7 +73,7 @@ function connectWebSocket(world) {
       if (data.boxes_on_agv) {
         for (const [boxId, pos] of Object.entries(data.boxes_on_agv)) {
           const box = world.boxes.get(parseInt(boxId));
-          if (box) box.setXYZ(pos[0], 0.65, pos[1]); // y = 0.5 高度
+          if (box) box.setXYZ(pos[0], 0.55, pos[1]); // y = 0.5 高度
         }
       }
 

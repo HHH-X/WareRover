@@ -15,6 +15,7 @@ from core.env import Env
 from core.simulator import Simulator
 from core.data_generator import generate_send_data
 from scheduler.random_scheduler import RandomScheduler
+from scheduler.TA_scheduler import TAScheduler
 from planner.astar_planner import AStarPlanner
 import websockets
 
@@ -44,7 +45,8 @@ async def simulator_loop(websocket):
     ordermanager = OrderManager(cfg, grid_map)
     agv_manager = load_agvs_from_config(cfg, grid_map, ordermanager)
     env = Env(agv_manager, grid_map)
-    scheduler = RandomScheduler(ordermanager, grid_map)
+    # scheduler = RandomScheduler(ordermanager, grid_map)
+    scheduler = TAScheduler(ordermanager, grid_map, agv_manager)
     planner = AStarPlanner(env)
     simulator = Simulator(cfg, grid_map, agv_manager, env, scheduler, planner)
 

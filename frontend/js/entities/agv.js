@@ -12,7 +12,7 @@ class AGV {
     this.mesh.position.set(x, this.halfHeight, y);
 
     const loader = new GLTFLoader();
-    const SCALE_FACTOR = 0.035; 
+    const SCALE_FACTOR = 0.027; 
     loader.load('/frontend/models/agv.glb', (gltf) => {
       this.mesh.add(gltf.scene);
       gltf.scene.scale.set(SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR);
@@ -22,7 +22,7 @@ class AGV {
 
   update(pos) {
     if (Array.isArray(pos) && pos.length >= 2) {
-      this.mesh.position.set(pos[0], this.halfHeight, pos[1]);
+      this.mesh.position.set(pos[0], 0.08, pos[1]);
     }
   }
 

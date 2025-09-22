@@ -20,8 +20,8 @@ def main():
 
     scheduler = RandomScheduler(ordermanager,grid_map)
     # scheduler = TAScheduler(ordermanager,grid_map,agv_manager)
-    # planner = FixedWindowCBSPlanner(env, window_size=8)
-    planner = AStarPlanner(env)
+    planner = FixedWindowCBSPlanner(env, window_size=8)
+    # planner = AStarPlanner(env)
 
     simulator = Simulator(cfg, grid_map,agv_manager, env,scheduler, planner)
 
