@@ -20,7 +20,7 @@ class FixedWindowCBSPlanner(BasePlanner):
         action_queues = env_info["action_queues"]
         current_pos = env_info["current_grid_pos"]
 
-        # 拼接 start + action_queue，得到完整路径
+        # 拼接 start + action_queue，得到完整路径（用于 fixed agents）
         full_paths = {
             agv_id: [current_pos[agv_id]] + path
             for agv_id, path in action_queues.items()
@@ -64,6 +64,12 @@ class FixedWindowCBSPlanner(BasePlanner):
             )
             if path is None:
                 path = [start]  # 退化路径
+
+            # 特殊情况：start == goal 且路径只有起点 -> 若 t=1 可停留，则加入一个停留步
+            if len(path) == 1 and start == goal:
+                if self._is_vertex_free(agv_id, start, 1, root['constraints']):
+                    path = [start, start]
+
             root['paths'][agv_id] = path
             root['cost'] += len(path) - 1
 
@@ -98,6 +104,12 @@ class FixedWindowCBSPlanner(BasePlanner):
                 )
                 if new_path is None:
                     continue
+
+                # 如果返回路径只有起点，且 start==goal，且在 child 的约束下 t=1 可停留 -> 扩展为一个停留步
+                if len(new_path) == 1 and start == goal:
+                    if self._is_vertex_free(agent, start, 1, child['constraints']):
+                        new_path = [start, start]
+
                 child['paths'][agent] = new_path
                 child['cost'] = sum(len(p) - 1 for p in child['paths'].values() if p)
                 heapq.heappush(open_list, (child['cost'], node_id, child))
@@ -111,6 +123,12 @@ class FixedWindowCBSPlanner(BasePlanner):
             )
             if path is None:
                 path = [start]
+
+            # 同样处理 start==goal 的情形
+            if len(path) == 1 and start == goal:
+                if self._is_vertex_free(agv_id, start, 1, []):
+                    path = [start, start]
+
             fallback[agv_id] = path
         return fallback
 
@@ -173,7 +191,6 @@ class FixedWindowCBSPlanner(BasePlanner):
 
             # --- 等待（stay）：会在 t+1 仍占据 pos，所以检查 pos 在 t+1 是否被禁止 ---
             if pos not in vertex_cons.get(t + 1, set()):
-                #后继状态 (pos_or_nb, t+1)，表示等待或移动后会到达的状态。
                 succ = (pos, t + 1)
                 ng = g + 1
                 if gscore.get(succ, INF) > ng:
@@ -241,7 +258,8 @@ class FixedWindowCBSPlanner(BasePlanner):
                         if prev_i == cur_j and prev_j == cur_i and cur_i != cur_j:
                             if ai in fixed_agents and aj in fixed_agents:
                                 continue
-                            return ai, aj, t-1, [prev_i, cur_i]
+                            # 返回移动起始时间 t-1 （与 A* 的 edge_cons[t-1] 语义对齐）
+                            return ai, aj, t - 1, [prev_i, cur_i]
         return None
 
     def _build_constraints(self, a1, a2, time, loc):
@@ -253,3 +271,16 @@ class FixedWindowCBSPlanner(BasePlanner):
             c1 = {'agent': a1, 'loc': [u, v], 'time': time}
             c2 = {'agent': a2, 'loc': [v, u], 'time': time}
         return c1, c2
+
+    # ---------------- 辅助：检查某个时刻能否在某格停留 -----------------
+    def _is_vertex_free(self, agv_id: int, pos: Tuple[int, int], time: int, constraints: List[Dict]) -> bool:
+        """
+        检查给定 constraints 下，agv_id 在 time 时刻是否可以占据 pos（没有顶点约束）。
+        返回 True 表示可占据（即“空闲”），False 表示被顶点约束禁止。
+        """
+        for c in constraints:
+            if c.get('agent') != agv_id:
+                continue
+            if len(c.get('loc', [])) == 1 and tuple(c['loc'][0]) == tuple(pos) and c.get('time') == time:
+                return False
+        return True

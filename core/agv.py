@@ -70,26 +70,28 @@ class AGV:
         self.update_position(next_grid)
         replan_required = False
 
-        # 如果到达了 action queue 的下一个目标位置
+        # 情况 1：有路径，正常前进
         if self.action_queue and self.grid_pos == self.action_queue[0]:
             self.action_queue.popleft()
 
-            # 检查是否需要执行任务
+            # 检查是否到达任务点
             if self.task_queue and self.grid_pos == self.task_queue[0][0]:
                 _, action, extra = self.task_queue.popleft()
-
-                if action == AGVAction.PICK:
-                    self._pick_box()
-                elif action == AGVAction.PLACE:
-                    self._place_box()
-                elif action == AGVAction.HANDOVER:
-                    self._handover_box(extra)
-
+                self._execute_action(action, extra)
                 replan_required = True
+
+        # 情况 2：没有路径，但当前位置刚好是任务点
+        elif not self.action_queue and self.task_queue and self.grid_pos == self.task_queue[0][0]:
+            _, action, extra = self.task_queue.popleft()
+            self._execute_action(action, extra)
+            replan_required = True
+
+        # 情况 3：完全没有路径，且不是休息状态 -> 需要重新规划
         elif not self.action_queue and not self.is_resting:
             replan_required = True
 
         return replan_required
+
 
     def update_position(self, next_grid: Tuple[int, int]) -> bool:
         dx = next_grid[0] - self.grid_pos[0]
@@ -169,3 +171,10 @@ class AGV:
     def get_next_pos(self) -> Tuple[int, int]:
         return self.action_queue[0] if self.action_queue else self.grid_pos
 
+    def _execute_action(self, action: AGVAction, extra: Optional[int]):
+        if action == AGVAction.PICK:
+            self._pick_box()
+        elif action == AGVAction.PLACE:
+            self._place_box()
+        elif action == AGVAction.HANDOVER:
+            self._handover_box(extra)
