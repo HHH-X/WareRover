@@ -125,6 +125,7 @@ class FixedWindowCBSPlanner(BasePlanner):
         constraints: List[Dict],
         true_goal: Tuple[int, int]
     ) -> List[Tuple[int, int]]:
+        # 遍历 constraints，只保留针对当前 agv_id 的约束。
         vertex_cons = defaultdict(set)
         edge_cons = defaultdict(set)
         for c in constraints:
@@ -136,6 +137,10 @@ class FixedWindowCBSPlanner(BasePlanner):
             else:
                 edge_cons[t].add((tuple(c['loc'][0]), tuple(c['loc'][1])))
 
+        # 如果起点在 time=0 被禁止，直接失败（快速返回）
+        if start in vertex_cons.get(0, set()):
+            return None
+
         start_state = (start, 0)
         open_heap = []
         gscore = {start_state: 0}
@@ -143,38 +148,52 @@ class FixedWindowCBSPlanner(BasePlanner):
         parents = {}
 
         closed = set()
+        INF = 10**9
+
         while open_heap:
             f, g, (pos, t), parent = heapq.heappop(open_heap)
-            if (pos, t) in closed:
+
+            # 如果弹出的这个条目的 g 已经不是当前 gscore 里记录的最小 g（也就是说堆里存在比它更优的同一状态条目）
+            # 就跳过，避免使用过时 parent 信息。
+            if g > gscore.get((pos, t), INF):
                 continue
+
+            # 如果当前状态在该时间被顶点约束禁止，跳过
+            if pos in vertex_cons.get(t, set()):
+                continue
+
+            # 记录父节点（只记录被接受的最优 g 的 parent）
             parents[(pos, t)] = parent
             closed.add((pos, t))
 
+            # 终止条件：到达 goal 或者超过窗口（到达窗口边界就返回当前路径）
             if pos == goal or t >= self.window_size:
                 path = self._reconstruct_path((pos, t), parents)
                 return path
 
-            # 等待
-            if pos not in vertex_cons.get(t, set()):
+            # --- 等待（stay）：会在 t+1 仍占据 pos，所以检查 pos 在 t+1 是否被禁止 ---
+            if pos not in vertex_cons.get(t + 1, set()):
+                #后继状态 (pos_or_nb, t+1)，表示等待或移动后会到达的状态。
                 succ = (pos, t + 1)
-                if succ not in closed:
-                    ng = g + 1
-                    if gscore.get(succ, 1e9) > ng:
-                        gscore[succ] = ng
-                        heapq.heappush(open_heap, (ng + self._h(pos, goal), ng, succ, (pos, t)))
+                ng = g + 1
+                if gscore.get(succ, INF) > ng:
+                    gscore[succ] = ng
+                    heapq.heappush(open_heap, (ng + self._h(pos, goal), ng, succ, (pos, t)))
 
-            # 移动
+            # --- 移动到邻居 ---
             for nb in self.env.get_walkable_neighbors(pos, carrying):
-                if nb in vertex_cons.get(t, set()):
+                # 检查：到达 nb 的时间是 t+1 -> 需保证 nb 在 t+1 未被顶点约束禁止
+                if nb in vertex_cons.get(t + 1, set()):
                     continue
+                # 检查边约束：禁止在 time t 做 pos->nb （代表 t -> t+1 这一步）
                 if (pos, nb) in edge_cons.get(t, set()):
                     continue
+
                 succ = (nb, t + 1)
-                if succ not in closed:
-                    ng = g + 1
-                    if gscore.get(succ, 1e9) > ng:
-                        gscore[succ] = ng
-                        heapq.heappush(open_heap, (ng + self._h(nb, goal), ng, succ, (pos, t)))
+                ng = g + 1
+                if gscore.get(succ, INF) > ng:
+                    gscore[succ] = ng
+                    heapq.heappush(open_heap, (ng + self._h(nb, goal), ng, succ, (pos, t)))
 
         return None
 
@@ -222,7 +241,7 @@ class FixedWindowCBSPlanner(BasePlanner):
                         if prev_i == cur_j and prev_j == cur_i and cur_i != cur_j:
                             if ai in fixed_agents and aj in fixed_agents:
                                 continue
-                            return ai, aj, t, [prev_i, cur_i]
+                            return ai, aj, t-1, [prev_i, cur_i]
         return None
 
     def _build_constraints(self, a1, a2, time, loc):
