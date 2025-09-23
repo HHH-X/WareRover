@@ -17,6 +17,7 @@ from core.data_generator import generate_send_data
 from scheduler.random_scheduler import RandomScheduler
 from scheduler.TA_scheduler import TAScheduler
 from planner.astar_planner import AStarPlanner
+from planner.cbs_fw_planner import FixedWindowCBSPlanner
 import websockets
 
 # 控制状态
@@ -47,7 +48,8 @@ async def simulator_loop(websocket):
     env = Env(agv_manager, grid_map)
     # scheduler = RandomScheduler(ordermanager, grid_map)
     scheduler = TAScheduler(ordermanager, grid_map, agv_manager)
-    planner = AStarPlanner(env)
+    # planner = AStarPlanner(env)
+    planner = FixedWindowCBSPlanner(env)
     simulator = Simulator(cfg, grid_map, agv_manager, env, scheduler, planner)
 
     # 初始化发送一次状态给前端
