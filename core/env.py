@@ -33,15 +33,21 @@ class Env:
                     键为AGV的ID（整数），值为坐标元组列表：
                         对于正在休息的AGV：返回包含10个休息目标位置的列表
                         对于活跃的AGV：返回其当前的动作队列（路径点列表）
+
+                - 'current_grid_pos': Dict[int, Tuple[int, int]]
+                    所有AGV当前的网格位置字典。
+                    键为AGV的ID（整数），值为其当前所在位置的坐标元组 (x, y)
         """
         grid = self.map.map_grid
         carrying_status = self.agv_manager.get_carrying_status()
         action_queues = self.agv_manager.get_all_action_queues()
+        current_grid_pos = self.agv_manager.get_all_current_pos()
 
         return {
             'grid': grid,
             'carrying_status': carrying_status,
-            'action_queues': action_queues
+            'action_queues': action_queues,
+            'current_grid_pos': current_grid_pos
         }
     
     def get_walkable_neighbors(self, pos: Tuple[int, int], carrying_goods: bool) -> List[Tuple[int, int]]:

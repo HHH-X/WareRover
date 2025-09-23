@@ -6,7 +6,7 @@ from core.order import OrderManager
 from config.settings import SimConfig
 import json
 
-epsilon = 1e-6 
+epsilon = 1e-4 
 
 class AGVAction(Enum):
     PICK = "pick"         # 取货
@@ -54,6 +54,17 @@ class AGV:
     @property
     def is_resting(self) -> bool:
         return self.rest_target is not None and self.grid_pos == self.rest_target
+    
+    @property
+    def is_aligned(self) -> bool:
+        """
+        判断当前 AGV 的 real_pos 是否与 grid_pos 的中心对齐。
+        """
+        gx, gy = self.grid_pos
+        expected_x, expected_y = gx + 0.5, gy + 0.5
+        rx, ry = self.real_pos
+        return abs(rx - expected_x) < epsilon and abs(ry - expected_y) < epsilon
+
 
     def step(self, next_grid: Tuple[int, int]) -> Tuple[bool, bool]:
         self.update_position(next_grid)

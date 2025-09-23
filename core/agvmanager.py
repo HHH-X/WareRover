@@ -94,6 +94,14 @@ class AGVManager:
             else:
                 result[agv_id] = list(agv.action_queue)
         return result
+    
+    # 获取所有真实位置和网格位置中心对齐的 AGV ID 集合
+    def get_aligned_agv_ids(self) -> Set[int]:
+        """
+        返回所有 real_pos 与 grid_pos 对齐的 AGV ID 集合。
+        """
+        return {agv_id for agv_id, agv in self._agvs.items() if agv.is_aligned()}
+
 
     def increment_block_count(self, agv_id: int):
         agv = self._agvs[agv_id]

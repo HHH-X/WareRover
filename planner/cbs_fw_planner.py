@@ -5,6 +5,7 @@ from collections import defaultdict
 from planner.base_planner import BasePlanner
 from core.env import Env
 
+
 class FixedWindowCBSPlanner(BasePlanner):
     def __init__(self, env_instance: Env, window_size: int = 10):
         super().__init__(env_instance)
@@ -13,26 +14,31 @@ class FixedWindowCBSPlanner(BasePlanner):
     def plan(self, targets: Dict[int, Tuple[Tuple[int, int], Tuple[int, int]]]) -> Dict[int, List[Tuple[int, int]]]:
         """
         使用固定窗口 CBS 进行集中式路径规划。
-        只规划窗口内的部分路径，确保规划结果在窗口内无冲突，
-        同时参考其他AGV已有的action_queues，避免与它们发生冲突。
         """
         env_info = self.env.get_env_info()
         carrying_status = env_info["carrying_status"]
         action_queues = env_info["action_queues"]
+        current_pos = env_info["current_grid_pos"]
 
-        # 只对需要规划的AGV进行规划，其他AGV的路径固定为它们的action_queue
-        fixed_agents = {
-            agv_id: path for agv_id, path in action_queues.items() if agv_id not in targets
+        # 拼接 start + action_queue，得到完整路径
+        full_paths = {
+            agv_id: [current_pos[agv_id]] + path
+            for agv_id, path in action_queues.items()
         }
 
-        # 初始化返回结果
-        planned_paths = {}
+        # 非目标AGV的路径固定为 full_paths
+        fixed_agents = {
+            agv_id: path for agv_id, path in full_paths.items() if agv_id not in targets
+        }
 
         # 运行一次窗口内的CBS
         window_paths = self._cbs_window(targets, carrying_status, fixed_agents)
 
+        # 返回结果时去掉 start（保证只返回 action_queues 风格）
+        planned_paths = {}
         for agv_id, path in window_paths.items():
-            planned_paths[agv_id] = path
+            if agv_id in targets:
+                planned_paths[agv_id] = path[1:] if len(path) > 1 else []
 
         return planned_paths
 
@@ -53,13 +59,15 @@ class FixedWindowCBSPlanner(BasePlanner):
             'cost': 0
         }
         for agv_id, (start, goal) in targets.items():
-            path = self._a_star_with_constraints(agv_id, start, goal, carrying_status[agv_id], [], goal)
+            path = self._a_star_with_constraints(
+                agv_id, start, goal, carrying_status[agv_id], [], goal
+            )
             if path is None:
                 path = [start]  # 退化路径
             root['paths'][agv_id] = path
             root['cost'] += len(path) - 1
 
-        # 加入固定agents的路径（只截取窗口大小）
+        # 加入固定agents的路径（截取窗口大小）
         for agv_id, path in fixed_agents.items():
             root['paths'][agv_id] = path[: self.window_size + 1]
 
@@ -71,11 +79,7 @@ class FixedWindowCBSPlanner(BasePlanner):
             cost, _, node = heapq.heappop(open_list)
             conflict = self._detect_conflict(node['paths'], planning_agents, set(fixed_agents.keys()))
             if conflict is None:
-                # 剪裁窗口返回（去掉第一个位置）
-                clipped = {}
-                for agv_id, path in node['paths'].items():
-                    clipped[agv_id] = self._trim_path(path, self.window_size)
-                return clipped
+                return node['paths']  # 直接返回完整路径
 
             a1, a2, time, loc = conflict
 
@@ -89,7 +93,9 @@ class FixedWindowCBSPlanner(BasePlanner):
                     'cost': 0
                 }
                 start, goal = targets[agent]
-                new_path = self._a_star_with_constraints(agent, start, goal, carrying_status[agent], child['constraints'], goal)
+                new_path = self._a_star_with_constraints(
+                    agent, start, goal, carrying_status[agent], child['constraints'], goal
+                )
                 if new_path is None:
                     continue
                 child['paths'][agent] = new_path
@@ -100,17 +106,25 @@ class FixedWindowCBSPlanner(BasePlanner):
         # CBS 搜索失败，退化返回独立路径
         fallback = {}
         for agv_id, (start, goal) in targets.items():
-            path = self._a_star_with_constraints(agv_id, start, goal, carrying_status[agv_id], [], goal)
+            path = self._a_star_with_constraints(
+                agv_id, start, goal, carrying_status[agv_id], [], goal
+            )
             if path is None:
                 path = [start]
-            fallback[agv_id] = self._trim_path(path, self.window_size)
-        for agv_id, path in fixed_agents.items():
-            fallback[agv_id] = self._trim_path(path, self.window_size)
+            fallback[agv_id] = path
         return fallback
 
     # ---------------- A* with constraints -----------------
 
-    def _a_star_with_constraints(self, agv_id: int, start: Tuple[int, int], goal: Tuple[int, int], carrying: bool, constraints: List[Dict], true_goal: Tuple[int, int]) -> List[Tuple[int, int]]:
+    def _a_star_with_constraints(
+        self,
+        agv_id: int,
+        start: Tuple[int, int],
+        goal: Tuple[int, int],
+        carrying: bool,
+        constraints: List[Dict],
+        true_goal: Tuple[int, int]
+    ) -> List[Tuple[int, int]]:
         vertex_cons = defaultdict(set)
         edge_cons = defaultdict(set)
         for c in constraints:
@@ -137,10 +151,11 @@ class FixedWindowCBSPlanner(BasePlanner):
             closed.add((pos, t))
 
             if pos == goal or t >= self.window_size:
-                return self._reconstruct_path((pos, t), parents)
+                path = self._reconstruct_path((pos, t), parents)
+                return path
 
             # 等待
-            if pos not in vertex_cons.get(t + 1, set()):
+            if pos not in vertex_cons.get(t, set()):
                 succ = (pos, t + 1)
                 if succ not in closed:
                     ng = g + 1
@@ -150,9 +165,9 @@ class FixedWindowCBSPlanner(BasePlanner):
 
             # 移动
             for nb in self.env.get_walkable_neighbors(pos, carrying):
-                if nb in vertex_cons.get(t + 1, set()):
+                if nb in vertex_cons.get(t, set()):
                     continue
-                if (pos, nb) in edge_cons.get(t + 1, set()):
+                if (pos, nb) in edge_cons.get(t, set()):
                     continue
                 succ = (nb, t + 1)
                 if succ not in closed:
@@ -176,24 +191,8 @@ class FixedWindowCBSPlanner(BasePlanner):
         path.reverse()
         return path
 
-    # ---------------- Path trimming -----------------
-    def _trim_path(self, path: List[Tuple[int, int]], window_size: int) -> List[Tuple[int, int]]:
-        """
-        去掉路径中的第一个位置（起点），并限制在窗口大小内。
-        如果路径长度 <= 1，则返回空路径。
-        """
-        if len(path) <= 1:
-            return []
-        return path[1: window_size + 1]
-
     # ---------------- Conflict detection -----------------
     def _detect_conflict(self, paths: Dict[int, List[Tuple[int, int]]], planning_agents: set, fixed_agents: set):
-        """
-        检测冲突：
-        - planning vs planning -> 冲突
-        - planning vs fixed    -> 冲突（只修改 planning）
-        - fixed vs fixed       -> 忽略
-        """
         agents = set(paths.keys())
         max_len = max((len(paths[aid]) for aid in agents), default=0)
 
@@ -205,7 +204,6 @@ class FixedWindowCBSPlanner(BasePlanner):
                 pos = path[t]
                 if pos in positions:
                     other = positions[pos]
-                    # fixed vs fixed 冲突忽略
                     if agv_id in fixed_agents and other in fixed_agents:
                         continue
                     return other, agv_id, t, [pos]
@@ -222,7 +220,6 @@ class FixedWindowCBSPlanner(BasePlanner):
                         prev_i, cur_i = paths[ai][t - 1], paths[ai][t]
                         prev_j, cur_j = paths[aj][t - 1], paths[aj][t]
                         if prev_i == cur_j and prev_j == cur_i and cur_i != cur_j:
-                            # fixed vs fixed 冲突忽略
                             if ai in fixed_agents and aj in fixed_agents:
                                 continue
                             return ai, aj, t, [prev_i, cur_i]

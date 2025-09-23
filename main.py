@@ -11,7 +11,9 @@ from scheduler.random_scheduler import RandomScheduler
 from planner.astar_planner import AStarPlanner
 from planner.cbs_fw_planner import FixedWindowCBSPlanner
 
+import random
 def main():
+    random.seed(1)  # 固定随机数种子
     cfg = init_sim_config("config/test_map.json")
     grid_map = load_map_from_config(cfg)
     ordermanager = OrderManager(cfg,grid_map)
