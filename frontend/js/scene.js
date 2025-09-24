@@ -24,7 +24,7 @@ function createScene() {
   camera.lookAt(15, 0, 15);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth * 0.7, window.innerHeight);
+  renderer.setSize(window.innerWidth, window.innerHeight);
   document.getElementById('container').appendChild(renderer.domElement);
 
   // ---------------- OrbitControls ----------------
@@ -148,7 +148,7 @@ function createScene() {
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth * 0.7, window.innerHeight);
+    renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
   return { scene, camera, renderer, world, controls };

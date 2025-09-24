@@ -1,22 +1,65 @@
 body {
   margin: 0;
-  display: flex;
+  overflow: hidden; /* 避免出现滚动条 */
 }
 
 #container {
-  flex: 3;
-  background: #eee;
+  width: 100%;
+  height: 100%;
 }
 
+
 #panel {
-  flex: 1;
-  padding: 10px;
-  background: #f4f4f4;
-  font-family: Arial, sans-serif;
-  overflow-y: auto;
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 260px;
+  background: rgba(30, 30, 30, 0.65);
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  color: #f0f0f0;
+  font-family: "Segoe UI", Roboto, sans-serif;
+  padding: 16px;
+  z-index: 100;
+  backdrop-filter: blur(6px);
+}
+
+#panel h2 {
+  font-size: 18px;
+  margin-bottom: 12px;
+  color: #4fc3f7;
+}
+
+#panel button {
+  width: 100px;
+  margin: 6px 6px 12px 0;
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.2s, transform 0.1s;
+}
+
+#panel button:hover {
+  transform: scale(1.05);
 }
 
 #toggleBtn {
-  width: 100px;  /* 固定宽度 */
-  text-align: center;  /* 文字居中 */
+  background-color: #4caf50;
+  color: white;
+}
+#toggleBtn.paused {
+  background-color: #f44336; /* 红色表示暂停状态 */
+}
+
+#stepBtn {
+  background-color: #2196f3;
+  color: white;
+}
+
+#metrics {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.6;
 }
