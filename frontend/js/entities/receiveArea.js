@@ -1,23 +1,18 @@
 import * as THREE from 'three';
 
 class ReceiveArea {
-  constructor(logicX, logicY, size = 1) {
-    this.logicX = logicX;
-    this.logicY = logicY;
-
+  constructor(x, y, size = 1) {
     const geometry = new THREE.PlaneGeometry(size, size);
     const material = new THREE.MeshBasicMaterial({ color: 0x0000ff, side: THREE.DoubleSide });
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.rotation.x = -Math.PI / 2;
 
-    // 逻辑坐标 → 渲染坐标（中心点）
-    this.updatePosition(logicX, logicY, size);
+    // 使用真实坐标
+    this.updatePosition(x, y);
   }
 
-  updatePosition(logicX, logicY, size = 1) {
-    this.logicX = logicX;
-    this.logicY = logicY;
-    this.mesh.position.set(logicX + size / 2, 0.01, logicY + size / 2);
+  updatePosition(x, y) {
+    this.mesh.position.set(x, 0.01, y); // 已经是真实坐标
   }
 }
 

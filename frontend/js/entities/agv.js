@@ -22,7 +22,7 @@ class AGV {
 
   update(pos) {
     if (Array.isArray(pos) && pos.length >= 2) {
-      this.mesh.position.set(pos[0], 0.08, pos[1]);
+      this.mesh.position.set(pos[0], 0.06, pos[1]);
     }
   }
 

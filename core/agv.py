@@ -41,7 +41,7 @@ class AGV:
         self.action_queue: Deque[Tuple[int, int]] = deque()
 
         self.speed: float = 0.0
-        self.max_speed: float = 0.6
+        self.max_speed: float = 0.3
         self.time_step: float = 1.0
         self.direction: Optional[str] = None
 
