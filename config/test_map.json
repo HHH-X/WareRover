@@ -42,14 +42,14 @@
     { "wait_zone_id": 7, "position": [16, 1] }
   ],
   "agvs": [
-    { "agv_id": 0, "init_wait_zone_id": 0, "size": 1 },
-    { "agv_id": 1, "init_wait_zone_id": 1, "size": 1 },
-    { "agv_id": 2, "init_wait_zone_id": 2, "size": 1 },
-    { "agv_id": 3, "init_wait_zone_id": 3, "size": 1 },
-    { "agv_id": 4, "init_wait_zone_id": 4, "size": 1 },
-    { "agv_id": 5, "init_wait_zone_id": 5, "size": 1 },
-    { "agv_id": 6, "init_wait_zone_id": 6, "size": 1 },
-    { "agv_id": 7, "init_wait_zone_id": 7, "size": 1 }
+    { "agv_id": 0, "size": 1 },
+    { "agv_id": 1, "size": 1 },
+    { "agv_id": 2, "size": 1 },
+    { "agv_id": 3, "size": 1 },
+    { "agv_id": 4, "size": 1 },
+    { "agv_id": 5, "size": 1 },
+    { "agv_id": 6, "size": 1 },
+    { "agv_id": 7, "size": 1 }
   ],
   "obstacles": [
     [18, 9],

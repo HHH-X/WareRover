@@ -17,18 +17,22 @@ class GridMap:
 
         # ====== 初始化 box 数据结构 ======
         self.box_positions: Dict[int, Tuple[int, int]] = {}
+        self.box_sizes: Dict[int, int] = {}  #记录每个 box 的 size
         self.box_to_goods: Dict[int, List[int]] = {}
         self.goods_to_boxes: Dict[int, List[int]] = {}
         self.goods_id_set: Set[int] = set()
-
         for box in map_data.get("boxes", []):
             box_id = box["box_id"]
             x, y = box["position"]
             goods_ids = box.get("goods_ids", [])
+            size = box.get("size", 1)  # 默认 size=1
 
+            # 保存位置和尺寸信息
             self.box_positions[box_id] = (x, y)
+            self.box_sizes[box_id] = size
             self.box_to_goods[box_id] = goods_ids
 
+            # 建立 goods 到 box 的反向索引
             for goods_id in goods_ids:
                 self.goods_to_boxes.setdefault(goods_id, []).append(box_id)
                 self.goods_id_set.add(goods_id)
@@ -42,19 +46,23 @@ class GridMap:
             self.obstacles.add((x, y))
 
         # ====== 初始化接收区 ======
-        self.receiver_zones: Dict[int, Tuple[int, int]] = {}
+        self.receiver_zones: Dict[int, Tuple[Tuple[int, int], int]] = {}
         self.receiver_id_set: Set[int] = set()
         for r in map_data.get("receivers", []):
             rid = r["receiver_id"]
             pos = tuple(r["position"])
-            self.receiver_zones[rid] = pos
+            size = r.get("size", 1)
+            self.receiver_zones[rid] = (pos, size)
             self.receiver_id_set.add(rid)
 
         # ====== 初始化等待区 ======
-        self.wait_zones: Dict[int, Tuple[int, int]] = {
-            zone["wait_zone_id"]: tuple(zone["position"])
-            for zone in map_data.get("wait_zones", [])
-        }
+        self.wait_zones: Dict[int, Tuple[Tuple[int, int], int]] = {}
+        for zone in map_data.get("wait_zones", []):
+            zid = zone["wait_zone_id"]
+            pos = tuple(zone["position"])
+            size = zone.get("size", 1)
+            self.wait_zones[zid] = (pos, size)
+
     # ========= 地图访问接口 =========
     def is_walkable(self, to_pos: Tuple[int, int], from_pos: Tuple[int, int], carrying_goods: bool) -> bool:
         x_to, y_to = to_pos

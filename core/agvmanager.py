@@ -179,8 +179,8 @@ def load_agvs_from_config(cfg: SimConfig, map_inst: GridMap, order_manager:Order
     agv_list = []
     for agv_entry in agv_data:
         agv_id = agv_entry["agv_id"]
-        wait_id = agv_entry["init_wait_zone_id"]
-        agv_size = agv_entry["size"]
+        wait_id = agv_id
+        agv_size = agv_entry.get("size", 1)
         init_grid = wait_zones[wait_id]
         agv = AGV(agv_id=agv_id, size=agv_size, init_grid_pos=init_grid, map_inst=map_inst, order_manager=order_manager)
         agv_list.append(agv)
