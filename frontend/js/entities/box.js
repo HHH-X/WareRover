@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 class Box {
-  constructor(id, x, y) {
+  constructor(id, pos, size) {
     this.id = id;
 
     this.mesh = new THREE.Group();

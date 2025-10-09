@@ -24,8 +24,10 @@ function connectWebSocket(world) {
       world.addMap(data.map_size);
       
       if (data.boxes) {
-        for (const key in data.boxes) {
-          const pos = data.boxes[key];
+        for (const boxId in data.boxes) {
+          const box = data.boxes[boxId];
+          const pos = box.pos;
+          const size = box.size;
           world.addBox(new Box(parseInt(key), pos[0], pos[1]));
           world.addShelf(new Shelf(parseInt(key), pos[0], pos[1]));
           
