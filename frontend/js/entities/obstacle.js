@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 class Obstacle {
-  constructor(x, y) {
+  constructor(pos) {
     this.mesh = new THREE.Group();
-    this.setXYZ(x, 0, y); // 直接使用真实坐标
+    this.setXYZ(pos[0], 0, pos[1]); // 直接使用真实坐标
 
     const loader = new GLTFLoader();
     const SCALE_FACTOR = 1.5;

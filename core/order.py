@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, List, Tuple, Optional, Generator
 import random
+import json
 from config.settings import SimConfig
 from core.gridmap import GridMap
 from utils.logger import global_logger
@@ -14,7 +15,6 @@ class OrderManager:
     def __init__(self, config: SimConfig, map_inst: GridMap):
         self.config = config
         self.map = map_inst
-        self.total_orders = config.num_orders
 
         self.all_orders: List[Order] = []
         # 三个订单状态管理：order_id -> Order
@@ -32,17 +32,67 @@ class OrderManager:
 
     # ========== 订单生产 ==========
     def _produce_orders(self) -> None:
-        """生成一批订单并放入 unprocessed_orders 和 all_orders"""
-        for order_id in range(self.total_orders):
-            goods_id = random.choice(self._all_goods)
-            receiver_id = random.choice(self._all_receivers)
-            order = Order(
-                order_id=order_id,
-                goods_id=goods_id,
-                receiver_id=receiver_id
-            )
-            self.unprocessed_orders[order_id] = order
-            self.all_orders.append(order)
+        """
+        从地图文件中读取 box 与 receiver 信息，
+        按 size 匹配生成订单。
+        """
+        # 从 config 中获取地图文件路径
+        map_path = self.config.map_file
+        with open(map_path, "r", encoding="utf-8") as f:
+            map_data = json.load(f)
+
+        # 提取 box 与 receiver 信息
+        boxes = map_data.get("boxes", [])
+        receivers = map_data.get("receivers", [])
+
+        # 按 size 分类
+        boxes_by_size = {}
+        for box in boxes:
+            size = box.get("size", 1)
+            boxes_by_size.setdefault(size, []).append(box)
+
+        receivers_by_size = {}
+        for recv in receivers:
+            size = recv.get("size", 1)
+            receivers_by_size.setdefault(size, []).append(recv)
+
+        # 从配置中读取不同 size 订单数量
+        num_orders_by_size = {
+            1: self.config.num_orders_size1,
+            2: self.config.num_orders_size2,
+        }
+
+        order_id = 0
+        for size, num_orders in num_orders_by_size.items():
+            box_list = boxes_by_size.get(size, [])
+            recv_list = receivers_by_size.get(size, [])
+
+            if not box_list or not recv_list:
+                global_logger.add_runtime_log(f"[WARN] No valid box/receiver for size={size}, skip order generation.")
+                continue
+
+            for _ in range(num_orders):
+                box = random.choice(box_list)
+                goods_ids = box.get("goods_ids", [])
+                if not goods_ids:
+                    continue
+                goods_id = random.choice(goods_ids)
+                receiver = random.choice(recv_list)
+
+                order = Order(
+                    order_id=order_id,
+                    goods_id=goods_id,
+                    receiver_id=receiver["receiver_id"]
+                )
+                self.unprocessed_orders[order_id] = order
+                self.all_orders.append(order)
+                order_id += 1
+
+        global_logger.add_runtime_log(
+            f"Generated {len(self.all_orders)} orders "
+            f"(size1={num_orders_by_size.get(1,0)}, size2={num_orders_by_size.get(2,0)})"
+        )
+    
 
     # ========== 第二块功能：订单管理 ==========
     def get_all_orders(self) -> List[Order]:

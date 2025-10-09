@@ -6,7 +6,7 @@ class Box {
     this.id = id;
 
     this.mesh = new THREE.Group();
-    this.setXYZ(x, 0.5, y); // 直接使用真实坐标
+    this.update(pos, 0.5); // 直接使用真实坐标
 
     const loader = new GLTFLoader();
     const SCALE_FACTOR = 0.05;
@@ -15,7 +15,7 @@ class Box {
       '/frontend/models/box.glb',
       (gltf) => {
         const model = gltf.scene;
-        model.scale.set(SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR);
+        model.scale.set(SCALE_FACTOR*size, SCALE_FACTOR, SCALE_FACTOR*size);
 
         // 居中模型
         const box = new THREE.Box3().setFromObject(model);
@@ -32,8 +32,8 @@ class Box {
     );
   }
 
-  setXYZ(x, y, z) {
-    this.mesh.position.set(x, y, z);
+  update(pos, height) {
+    this.mesh.position.set(pos[0], height, pos[1]);
   }
 }
 

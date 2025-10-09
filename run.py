@@ -41,6 +41,7 @@ async def simulator_loop(websocket):
     仿真主循环：初始化环境 -> 循环 step -> 每步发送数据
     """
     # --- 初始化仿真环境 ---
+    print("Simulation begin")
     cfg = init_sim_config("config/test_map.json")
     grid_map = load_map_from_config(cfg)
     ordermanager = OrderManager(cfg, grid_map)
@@ -48,12 +49,13 @@ async def simulator_loop(websocket):
     env = Env(agv_manager, grid_map)
     # scheduler = RandomScheduler(ordermanager, grid_map)
     scheduler = TAScheduler(ordermanager, grid_map, agv_manager)
-    # planner = AStarPlanner(env)
-    planner = FixedWindowCBSPlanner(env)
+    planner = AStarPlanner(env)
+    # planner = FixedWindowCBSPlanner(env)
     simulator = Simulator(cfg, grid_map, agv_manager, env, scheduler, planner)
 
     # 初始化发送一次状态给前端
     init_data = generate_send_data(grid_map, agv_manager, data_type="init")
+    print(init_data)
     await websocket.send(json.dumps(init_data))
 
     # --- 主循环 ---

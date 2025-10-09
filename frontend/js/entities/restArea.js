@@ -1,14 +1,14 @@
 import * as THREE from 'three';
 
 class RestArea {
-  constructor(x, y, size = 1) {
+  constructor(pos, size = 1) {
     const geometry = new THREE.PlaneGeometry(size, size);
     const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide });
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.rotation.x = -Math.PI / 2;
 
     // 使用真实坐标
-    this.updatePosition(x, y);
+    this.updatePosition(pos[0], pos[1]);
   }
 
   updatePosition(x, y) {

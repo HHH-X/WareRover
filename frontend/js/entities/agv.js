@@ -2,20 +2,20 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 class AGV {
-  constructor(id, x, y, size = 0.8, height = 0.3) {
+  constructor(id, pos, size = 1, height = 0.3) {
     this.id = id;
     this.size = size;
     this.height = height;
     this.halfHeight = height / 2;
 
     this.mesh = new THREE.Group();
-    this.mesh.position.set(x, this.halfHeight, y);
+    this.mesh.position.set(pos[0], this.halfHeight, pos[1]);
 
     const loader = new GLTFLoader();
     const SCALE_FACTOR = 0.027; 
     loader.load('/frontend/models/agv.glb', (gltf) => {
       this.mesh.add(gltf.scene);
-      gltf.scene.scale.set(SCALE_FACTOR, SCALE_FACTOR, SCALE_FACTOR);
+      gltf.scene.scale.set(SCALE_FACTOR*size, SCALE_FACTOR, SCALE_FACTOR*size);
       gltf.scene.position.set(0, 0, 0);
     });
   }

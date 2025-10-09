@@ -46,7 +46,6 @@ def generate_send_data(map: GridMap, agvmanager: AGVManager, data_type: str = "i
             size = agv.size
             center_pos = agv_to_real_center(grid_pos, size)
             agvs_info[agv_id] = {
-                "id": agv_id,
                 "pos": center_pos,
                 "size": size
             }

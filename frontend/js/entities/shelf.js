@@ -2,19 +2,19 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 class Shelf {
-  constructor(id, x, y, modelPath = '/frontend/models/shelf.glb') {
+  constructor(id, pos, size) {
     this.id = id;
     this.mesh = new THREE.Group();
-    this.mesh.position.set(x, 0, y); // 直接使用真实坐标
+    this.mesh.position.set(pos[0], 0, pos[1]); // 直接使用真实坐标
 
     const loader = new GLTFLoader();
     const SCALE_FACTOR = 1.8;
 
     loader.load(
-      modelPath,
+      '/frontend/models/shelf.glb',
       (gltf) => {
         const model = gltf.scene;
-        model.scale.set(SCALE_FACTOR, 2.5, SCALE_FACTOR);
+        model.scale.set(SCALE_FACTOR*size, 2.5, SCALE_FACTOR*size);
         model.position.set(0, 0, 0);
 
         // 遍历所有 mesh，修改材质为银灰色

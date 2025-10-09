@@ -66,12 +66,12 @@ class GridMap:
             self.receiver_id_set.add(rid)
 
         # ====== 初始化等待区 ======
-        self.waiting_zones: Dict[int, Tuple[Tuple[int, int], int]] = {}
+        self.wait_zones: Dict[int, Tuple[Tuple[int, int], int]] = {}
         for zone in map_data.get("wait_zones", []):
             zid = zone["wait_zone_id"]
             pos = tuple(zone["position"])
             size = zone.get("size", 1)
-            self.waiting_zones[zid] = (pos, size)
+            self.wait_zones[zid] = (pos, size)
 
     # ========= 地图通行性判断 =========
     def is_walkable(self,
@@ -296,7 +296,7 @@ class GridMap:
         return self.receiver_id_set
 
     def get_waiting_zone_position(self, zone_id: int) -> Optional[Tuple[int, int]]:
-        return self.waiting_zones.get(zone_id)
+        return self.wait_zones.get(zone_id)
 
 
 def load_map_from_config(cfg: SimConfig) -> GridMap:
