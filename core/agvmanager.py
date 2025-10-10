@@ -18,6 +18,11 @@ class AGVManager:
         self.need_replan_agvs: Set[int] = set(self.idle_agvs)
         # AGV的阻塞次数统计
         self.block_counts: Dict[int, int] = {agv.id: 0 for agv in agv_list}
+        # 按照 size 分组的 AGV ID 集合，例如 {1: {0,2,4}, 2: {1,3}}
+        self.agvs_by_size: Dict[int, Set[int]] = {}
+        for agv in agv_list:
+            self.agvs_by_size.setdefault(agv.size, set()).add(agv.id)
+
 
     # 获取指定 ID 的 AGV 实例
     def get_agv(self, agv_id: int) -> AGV:
@@ -39,6 +44,11 @@ class AGVManager:
     def get_agv_size(self, agv_id:int)-> int:
         agv = self._agvs.get(agv_id)
         return agv.size
+    
+    def get_agv_ids_by_size(self, size: int) -> Set[int]:
+        """返回指定尺寸 size 的所有 AGV ID 集合"""
+        return self.agvs_by_size.get(size, set())
+
     
     # 获取所有 AGV 实例（生成器）
     def all_agvs(self) -> Generator[AGV, None, None]:

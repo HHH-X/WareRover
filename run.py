@@ -44,13 +44,13 @@ async def simulator_loop(websocket):
     """
     # --- 初始化仿真环境 ---
     print("Simulation begin")
-    random.seed(3)  # 固定随机数种子
+    random.seed(10)  # 固定随机数种子
     cfg = init_sim_config("config/test_map_v2.json")
     grid_map = load_map_from_config(cfg)
     ordermanager = OrderManager(cfg, grid_map)
     agv_manager = load_agvs_from_config(cfg, grid_map, ordermanager)
     env = Env(agv_manager, grid_map)
-    scheduler = RandomScheduler(ordermanager, grid_map)
+    scheduler = RandomScheduler(ordermanager, grid_map, agv_manager)
     # scheduler = TAScheduler(ordermanager, grid_map, agv_manager)
     planner = AStarPlanner(env)
     # planner = FixedWindowCBSPlanner(env)

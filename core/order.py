@@ -10,6 +10,7 @@ class Order:
     order_id: int
     goods_id: int
     receiver_id: int
+    required_size: int
 
 class OrderManager:
     def __init__(self, config: SimConfig, map_inst: GridMap):
@@ -82,7 +83,8 @@ class OrderManager:
                 order = Order(
                     order_id=order_id,
                     goods_id=goods_id,
-                    receiver_id=receiver["receiver_id"]
+                    receiver_id=receiver["receiver_id"],
+                    required_size=size
                 )
                 self.unprocessed_orders[order_id] = order
                 self.all_orders.append(order)

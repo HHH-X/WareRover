@@ -64,7 +64,7 @@ def generate_send_data(map: GridMap, agvmanager: AGVManager, data_type: str = "i
         data['receivers'] = {
             rid: {
                 "pos": to_real_position(pos, map.receiver_zones_size.get(rid, 1)),
-                "size": size
+                "size": map.receiver_zones_size.get(rid, 1)
             }
             for rid, pos in map.receiver_zones.items()
         }
@@ -72,7 +72,7 @@ def generate_send_data(map: GridMap, agvmanager: AGVManager, data_type: str = "i
         data['wait_zones'] = {
             wid: {
                 "pos": to_real_position(pos, map.wait_zones_size.get(wid, 1)),
-                "size": size
+                "size": map.wait_zones_size.get(wid, 1)
             }
             for wid, pos in map.wait_zones.items()
         }
