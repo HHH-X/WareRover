@@ -6,7 +6,7 @@ class Box {
     this.id = id;
 
     this.mesh = new THREE.Group();
-    this.update(pos, 0.5); // 直接使用真实坐标
+    this.update(pos, 0.7); // 直接使用真实坐标
 
     const loader = new GLTFLoader();
     const SCALE_FACTOR = 0.05;

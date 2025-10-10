@@ -28,7 +28,7 @@ class AStarPlanner(BasePlanner):
         paths = {}
         for agv_id, (start, goal) in targets.items():
             carrying = carrying_status.get(agv_id, False)
-            path = self._a_star_with_reservation(start, goal, carrying, reservation_table)
+            path = self._a_star_with_reservation(agv_id, start, goal, carrying, reservation_table)
             if path:
                 # paths[agv_id] = path
                 paths[agv_id] = path[1:] if len(path) > 1 else []
@@ -53,7 +53,7 @@ class AStarPlanner(BasePlanner):
         for t, pos in enumerate(path):
             table[t].add(pos)
 
-    def _a_star_with_reservation(self, start: Tuple[int, int], goal: Tuple[int, int], carrying: bool,
+    def _a_star_with_reservation(self, agv_id: int, start: Tuple[int, int], goal: Tuple[int, int], carrying: bool,
                                  reservation_table: Dict[int, Set[Tuple[int, int]]]) -> List[Tuple[int, int]]:
         """基于 reservation_table 的 A* 算法，避免顶点冲突与交换冲突"""
         open_set = []
@@ -71,7 +71,7 @@ class AStarPlanner(BasePlanner):
             if current == goal and self._is_free(current, g + 1, reservation_table) and self._is_free(current, g + 2, reservation_table):
                 return path + [goal] * 2
 
-            for neighbor in self.env.get_walkable_neighbors(current, carrying):
+            for neighbor in self.env.get_walkable_neighbors(agv_id, current, carrying):
                 if not self._is_free(neighbor, g + 1, reservation_table):
                     continue
 

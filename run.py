@@ -6,6 +6,8 @@ import threading
 import webbrowser
 from http.server import SimpleHTTPRequestHandler
 from socketserver import TCPServer
+import random
+import numpy as np
 
 from config.settings import init_sim_config
 from core.agvmanager import load_agvs_from_config
@@ -42,20 +44,21 @@ async def simulator_loop(websocket):
     """
     # --- 初始化仿真环境 ---
     print("Simulation begin")
-    cfg = init_sim_config("config/test_map.json")
+    random.seed(3)  # 固定随机数种子
+    cfg = init_sim_config("config/test_map_v2.json")
     grid_map = load_map_from_config(cfg)
     ordermanager = OrderManager(cfg, grid_map)
     agv_manager = load_agvs_from_config(cfg, grid_map, ordermanager)
     env = Env(agv_manager, grid_map)
-    # scheduler = RandomScheduler(ordermanager, grid_map)
-    scheduler = TAScheduler(ordermanager, grid_map, agv_manager)
+    scheduler = RandomScheduler(ordermanager, grid_map)
+    # scheduler = TAScheduler(ordermanager, grid_map, agv_manager)
     planner = AStarPlanner(env)
     # planner = FixedWindowCBSPlanner(env)
     simulator = Simulator(cfg, grid_map, agv_manager, env, scheduler, planner)
 
     # 初始化发送一次状态给前端
     init_data = generate_send_data(grid_map, agv_manager, data_type="init")
-    print(init_data)
+    # print(init_data)
     await websocket.send(json.dumps(init_data))
 
     # --- 主循环 ---
@@ -66,8 +69,8 @@ async def simulator_loop(websocket):
 
             # 每步生成并发送状态
             step_data = generate_send_data(grid_map, agv_manager, data_type="update")
-            print('发送数据',step_data)
-            await websocket.send(json.dumps(step_data))
+            send_data = json.dumps(step_data)
+            await websocket.send(send_data)
 
         await asyncio.sleep(0.1)    # 控制循环频率
 

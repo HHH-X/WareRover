@@ -4,8 +4,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 class Obstacle {
   constructor(pos) {
     this.mesh = new THREE.Group();
-    this.setXYZ(pos[0], 0, pos[1]); // 直接使用真实坐标
-
+    this.mesh.position.set(pos[0], 0, pos[1]);
     const loader = new GLTFLoader();
     const SCALE_FACTOR = 1.5;
 
@@ -25,7 +24,6 @@ class Obstacle {
         model.position.y += size.y / 2;
 
         this.mesh.add(model);
-        console.log('Obstacle loaded at position', x, y);
       },
       undefined,
       (error) => {
@@ -34,9 +32,6 @@ class Obstacle {
     );
   }
 
-  setXYZ(x, y, z) {
-    this.mesh.position.set(x, y, z);
-  }
 }
 
 export { Obstacle };

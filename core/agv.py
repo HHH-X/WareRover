@@ -45,7 +45,7 @@ class AGV:
         self.time_step: float = 1.0
         self.direction: Optional[str] = None
 
-        self.carried_box_id: Optional[int] = None
+        self.carried_box_id: int = None
 
     @property
     def is_idle(self) -> bool:
@@ -139,7 +139,7 @@ class AGV:
     def _pick_box(self):
         box_id = self.map.pick_box_at(self.grid_pos)
         if box_id is not None:
-            self.carried_box_id = box_id
+            self.carried_box_id = int(box_id)
 
     def _place_box(self):
         if self.carried_box_id is not None:

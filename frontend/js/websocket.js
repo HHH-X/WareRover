@@ -57,7 +57,7 @@ function connectWebSocket(world) {
 
       if (data.obstacles) {
         data.obstacles.forEach(pos => {
-          world.addObstacle(new Obstacle(pos[0], pos[1]));
+          world.addObstacle(new Obstacle(pos));
         });
       }
     }

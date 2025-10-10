@@ -42,9 +42,9 @@ def generate_send_data(map: GridMap, agvmanager: AGVManager, data_type: str = "i
         agvs_info = {}
         for agv in agvmanager.all_agvs():
             agv_id = agv.id
-            grid_pos = agv.real_pos  # 左上角逻辑坐标
+            real_pos = agv.real_pos  # 左上角逻辑坐标
             size = agv.size
-            center_pos = agv_to_real_center(grid_pos, size)
+            center_pos = agv_to_real_center(real_pos, size)
             agvs_info[agv_id] = {
                 "pos": center_pos,
                 "size": size
@@ -63,25 +63,25 @@ def generate_send_data(map: GridMap, agvmanager: AGVManager, data_type: str = "i
 
         data['receivers'] = {
             rid: {
-                "pos": to_real_position(pos, size),
+                "pos": to_real_position(pos, map.receiver_zones_size.get(rid, 1)),
                 "size": size
             }
-            for rid, (pos, size) in map.receiver_zones.items()
+            for rid, pos in map.receiver_zones.items()
         }
 
         data['wait_zones'] = {
             wid: {
-                "pos": to_real_position(pos, size),
+                "pos": to_real_position(pos, map.wait_zones_size.get(wid, 1)),
                 "size": size
             }
-            for wid, (pos, size) in map.wait_zones.items()
+            for wid, pos in map.wait_zones.items()
         }
         
         data['obstacles'] = [to_real_position(pos) for pos in map.obstacles]
 
     elif data_type == "update":
         data['type'] = 'update'
-        agv_pos = {aid: agv_to_real_center(pos) for aid, pos in agvmanager.get_all_real_positions().items()}
+        agv_pos = {aid: agv_to_real_center(pos, agvmanager.get_agv_size(aid)) for aid, pos in agvmanager.get_all_real_positions().items()}
         data['agvs'] = agv_pos
         
         carrying_status = agvmanager.get_carried_box_ids()

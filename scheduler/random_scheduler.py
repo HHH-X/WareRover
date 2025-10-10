@@ -55,16 +55,4 @@ class RandomScheduler(BaseScheduler):
 
         return agv_task_map
 
-    def assign_rest_areas(self, agv_ids: Set[int]) -> None:
-        """
-        为需要分配休息区的 AGV 分配休息区
-        """
-        rest_assignments: Dict[int, Tuple[int, int]] = {}
-        for agv_id in agv_ids:
-            try:
-                rest_assignments[agv_id] = self.map.get_wait_zone_position(agv_id)
-            except StopIteration:
-                # 没有可用休息区了，可以选择忽略或日志记录
-                break
 
-        return rest_assignments

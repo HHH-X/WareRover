@@ -56,29 +56,33 @@ class GridMap:
             self.obstacles.add((x, y))
 
         # ====== 初始化接收区 ======
-        self.receiver_zones: Dict[int, Tuple[Tuple[int, int], int]] = {}
+        self.receiver_zones: Dict[int, Tuple[int, int]] = {}
         self.receiver_id_set: Set[int] = set()
+        self.receiver_zones_size: Dict[int, int] = {}
         for r in map_data.get("receivers", []):
             rid = r["receiver_id"]
             pos = tuple(r["position"])
             size = r.get("size", 1)
-            self.receiver_zones[rid] = (pos, size)
+            self.receiver_zones[rid] = pos
             self.receiver_id_set.add(rid)
+            self.receiver_zones_size[rid] = size
 
         # ====== 初始化等待区 ======
-        self.wait_zones: Dict[int, Tuple[Tuple[int, int], int]] = {}
+        self.wait_zones: Dict[int, Tuple[int, int]] = {}
+        self.wait_zones_size: Dict[int, int] = {}
         for zone in map_data.get("wait_zones", []):
             zid = zone["wait_zone_id"]
             pos = tuple(zone["position"])
             size = zone.get("size", 1)
-            self.wait_zones[zid] = (pos, size)
+            self.wait_zones[zid] = pos
+            self.wait_zones_size[zid] = size
 
     # ========= 地图通行性判断 =========
     def is_walkable(self,
+                    agv_size: int,
                     to_pos: Tuple[int, int],
                     from_pos: Tuple[int, int],
-                    carrying_goods: bool,
-                    agv_size: int) -> bool:
+                    carrying_goods: bool) -> bool:
         """
         判断 AGV 是否可以从 from_pos (左上角) 移动到 to_pos (左上角)。
         规则基于“头部”（移动前 AGV 前缘的一排格子）和头部的目标格集合进行判断，
@@ -195,10 +199,9 @@ class GridMap:
 
     def get_walkable_neighbors(
         self,
+        agv_size: int,
         pos: Tuple[int, int],
-        carrying_goods: bool,
-        agv_size: int
-    ) -> List[Tuple[int, int]]:
+        carrying_goods: bool) -> List[Tuple[int, int]]:
         """
         获取从当前位置 (pos, 左上角坐标) 出发，AGV 可以移动到的所有相邻格子（左上角位置）。
 
@@ -225,7 +228,7 @@ class GridMap:
                 continue
 
             # 判断是否可通行
-            if self.is_walkable((nx, ny), (x, y), carrying_goods, agv_size):
+            if self.is_walkable(agv_size, (nx, ny), (x, y), carrying_goods):
                 neighbors.append((nx, ny))
 
         return neighbors
@@ -248,14 +251,14 @@ class GridMap:
         # 检查位置和 box_id 是否匹配
         expected_pos = self.box_positions.get(box_id)
         if expected_pos != pos:
-            return False
+            return None
 
         # 如果当前货箱在原位，则取走
-        if self.box_status.get(box_id, True):
+        if self.box_status[box_id]:
             self.box_status[box_id] = False
-            return True
+            return box_id
 
-        return False
+        return None
 
 
     def place_box_at(self, pos: Tuple[int, int], box_id: int) -> bool:
@@ -295,7 +298,7 @@ class GridMap:
     def get_all_receiver_zone_ids(self) -> Set[int]:
         return self.receiver_id_set
 
-    def get_waiting_zone_position(self, zone_id: int) -> Optional[Tuple[int, int]]:
+    def get_wait_zone_position(self, zone_id: int) -> Optional[Tuple[int, int]]:
         return self.wait_zones.get(zone_id)
 
 

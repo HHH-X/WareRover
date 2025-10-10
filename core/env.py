@@ -38,7 +38,7 @@ class Env:
                     所有AGV当前的网格位置字典。
                     键为AGV的ID（整数），值为其当前所在位置的坐标元组 (x, y)
         """
-        grid = self.map.map_grid
+        grid = self.map.static_grid
         carrying_status = self.agv_manager.get_carrying_status()
         action_queues = self.agv_manager.get_all_action_queues()
         current_grid_pos = self.agv_manager.get_all_current_pos()
@@ -50,7 +50,7 @@ class Env:
             'current_grid_pos': current_grid_pos
         }
     
-    def get_walkable_neighbors(self, pos: Tuple[int, int], carrying_goods: bool) -> List[Tuple[int, int]]:
+    def get_walkable_neighbors(self, agv_id: int, pos: Tuple[int, int], carrying_goods: bool) -> List[Tuple[int, int]]:
         """
         获取指定位置在当前载货状态下可通行的相邻位置。
 
@@ -64,9 +64,9 @@ class Env:
         Returns:
             List[Tuple[int, int]]: 可通行的相邻位置坐标列表，每个元素为 (x, y) 元组
         """
-        return self.map.get_walkable_neighbors(pos, carrying_goods)
+        return self.map.get_walkable_neighbors(self.agv_manager.get_agv_size(agv_id), pos, carrying_goods)
     
-    def is_walkable(self, to_pos: Tuple[int, int], from_pos: Tuple[int, int], carrying_goods: bool) -> bool:
+    def is_walkable(self, agv_id: int, to_pos: Tuple[int, int], from_pos: Tuple[int, int], carrying_goods: bool) -> bool:
         """
         判断从当前位置移动到目标位置是否可行。
 
@@ -86,7 +86,7 @@ class Env:
         Returns:
             bool: True表示可通行，False表示不可通行
         """
-        return self.map.is_walkable(to_pos, from_pos, carrying_goods)
+        return self.map.is_walkable(self.agv_manager.get_agv_size(agv_id), to_pos, from_pos, carrying_goods)
 
     def step(self):
         next_positions = self.resolve_conflicts()
@@ -165,7 +165,7 @@ class Env:
                 if tgt == cur:
                     continue
 
-                walkable = self.map.is_walkable(tgt, cur, carrying)
+                walkable = self.map.is_walkable(self.agv_manager.get_agv_size(agv_id), tgt, cur, carrying)
                 occ = self._get_next_occupied_positions(agv_id, cur, tgt)
 
                 # 顶点冲突判断：占用区域不能和他人重叠

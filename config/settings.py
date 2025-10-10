@@ -7,7 +7,7 @@ class SimConfig:
     height: int
     # num_orders: int = 20
     num_orders_size1 = 20
-    num_orders_size2 = 10
+    num_orders_size2 = 5
 
     map_file: str = "config/default_map.json"  # 默认地图路径
     max_steps: int = 1000
