@@ -4,13 +4,40 @@ function initPanel() {
   const panel = document.getElementById('panel');
   panel.innerHTML = `
     <h2>Control Panel</h2>
-    <div>
+
+    <!-- === 基础控制按钮 === -->
+    <div class="basic-controls">
       <button id="toggleBtn">Pause</button>
       <button id="stepBtn">Step</button>
     </div>
-    <div id="metrics">
-      <h3>Metrics</h3>
-      <div id="metricsContent">
+
+    <!-- === 折叠模块们 === -->
+    <div class="collapsible" id="displaySettings">
+      <div class="collapsible-header">▶ Display Settings</div>
+      <div class="collapsible-content">
+        <label><input type="checkbox" id="showAgvId"> Show AGV IDs</label><br>
+        <label><input type="checkbox" id="showBoxId"> Show Box IDs</label><br>
+        <label><input type="checkbox" id="showRecvId"> Show Receive Zone IDs</label>
+      </div>
+    </div>
+
+    <div class="collapsible" id="incidentSim">
+      <div class="collapsible-header">▶ Incident Simulation</div>
+      <div class="collapsible-content">
+        <div class="form-group">
+          <input type="number" id="damageAgvId" placeholder="AGV ID to damage">
+          <button id="damageBtn">Damage</button>
+        </div>
+        <div class="form-group">
+          <input type="number" id="repairAgvId" placeholder="AGV ID to repair">
+          <button id="repairBtn">Repair</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="collapsible" id="metrics">
+      <div class="collapsible-header">▶ Metrics</div>
+      <div class="collapsible-content" id="metricsContent">
         <p>AGVs: 0</p>
         <p>Tasks: 0</p>
         <p>FPS: 0</p>
@@ -18,6 +45,9 @@ function initPanel() {
     </div>
   `;
 
+  setupCollapsibles();
+
+  // === 运行控制 ===
   let isPaused = false;
   const toggleBtn = document.getElementById('toggleBtn');
   const stepBtn = document.getElementById('stepBtn');
@@ -39,7 +69,6 @@ function initPanel() {
 
   stepBtn.onclick = () => {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-
     if (!isPaused) {
       ws.send(JSON.stringify({ cmd: "pause" }));
       toggleBtn.textContent = "Resume";
@@ -48,14 +77,29 @@ function initPanel() {
     }
     ws.send(JSON.stringify({ cmd: "step" }));
   };
+
+  // === 事故模拟逻辑 ===
+  const damageBtn = document.getElementById('damageBtn');
+  const repairBtn = document.getElementById('repairBtn');
+  damageBtn.onclick = () => {
+    const id = parseInt(document.getElementById('damageAgvId').value);
+    if (!isNaN(id) && ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ cmd: "damage", agv_id: id }));
+    }
+  };
+  repairBtn.onclick = () => {
+    const id = parseInt(document.getElementById('repairAgvId').value);
+    if (!isNaN(id) && ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ cmd: "repair", agv_id: id }));
+    }
+  };
+
   makePanelDraggable(panel);
 }
 
-// 提供外部接口，便于后端数据传入
 function updateMetrics(data) {
   const metricsContent = document.getElementById('metricsContent');
   if (!metricsContent) return;
-
   metricsContent.innerHTML = `
     <p>AGVs: ${data.agvs ?? 0}</p>
     <p>Tasks: ${data.tasks ?? 0}</p>
@@ -63,11 +107,28 @@ function updateMetrics(data) {
   `;
 }
 
+// === 折叠逻辑 ===
+function setupCollapsibles() {
+  const headers = document.querySelectorAll('.collapsible-header');
+  headers.forEach(header => {
+    header.addEventListener('click', () => {
+      const content = header.nextElementSibling;
+      const expanded = header.classList.toggle('expanded');
+      header.textContent = expanded
+        ? '▼ ' + header.textContent.slice(2)
+        : '▶ ' + header.textContent.slice(2);
+      content.style.display = expanded ? 'block' : 'none';
+    });
+  });
+}
+
+// === 拖动逻辑 ===
 function makePanelDraggable(panel) {
   let isDragging = false;
   let offsetX, offsetY;
 
   panel.addEventListener("mousedown", (e) => {
+    if (e.target.classList.contains('collapsible-header')) return; // 防止拖动冲突
     isDragging = true;
     offsetX = e.clientX - panel.offsetLeft;
     offsetY = e.clientY - panel.offsetTop;
@@ -78,7 +139,7 @@ function makePanelDraggable(panel) {
     if (!isDragging) return;
     panel.style.left = `${e.clientX - offsetX}px`;
     panel.style.top = `${e.clientY - offsetY}px`;
-    panel.style.right = "auto"; // 取消固定 right
+    panel.style.right = "auto";
   });
 
   document.addEventListener("mouseup", () => {
@@ -86,6 +147,5 @@ function makePanelDraggable(panel) {
     panel.style.cursor = "grab";
   });
 }
-
 
 export { initPanel, updateMetrics };

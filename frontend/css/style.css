@@ -1,3 +1,6 @@
+/* =============================== 
+  全局布局
+================================= */
 body {
   margin: 0;
   overflow: hidden; /* 避免出现滚动条 */
@@ -8,13 +11,15 @@ body {
   height: 100%;
 }
 
-
+/* ===============================
+  控制面板主框
+================================= */
 #panel {
   position: absolute;
   top: 20px;
-  right: 20px;
+  left: 20px; /* 放在左上角，可改为 right: 20px 放右上角 */
   width: 260px;
-  background: rgba(30, 30, 30, 0.65);
+  background: rgba(35, 35, 35, 0.8);
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0,0,0,0.3);
   color: #f0f0f0;
@@ -22,6 +27,8 @@ body {
   padding: 16px;
   z-index: 100;
   backdrop-filter: blur(6px);
+  cursor: grab;
+  user-select: none;
 }
 
 #panel h2 {
@@ -30,6 +37,9 @@ body {
   color: #4fc3f7;
 }
 
+/* ===============================
+  顶部控制按钮区
+================================= */
 #panel button {
   width: 100px;
   margin: 6px 6px 12px 0;
@@ -38,28 +48,78 @@ body {
   border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
+  color: white;
   transition: background 0.2s, transform 0.1s;
 }
 
 #panel button:hover {
   transform: scale(1.05);
+  filter: brightness(1.1);
 }
 
+/* 特定功能按钮颜色 */
 #toggleBtn {
-  background-color: #4caf50;
-  color: white;
+  background-color: #4caf50; /* 绿色运行 */
 }
 #toggleBtn.paused {
-  background-color: #f44336; /* 红色表示暂停状态 */
+  background-color: #f44336; /* 红色暂停 */
 }
-
 #stepBtn {
-  background-color: #2196f3;
-  color: white;
+  background-color: #2196f3; /* 蓝色 Step */
 }
 
-#metrics {
+/* 新增：Damage / Repair 按钮样式 */
+#damageBtn {
+  background-color: #f2eded; /* 红色 - 损坏 */
+  color: #020202 !important;
+}
+#repairBtn {
+  background-color: #ebedef; /* 蓝色 - 修复 */
+  color: #111111 !important;
+}
+
+/* 默认灰色按钮（其余按钮） */
+#panel button:not(#toggleBtn):not(#stepBtn):not(#damageBtn):not(#repairBtn) {
+  background-color: #666;
+}
+
+/* ===============================
+  折叠面板通用样式
+================================= */
+.collapsible {
   margin-top: 10px;
+  border-top: 1px solid #555;
+  padding-top: 5px;
+}
+
+.collapsible-header {
+  cursor: pointer;
+  font-weight: bold;
   font-size: 14px;
-  line-height: 1.6;
+  color: #ddd;
+  padding: 5px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.collapsible-content {
+  display: none;
+  margin-top: 5px;
+  font-size: 13px;
+  color: #ccc;
+}
+
+/* ===============================
+   输入框样式
+================================= */
+input[type="number"] {
+  width: 100px;
+  margin-right: 5px;
+  background: #f0ebeb;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 3px 5px;
+  font-size: 13px;
+  color: #333;
 }
