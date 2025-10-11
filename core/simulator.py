@@ -29,8 +29,8 @@ class Simulator:
         - 执行AGV动作与冲突检测
         """
         
-        if self.step_count ==366:
-            print("Debug: Step 27 reached.")
+        # if self.step_count ==366:
+        #     print("Debug: Step 27 reached.")
         print(f"\n--- Simulator Step {self.step_count} ---")
 
         # 1. 获取空闲AGV并尝试分配任务

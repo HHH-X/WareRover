@@ -44,7 +44,7 @@ async def simulator_loop(websocket):
     """
     # --- 初始化仿真环境 ---
     print("Simulation begin")
-    random.seed(10)  # 固定随机数种子
+    # random.seed(10)  # 固定随机数种子
     cfg = init_sim_config("config/test_map_v2.json")
     grid_map = load_map_from_config(cfg)
     ordermanager = OrderManager(cfg, grid_map)

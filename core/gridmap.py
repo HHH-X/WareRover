@@ -193,7 +193,8 @@ class GridMap:
                 return True
 
             if head_type == "shelf" and next_type == "shelf":
-                return head_id == next_id
+                # 不载货的agv可以在不同货架间移动
+                return True 
 
             return False
 

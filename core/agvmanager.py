@@ -22,6 +22,8 @@ class AGVManager:
         self.agvs_by_size: Dict[int, Set[int]] = {}
         for agv in agv_list:
             self.agvs_by_size.setdefault(agv.size, set()).add(agv.id)
+        # 每个 AGV 的尺寸映射
+        self.agv_sizes: Dict[int, int] = {agv.id: agv.size for agv in agv_list}
 
 
     # 获取指定 ID 的 AGV 实例
@@ -42,8 +44,7 @@ class AGVManager:
         return agv.real_pos
     
     def get_agv_size(self, agv_id:int)-> int:
-        agv = self._agvs.get(agv_id)
-        return agv.size
+        return self.agv_sizes.get(agv_id,1)
     
     def get_agv_ids_by_size(self, size: int) -> Set[int]:
         """返回指定尺寸 size 的所有 AGV ID 集合"""

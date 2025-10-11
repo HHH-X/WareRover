@@ -42,12 +42,14 @@ class Env:
         carrying_status = self.agv_manager.get_carrying_status()
         action_queues = self.agv_manager.get_all_action_queues()
         current_grid_pos = self.agv_manager.get_all_current_pos()
+        agv_sizes = self.agv_manager.agv_sizes
 
         return {
             'grid': grid,
             'carrying_status': carrying_status,
             'action_queues': action_queues,
-            'current_grid_pos': current_grid_pos
+            'current_grid_pos': current_grid_pos,
+            'agv_sizes': agv_sizes
         }
     
     def get_walkable_neighbors(self, agv_id: int, pos: Tuple[int, int], carrying_goods: bool) -> List[Tuple[int, int]]:
