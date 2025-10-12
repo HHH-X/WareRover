@@ -31,7 +31,9 @@ class Simulator:
         
         # if self.step_count ==366:
         #     print("Debug: Step 27 reached.")
-        print(f"\n--- Simulator Step {self.step_count} ---")
+        # print(f"\n--- Simulator Step {self.step_count} ---")
+        if self.step_count % 30 == 0:
+            print(f"\n--- Simulator Step {self.step_count} ---")
 
         # 1. 获取空闲AGV并尝试分配任务
         idle_agv_set = self.agv_manager.get_idle_agv_ids()

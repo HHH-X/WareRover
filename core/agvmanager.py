@@ -24,7 +24,8 @@ class AGVManager:
             self.agvs_by_size.setdefault(agv.size, set()).add(agv.id)
         # 每个 AGV 的尺寸映射
         self.agv_sizes: Dict[int, int] = {agv.id: agv.size for agv in agv_list}
-
+        # 每个agv的运行状态
+        self.agv_active_status: Dict[int, bool] = {agv.is_working: True for agv in agv_list}
 
     # 获取指定 ID 的 AGV 实例
     def get_agv(self, agv_id: int) -> AGV:
@@ -113,12 +114,13 @@ class AGVManager:
         """
         return {agv_id for agv_id, agv in self._agvs.items() if agv.is_aligned()}
 
-
+    # agv 阻塞次数统计相关
     def increment_block_count(self, agv_id: int):
         agv = self._agvs[agv_id]
         # 只有当 AGV 没有休息目标，或者有目标但没到达时，才算被阻塞
         if agv.rest_target is None or agv.grid_pos != agv.rest_target:
             self.block_counts[agv_id] += 1
+
     def reset_block_count(self, agv_id: int):
         self.block_counts[agv_id] = 0
 
@@ -172,6 +174,13 @@ class AGVManager:
             agv = self._agvs[agv_id]
             agv.set_new_plan(path)
             self.need_replan_agvs.discard(agv_id)
+
+    # AGV 故障状态设置
+    def set_agv_status(self, agv_id, is_working):
+        agv = self._agvs.get(agv_id)
+        if agv:
+            agv.is_working = is_working
+
 
 def load_agvs_from_config(cfg: SimConfig, map_inst: GridMap, order_manager:OrderManager) -> AGVManager:
     """

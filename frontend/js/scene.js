@@ -5,6 +5,8 @@ import { Box } from './entities/box.js';
 import { Obstacle } from './entities/obstacle.js';
 import { RestArea } from './entities/restArea.js';
 import { ReceiveArea } from './entities/receiveArea.js';
+import { SafePathRenderer } from './entities/safePathRenderer.js';
+
 import { OrbitControls } from "https://unpkg.com/three@0.112/examples/jsm/controls/OrbitControls.js";
 // import * as THREE from 'https://unpkg.com/three@0.112/build/three.module.js';
 import * as THREE from 'three';
@@ -143,6 +145,10 @@ function createScene() {
       this.scene.add(receiveArea.mesh);
     }
   };
+  
+  // 创建 SafePathRenderer
+  world.safePathRenderer = new SafePathRenderer(scene);
+
 
   // ---------------- 窗口自适应 ----------------
   window.addEventListener('resize', () => {

@@ -43,6 +43,11 @@ function initPanel() {
         <p>FPS: 0</p>
       </div>
     </div>
+
+    <!-- === 停止模拟按钮 === -->
+    <div class="stop-section">
+      <button id="stopBtn" class="stop-btn">Stop Simulation</button>
+    </div>
   `;
 
   setupCollapsibles();
@@ -93,6 +98,17 @@ function initPanel() {
       ws.send(JSON.stringify({ cmd: "repair", agv_id: id }));
     }
   };
+
+  // === 停止模拟 ===
+  const stopBtn = document.getElementById('stopBtn');
+  stopBtn.onclick = () => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      if (confirm("Are you sure you want to stop the simulation?")) {
+        ws.send(JSON.stringify({ cmd: "stop" }));
+      }
+    }
+  };
+
 
   makePanelDraggable(panel);
 }

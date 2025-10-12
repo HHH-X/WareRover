@@ -38,14 +38,14 @@ class Env:
                     所有AGV当前的网格位置字典。
                     键为AGV的ID（整数），值为其当前所在位置的坐标元组 (x, y)
         """
-        grid = self.map.static_grid
+        static_grid = self.map.static_grid
         carrying_status = self.agv_manager.get_carrying_status()
         action_queues = self.agv_manager.get_all_action_queues()
         current_grid_pos = self.agv_manager.get_all_current_pos()
         agv_sizes = self.agv_manager.agv_sizes
 
         return {
-            'grid': grid,
+            'static_grid': static_grid,
             'carrying_status': carrying_status,
             'action_queues': action_queues,
             'current_grid_pos': current_grid_pos,

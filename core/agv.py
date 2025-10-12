@@ -47,6 +47,8 @@ class AGV:
 
         self.carried_box_id: int = None
 
+        self.is_working: bool = True 
+
     @property
     def is_idle(self) -> bool:
         return len(self.task_queue) == 0
@@ -67,6 +69,8 @@ class AGV:
 
 
     def step(self, next_grid: Tuple[int, int]) -> Tuple[bool, bool]:
+        if not self.is_working:
+            return False
         self.update_position(next_grid)
         replan_required = False
 

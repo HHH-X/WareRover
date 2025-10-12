@@ -85,6 +85,11 @@ function connectWebSocket(world) {
           if (box) box.update(pos, 0.7); // y = 0.5 高度
         }
       }
+
+      //更新安全路径
+      if (data.safe_paths) {
+        world.safePathRenderer.updatePaths(data.safe_paths);
+      }
     }
   };
 }

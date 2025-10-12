@@ -13,7 +13,7 @@ class GridMap:
         # ====== 初始化静态地图 ======
         # -2: 障碍物（不可通行）
         # -1: 空地（可通行）
-        # >=0: 货架 ID（货架和货箱一一对应）
+        # >=0: 货架 ID（按照box的size填满占用网格）
         self.static_grid = np.full((self.height, self.width), -1, dtype=int)
 
         # ====== 初始化货箱相关数据结构 ======
@@ -76,6 +76,26 @@ class GridMap:
             size = zone.get("size", 1)
             self.wait_zones[zid] = pos
             self.wait_zones_size[zid] = size
+
+        # ====== 动态占用格子(安全路径) ======
+        self.dynamic_occupied: Dict[str, Set[Tuple[int, int]]] = {}
+
+    # ========= 动态占用格子管理 =========
+    def add_dynamic_occupancy(self, key: str, cells: List[Tuple[int, int]]):
+        """注册一组临时占用格子（例如维修通道、掉落物、人工路径等）"""
+        self.dynamic_occupied[key] = set(cells)
+
+    def remove_dynamic_occupancy(self, key: str):
+        """移除一组临时占用格子"""
+        if key in self.dynamic_occupied:
+            del self.dynamic_occupied[key]
+
+    def is_occupied(self, x: int, y: int) -> bool:
+        """判断格子是否被临时占用（不包含静态障碍物）"""
+        for cells in self.dynamic_occupied.values():
+            if (x, y) in cells:
+                return True
+        return False
 
     # ========= 地图通行性判断 =========
     def is_walkable(self,
@@ -140,6 +160,12 @@ class GridMap:
         # 障碍物直接不可通行
         if any(v == -2 for v in head_vals + next_vals):
             return False
+        
+        # 动态占用格子检查
+        if self.dynamic_occupied:
+            for (hx, hy) in head_positions + next_positions:
+                if self.is_occupied(hx, hy):
+                    return False
 
         # 分类辅助：返回 ('empty', None) 或 ('shelf', shelf_id) 或 ('mixed', None)
         def classify_group(vals):

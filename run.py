@@ -16,6 +16,7 @@ from core.order import OrderManager
 from core.env import Env
 from core.simulator import Simulator
 from core.data_generator import generate_send_data
+from core.fault_manager import FaultManager
 from scheduler.random_scheduler import RandomScheduler
 from scheduler.TA_scheduler import TAScheduler
 from planner.astar_planner import AStarPlanner
@@ -28,6 +29,10 @@ STATE = {
     "step_trigger": False,
 }
 
+# 是否继续运行主循环
+RUNNING = True
+
+
 # ---------------- HTTP 服务 ----------------
 def start_http_server(port=8000):
     """启动本地 HTTP 服务，解决 file:// CORS 问题"""
@@ -38,14 +43,13 @@ def start_http_server(port=8000):
         httpd.serve_forever()
 
 
-async def simulator_loop(websocket):
-    """
-    仿真主循环：初始化环境 -> 循环 step -> 每步发送数据
-    """
-    # --- 初始化仿真环境 ---
+async def simulator_loop(websocket, message_queue):
+    global RUNNING
     print("Simulation begin")
-    # random.seed(10)  # 固定随机数种子
+
     cfg = init_sim_config("config/test_map_v2.json")
+
+    # --- 初始化各组件 ---
     grid_map = load_map_from_config(cfg)
     ordermanager = OrderManager(cfg, grid_map)
     agv_manager = load_agvs_from_config(cfg, grid_map, ordermanager)
@@ -56,30 +60,41 @@ async def simulator_loop(websocket):
     # planner = FixedWindowCBSPlanner(env)
     simulator = Simulator(cfg, grid_map, agv_manager, env, scheduler, planner)
 
-    # 初始化发送一次状态给前端
+    # 初始化 FaultManager
+    fault_manager = FaultManager(agv_manager, env)
+
+    # --- 初始化前端状态 ---
     init_data = generate_send_data(grid_map, agv_manager, data_type="init")
-    # print(init_data)
     await websocket.send(json.dumps(init_data))
 
     # --- 主循环 ---
-    while not ordermanager.is_all_orders_completed() and simulator.step_count < cfg.max_steps:
+    while (
+        RUNNING
+        and not ordermanager.is_all_orders_completed()
+        and simulator.step_count < cfg.max_steps
+    ):
         if not STATE["paused"] or STATE["step_trigger"]:
-            simulator.step()  # 仿真一步
+            simulator.step()
             STATE["step_trigger"] = False
 
             # 每步生成并发送状态
             step_data = generate_send_data(grid_map, agv_manager, data_type="update")
-            send_data = json.dumps(step_data)
-            await websocket.send(send_data)
+            await websocket.send(json.dumps(step_data))
 
-        await asyncio.sleep(0.1)    # 控制循环频率
+        # 检查是否收到消息队列中的命令
+        while not message_queue.empty():
+            msg = await message_queue.get()
+            fault_manager.handle_message(msg)
+
+        await asyncio.sleep(0.1)
+
+    print("Simulation loop ended.")
 
 
 async def ws_handler(websocket):
-    """
-    处理前端消息并启动仿真循环
-    """
-    sim_task = asyncio.create_task(simulator_loop(websocket))
+    global RUNNING
+    message_queue = asyncio.Queue()
+    sim_task = asyncio.create_task(simulator_loop(websocket, message_queue))
 
     try:
         async for message in websocket:
@@ -87,24 +102,47 @@ async def ws_handler(websocket):
                 msg = json.loads(message)
                 print("收到消息:", msg)
                 cmd = msg.get("cmd")
+
+                # 控制命令
                 if cmd == "pause":
                     STATE["paused"] = True
                 elif cmd == "resume":
                     STATE["paused"] = False
                 elif cmd == "step":
                     STATE["step_trigger"] = True
+                elif cmd == "stop":
+                    print("收到停止命令，准备退出...")
+                    RUNNING = False
+                    STATE["paused"] = True  # 停止模拟步进
+                    await websocket.send(json.dumps({"status": "stopping"}))
+                    await websocket.close()
+                    break  # 退出消息监听循环
+                else:
+                    # 非控制命令放入队列，让 FaultManager 处理
+                    await message_queue.put(msg)
+
             except Exception as e:
                 print("Invalid message:", message, e)
+
     except websockets.exceptions.ConnectionClosed:
-        pass
+        print("WebSocket 已关闭")
+
     finally:
-        sim_task.cancel()
+        # 取消模拟任务
+        if not sim_task.done():
+            sim_task.cancel()
+            try:
+                await sim_task
+            except asyncio.CancelledError:
+                pass
+        print("WebSocket handler 退出完成。")
 
 
 async def main():
     """
     启动可视化模式：HTTP 服务 + WebSocket + 打开浏览器
     """
+    global RUNNING
     # --- 启动 HTTP 服务线程 ---
     http_port = 8000
     threading.Thread(target=start_http_server, args=(http_port,), daemon=True).start()
@@ -118,8 +156,18 @@ async def main():
     ws_port = 8765
     async with websockets.serve(ws_handler, "localhost", ws_port):
         print(f"WebSocket server running at ws://localhost:{ws_port}")
-        await asyncio.Future()  # 保持服务运行
+
+        # 每 0.5 秒检测是否需要退出
+        while RUNNING:
+            await asyncio.sleep(0.5)
+
+    print("主循环结束，准备退出程序。")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("程序被用户中断。")
+    finally:
+        print("退出完成。")
