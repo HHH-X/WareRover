@@ -78,12 +78,12 @@ class GridMap:
             self.wait_zones_size[zid] = size
 
         # ====== 动态占用格子(安全路径) ======
-        self.dynamic_occupied: Dict[str, Set[Tuple[int, int]]] = {}
+        self.dynamic_occupied: Dict[str, list[Tuple[int, int]]] = {}
 
     # ========= 动态占用格子管理 =========
     def add_dynamic_occupancy(self, key: str, cells: List[Tuple[int, int]]):
         """注册一组临时占用格子（例如维修通道、掉落物、人工路径等）"""
-        self.dynamic_occupied[key] = set(cells)
+        self.dynamic_occupied[key] = cells
 
     def remove_dynamic_occupancy(self, key: str):
         """移除一组临时占用格子"""

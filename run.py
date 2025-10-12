@@ -61,7 +61,7 @@ async def simulator_loop(websocket, message_queue):
     simulator = Simulator(cfg, grid_map, agv_manager, env, scheduler, planner)
 
     # 初始化 FaultManager
-    fault_manager = FaultManager(agv_manager, env)
+    fault_manager = FaultManager(agv_manager, env, grid_map)
 
     # --- 初始化前端状态 ---
     init_data = generate_send_data(grid_map, agv_manager, data_type="init")
@@ -85,6 +85,7 @@ async def simulator_loop(websocket, message_queue):
         while not message_queue.empty():
             msg = await message_queue.get()
             fault_manager.handle_message(msg)
+            print("处理完消息")
 
         await asyncio.sleep(0.1)
 

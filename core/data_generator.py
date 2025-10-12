@@ -102,7 +102,9 @@ def generate_send_data(map: GridMap, agvmanager: AGVManager, data_type: str = "i
         data['boxes_on_agv'] = boxes_on_agv
         data['boxes_on_shelf'] = boxes_on_shelf
 
-        safe_paths = map.dynamic_occupied
-        data['safe_paths'] = [[to_real_position(pos) for pos in path] for path in safe_paths]
+        safe_paths = {}
+        for agv_id, occupied_set in map.dynamic_occupied.items():
+            safe_paths[agv_id] = [to_real_position(pos) for pos in occupied_set]
+        data['safe_paths'] = safe_paths
 
     return data
