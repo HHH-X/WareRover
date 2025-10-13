@@ -62,13 +62,65 @@ class FaultManager:
         return planner.plan(start_pos, fault_pos)
 
     
+    # def _find_nearest_border_free_cell(self, start: Tuple[int, int]) -> Optional[Tuple[int, int]]:
+    #     """
+    #     从起点出发，在 static_grid 中找到最近的可通行边界点（即 -1 位置）
+    #     """
+    #     h, w = self.static_grid.shape
+    #     visited = set()
+    #     queue = [start]
+
+    #     while queue:
+    #         x, y = queue.pop(0)
+    #         if (x, y) in visited:
+    #             continue
+    #         visited.add((x, y))
+
+    #         # 检查是否为可通行边界点
+    #         if self.static_grid[y, x] == -1 and (x == 0 or y == 0 or x == w - 1 or y == h - 1):
+    #             return (x, y)
+
+    #         # 四方向搜索
+    #         for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+    #             nx, ny = x + dx, y + dy
+    #             if 0 <= nx < w and 0 <= ny < h and self.static_grid[ny, nx] == -1:
+    #                 queue.append((nx, ny))
+
+    #     return None  # 没有找到
+
+    # def plan_repair_path(self, start: Tuple[int, int], goal: Tuple[int, int]) -> Optional[List[Tuple[int, int]]]:
+    #     """
+    #     在 static_grid 上规划从 start 到 goal 的可通行路径
+    #     """
+    #     h, w = self.static_grid.shape
+    #     queue = [(start, [start])]
+    #     visited = set()
+
+    #     while queue:
+    #         (x, y), path = queue.pop(0)
+    #         if (x, y) == goal:
+    #             return path
+
+    #         if (x, y) in visited:
+    #             continue
+    #         visited.add((x, y))
+
+    #         for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+    #             nx, ny = x + dx, y + dy
+    #             if 0 <= nx < w and 0 <= ny < h and self.static_grid[ny, nx] == -1 and (nx, ny) not in visited:
+    #                 queue.append(((nx, ny), path + [(nx, ny)]))
+
+    #     return None
+
     def _find_nearest_border_free_cell(self, start: Tuple[int, int]) -> Optional[Tuple[int, int]]:
         """
-        从起点出发，在 static_grid 中找到最近的可通行边界点（即 -1 位置）
+        从起点出发，在 static_grid 中找到最近的可通行边界点（即 -1 位置），
+        且路径不能经过接收区
         """
         h, w = self.static_grid.shape
         visited = set()
         queue = [start]
+        receiver_set = set(self.gridmap.receiver_zones.values())
 
         while queue:
             x, y = queue.pop(0)
@@ -78,23 +130,32 @@ class FaultManager:
 
             # 检查是否为可通行边界点
             if self.static_grid[y, x] == -1 and (x == 0 or y == 0 or x == w - 1 or y == h - 1):
-                return (x, y)
+                if (x, y) not in receiver_set:
+                    return (x, y)
 
             # 四方向搜索
             for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
                 nx, ny = x + dx, y + dy
-                if 0 <= nx < w and 0 <= ny < h and self.static_grid[ny, nx] == -1:
+                if (
+                    0 <= nx < w and 0 <= ny < h and
+                    self.static_grid[ny, nx] == -1 and
+                    (nx, ny) not in visited and
+                    (nx, ny) not in receiver_set
+                ):
                     queue.append((nx, ny))
 
         return None  # 没有找到
 
+
     def plan_repair_path(self, start: Tuple[int, int], goal: Tuple[int, int]) -> Optional[List[Tuple[int, int]]]:
         """
         在 static_grid 上规划从 start 到 goal 的可通行路径
+        路径不能经过接收区
         """
         h, w = self.static_grid.shape
         queue = [(start, [start])]
         visited = set()
+        receiver_set = set(self.gridmap.receiver_zones.values())
 
         while queue:
             (x, y), path = queue.pop(0)
@@ -107,7 +168,12 @@ class FaultManager:
 
             for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
                 nx, ny = x + dx, y + dy
-                if 0 <= nx < w and 0 <= ny < h and self.static_grid[ny, nx] == -1 and (nx, ny) not in visited:
+                if (
+                    0 <= nx < w and 0 <= ny < h and
+                    self.static_grid[ny, nx] == -1 and
+                    (nx, ny) not in visited and
+                    (nx, ny) not in receiver_set
+                ):
                     queue.append(((nx, ny), path + [(nx, ny)]))
 
         return None
