@@ -108,9 +108,7 @@ function initPanel() {
   const stopBtn = document.getElementById('stopBtn');
   stopBtn.onclick = () => {
     if (ws && ws.readyState === WebSocket.OPEN) {
-      if (confirm("Are you sure you want to stop the simulation?")) {
-        ws.send(JSON.stringify({ cmd: "stop" }));
-      }
+      ws.send(JSON.stringify({ cmd: "stop" }));
     }
   };
 
