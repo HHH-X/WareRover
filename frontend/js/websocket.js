@@ -35,9 +35,9 @@ function connectWebSocket(world) {
       }
 
       if (data.receivers) {
-        for (const key in data.receivers) {
-          const receiver = data.receivers[key];
-          world.addReceiveArea(new ReceiveArea(receiver.pos, receiver.size));
+        for (const rid in data.receivers) {
+          const receiver = data.receivers[rid];
+          world.addReceiveArea(new ReceiveArea(rid, receiver.pos, receiver.size));
         }
       }
 

@@ -2,8 +2,14 @@ import { createScene, renderLoop } from './scene.js';
 import { initPanel } from './panel.js';
 import { connectWebSocket } from './websocket.js';
 
-const { scene, camera, renderer, world, controls } = createScene();
-initPanel();   // 初始化控制面板
-connectWebSocket(world);  // 启动 WebSocket，传 world 以便更新实体
+// 创建场景
+const { scene, camera, renderer, world, controls, labelRenderer } = createScene();
 
-renderLoop(renderer, scene, camera, controls);
+// 初始化控制面板
+initPanel();
+
+// 启动 WebSocket，并传 world 用于更新 AGV、Box 等实体
+connectWebSocket(world);
+
+// 启动渲染循环
+renderLoop(renderer, labelRenderer, scene, camera, controls);

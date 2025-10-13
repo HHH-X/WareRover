@@ -144,3 +144,10 @@ input[type="number"] {
   font-size: 13px;
   color: #333;
 }
+
+.agv-label {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 2px 4px;
+  border-radius: 4px;
+  pointer-events: none;
+}

@@ -6,22 +6,16 @@ import { Obstacle } from './entities/obstacle.js';
 import { RestArea } from './entities/restArea.js';
 import { ReceiveArea } from './entities/receiveArea.js';
 import { SafePathRenderer } from './entities/safePathRenderer.js';
-
 import { OrbitControls } from "https://unpkg.com/three@0.112/examples/jsm/controls/OrbitControls.js";
-// import * as THREE from 'https://unpkg.com/three@0.112/build/three.module.js';
 import * as THREE from 'three';
-function createScene() {
+import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 
+function createScene() {
   // ---------------- 场景 & 渲染器 ----------------
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xf0f0f0);
 
-  const camera = new THREE.PerspectiveCamera(
-    75, 
-    window.innerWidth / window.innerHeight, 
-    0.1, 
-    1000
-  );
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
   camera.position.set(25, 8, 20);
   camera.lookAt(15, 0, 15);
 
@@ -29,14 +23,22 @@ function createScene() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.getElementById('container').appendChild(renderer.domElement);
 
+  // 创建标签渲染器
+  const labelRenderer = new CSS2DRenderer();
+  labelRenderer.setSize(window.innerWidth, window.innerHeight);
+  labelRenderer.domElement.style.position = 'absolute';
+  labelRenderer.domElement.style.top = '0';
+  labelRenderer.domElement.style.pointerEvents = 'none';
+  document.getElementById('container').appendChild(labelRenderer.domElement);
+
   // ---------------- OrbitControls ----------------
   const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true; // 平滑控制
+  controls.enableDamping = true;
   controls.dampingFactor = 0.05;
   controls.screenSpacePanning = false;
-  controls.minDistance = 10; // 最小缩放
-  controls.maxDistance = 100; // 最大缩放
-  controls.maxPolarAngle = Math.PI / 2; // 防止翻转
+  controls.minDistance = 10;
+  controls.maxDistance = 100;
+  controls.maxPolarAngle = Math.PI / 2;
 
   // ---------------- 光照 ----------------
   const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -45,6 +47,7 @@ function createScene() {
 
   const ambient = new THREE.AmbientLight(0xaaaaaa, 0.5);
   scene.add(ambient);
+
   // ---------------- 坐标轴辅助线 ----------------
   const axesHelper = new THREE.AxesHelper(30);
   scene.add(axesHelper);
@@ -53,7 +56,6 @@ function createScene() {
   const world = {
     scene,
     mapSize: null,
-
     agvs: new Map(),
     shelves: new Map(),
     boxes: new Map(),
@@ -61,34 +63,23 @@ function createScene() {
     restAreas: new Map(),
     receiveAreas: new Map(),
 
-    // ---------------- 地图 ----------------
     addMap(mapSize) {
       this.mapSize = mapSize;
-
-      //  自定义网格
       const grid = new THREE.Group();
       const material = new THREE.LineBasicMaterial({ color: 0x888888 });
 
-      // 画竖线
+      // 竖线
       for (let x = 0; x <= mapSize.width; x++) {
-        const points = [
-          new THREE.Vector3(x, 0.01, 0), // y=0.01 避免和地板重叠闪烁
-          new THREE.Vector3(x, 0.01, mapSize.height)
-        ];
+        const points = [new THREE.Vector3(x, 0.01, 0), new THREE.Vector3(x, 0.01, mapSize.height)];
         const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        const line = new THREE.Line(geometry, material);
-        grid.add(line);
+        grid.add(new THREE.Line(geometry, material));
       }
 
-      // 画横线
+      // 横线
       for (let z = 0; z <= mapSize.height; z++) {
-        const points = [
-          new THREE.Vector3(0, 0.01, z),
-          new THREE.Vector3(mapSize.width, 0.01, z)
-        ];
+        const points = [new THREE.Vector3(0, 0.01, z), new THREE.Vector3(mapSize.width, 0.01, z)];
         const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        const line = new THREE.Line(geometry, material);
-        grid.add(line);
+        grid.add(new THREE.Line(geometry, material));
       }
 
       this.scene.add(grid);
@@ -98,13 +89,10 @@ function createScene() {
       const materialFloor = new THREE.MeshPhongMaterial({ color: 0xeeeeee });
       const floor = new THREE.Mesh(geometry, materialFloor);
       floor.rotation.x = -Math.PI / 2;
-
-      // 平移地板，使左上角在原点
       floor.position.x = mapSize.width / 2;
       floor.position.z = mapSize.height / 2;
       this.scene.add(floor);
     },
-
 
     // ---------------- AGV ----------------
     addAGV(agv) {
@@ -112,59 +100,58 @@ function createScene() {
       this.scene.add(agv.mesh);
     },
 
-    // ---------------- 货架 ----------------
     addShelf(shelf) {
       this.shelves.set(shelf.id, shelf);
       this.scene.add(shelf.mesh);
     },
 
-    // ---------------- 货箱 ----------------
     addBox(box) {
       this.boxes.set(box.id, box);
       this.scene.add(box.mesh);
     },
 
-    // ---------------- 障碍物 ----------------
     addObstacle(obstacle, key = null) {
       const id = key || `${obstacle.mesh.position.x},${obstacle.mesh.position.z}`;
       this.obstacles.set(id, obstacle);
       this.scene.add(obstacle.mesh);
     },
 
-    // ---------------- 休息区 ----------------
     addRestArea(restArea, key = null) {
       const id = key || `${restArea.mesh.position.x},${restArea.mesh.position.z}`;
       this.restAreas.set(id, restArea);
       this.scene.add(restArea.mesh);
     },
 
-    // ---------------- 接收区 ----------------
     addReceiveArea(receiveArea, key = null) {
       const id = key || `${receiveArea.mesh.position.x},${receiveArea.mesh.position.z}`;
       this.receiveAreas.set(id, receiveArea);
       this.scene.add(receiveArea.mesh);
     }
   };
-  
+
   // 创建 SafePathRenderer
   world.safePathRenderer = new SafePathRenderer(scene);
 
-
-  // ---------------- 窗口自适应 ----------------
+  // ---------------- 自适应窗口 ----------------
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    labelRenderer.setSize(window.innerWidth, window.innerHeight); // 同步标签渲染器
   });
 
-  return { scene, camera, renderer, world, controls };
+  //暴露给全局控制面板使用
+  window.sceneWorld = world;
+
+  return { scene, camera, renderer, world, controls, labelRenderer };
 }
 
-function renderLoop(renderer, scene, camera, controls) {
+function renderLoop(renderer, labelRenderer, scene, camera, controls) {
   function animate() {
     requestAnimationFrame(animate);
-    controls.update(); 
+    controls.update();
     renderer.render(scene, camera);
+    labelRenderer.render(scene, camera); // 渲染标签
   }
   animate();
 }

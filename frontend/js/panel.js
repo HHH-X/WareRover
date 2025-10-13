@@ -11,7 +11,7 @@ function initPanel() {
       <button id="stepBtn">Step</button>
     </div>
 
-    <!-- === 折叠模块们 === -->
+    <!-- === 折叠模块：显示设置 === -->
     <div class="collapsible" id="displaySettings">
       <div class="collapsible-header">▶ Display Settings</div>
       <div class="collapsible-content">
@@ -21,6 +21,7 @@ function initPanel() {
       </div>
     </div>
 
+    <!-- === 折叠模块：事故模拟 === -->
     <div class="collapsible" id="incidentSim">
       <div class="collapsible-header">▶ Incident Simulation</div>
       <div class="collapsible-content">
@@ -35,6 +36,7 @@ function initPanel() {
       </div>
     </div>
 
+    <!-- === 折叠模块：性能指标 === -->
     <div class="collapsible" id="metrics">
       <div class="collapsible-header">▶ Metrics</div>
       <div class="collapsible-content" id="metricsContent">
@@ -51,8 +53,9 @@ function initPanel() {
   `;
 
   setupCollapsibles();
+  makePanelDraggable(panel);
 
-  // === 运行控制 ===
+  // === 运行控制按钮 ===
   let isPaused = false;
   const toggleBtn = document.getElementById('toggleBtn');
   const stepBtn = document.getElementById('stepBtn');
@@ -83,15 +86,17 @@ function initPanel() {
     ws.send(JSON.stringify({ cmd: "step" }));
   };
 
-  // === 事故模拟逻辑 ===
+  // === 事故模拟 ===
   const damageBtn = document.getElementById('damageBtn');
   const repairBtn = document.getElementById('repairBtn');
+
   damageBtn.onclick = () => {
     const id = parseInt(document.getElementById('damageAgvId').value);
     if (!isNaN(id) && ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ cmd: "damage", agv_id: id }));
     }
   };
+
   repairBtn.onclick = () => {
     const id = parseInt(document.getElementById('repairAgvId').value);
     if (!isNaN(id) && ws && ws.readyState === WebSocket.OPEN) {
@@ -109,8 +114,22 @@ function initPanel() {
     }
   };
 
+  // === 显示设置勾选框逻辑 ===
+  const showAgvId = document.getElementById('showAgvId');
+  const showBoxId = document.getElementById('showBoxId');
+  const showRecvId = document.getElementById('showRecvId');
 
-  makePanelDraggable(panel);
+  showAgvId.addEventListener('change', (e) => {
+    window.sceneWorld?.agvs.forEach(agv => agv.setLabelVisible(e.target.checked));
+  });
+
+  showBoxId.addEventListener('change', (e) => {
+    window.sceneWorld?.boxes.forEach(box => box.setLabelVisible(e.target.checked));
+  });
+
+  showRecvId.addEventListener('change', (e) => {
+    window.sceneWorld?.receiveAreas.forEach(r => r.setLabelVisible(e.target.checked));
+  });
 }
 
 function updateMetrics(data) {
@@ -144,7 +163,7 @@ function makePanelDraggable(panel) {
   let offsetX, offsetY;
 
   panel.addEventListener("mousedown", (e) => {
-    if (e.target.classList.contains('collapsible-header')) return; // 防止拖动冲突
+    if (e.target.classList.contains('collapsible-header')) return;
     isDragging = true;
     offsetX = e.clientX - panel.offsetLeft;
     offsetY = e.clientY - panel.offsetTop;
