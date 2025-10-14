@@ -1,309 +1,198 @@
-# OR-Tools CP-SAT model for the AGV-task-box scheduling problem (small example)
-# This code builds the MILP-like model in OR-Tools CP-SAT, solves it, and prints results.
-# Time is discretized as integer units. The model follows the formulation provided earlier:
-#   - x[i,t]: task t assigned to AGV i
-#   - z[t,k]: task t uses box k (only allowed if box contains required good)
-#   - y[i,t,u]: on AGV i, task t is immediately before task u
-#   - q[t,u,k]: tasks t and u use the same box k
-#   - s[t], c[t]: integer start/completion times
-#
-# Small example dataset included and solver run.
-from ortools.sat.python import cp_model
+# OR-Tools MIP 模板：AGV + Container 任务调度（基于上面模型）
+# 说明：这是一个可运行的示例模板。你可以替换示例数据（A, T, K, g_t, S_k, R_t, s_same, s_diff, I）为你的实际数据。
+# 运行此脚本会构建 MIP 并使用 CBC 求解器（默认）求解最小化 makespan (C_max) 的问题。
+# 变量说明见注释：x[i,t], z[i,t,k], y[i,t,u], C[t], C_max
+
+from ortools.linear_solver import pywraplp
 
 def build_and_solve_example():
-    # Example data (small)
-    # AGVs
-    I = [0,1]  # two AGVs
-    N = len(I)
-    # Boxes
-    K = [0,1]  # two boxes
-    # Goods types
-    G = [0,1]  # two goods
-    # Tasks
-    # Each task needs a good id, has a service time, has start/end locations for distance calc (we use simple d_tu)
-    tasks = {
-        0: {'good':0, 'p':3, 'loc':(0,0)},
-        1: {'good':1, 'p':4, 'loc':(5,0)},
-        2: {'good':0, 'p':2, 'loc':(2,3)}
-    }
-    T = list(tasks.keys())
-    C = len(T)
-    # Box contents: h[k,g] = 1 if box k contains good g
-    h = {
-        (0,0):1, (0,1):0,  # box0 contains good0
-        (1,0):1, (1,1):1   # box1 contains good0 and good1
-    }
-    # pick and ret times per box (integer)
-    pick = {0:2, 1:2}
-    ret = {0:2, 1:2}
-    # service times p_t
-    p = {t: tasks[t]['p'] for t in T}
-    # compute travel times d_tu as Manhattan distance rounded up (or simple Euclidean)
-    import math
-    d = {}
-    for t in T:
-        for u in T:
-            if t==u:
-                d[(t,u)] = 0
-            else:
-                x1,y1 = tasks[t]['loc']
-                x2,y2 = tasks[u]['loc']
-                d[(t,u)] = int(math.ceil(math.hypot(x1-x2, y1-y2)))
-    # start distances from AGV start positions to task starts (S(i) to t)
-    # AGV starts at positions:
-    starts = {0:(-1,0), 1:(6,0)}
-    dS = {}
-    for i in I:
-        for t in T:
-            x1,y1 = starts[i]
-            x2,y2 = tasks[t]['loc']
-            dS[(i,t)] = int(math.ceil(math.hypot(x1-x2, y1-y2)))
-    # AGV availability
-    a_i = {i:0 for i in I}
-    # Big M: upper bound on schedule horizon (sum of all service + travel + pick/ret)
-    M_upper = sum(p.values()) + max(d.values())*C + sum(max(pick.values()),)
-    # make it a bit larger:
-    M = 1000
+    # -------------------- 示例数据（可改） --------------------
+    A = 2  # AGV 数量
+    T = 4  # 任务数量
+    K = 4  # 货箱数量
+    G = 4  # 货物种类数量 (用于示例)
     
-    # Build model
-    model = cp_model.CpModel()
-    # Variables
-    x = {}  # x[i,t]
-    for i in I:
-        for t in T:
-            x[(i,t)] = model.NewBoolVar(f'x_{i}_{t}')
-    z = {}  # z[t,k]
-    for t in T:
-        for k in K:
-            # only allow if box k contains the required good
-            allowed = h.get((k, tasks[t]['good']), 0)
-            if allowed:
-                z[(t,k)] = model.NewBoolVar(f'z_{t}_{k}')
-            else:
-                # force 0 by creating a constant 0 via equality to 0 bool var
-                z[(t,k)] = None  # we'll treat as 0 in constraints and solution extraction
+    # 任务所需货物种类 g_t (从 0 开始索引)
+    g = [0, 1, 2, 3]  # length T
     
-    y = {}  # y[i,t,u] (t != u)
-    for i in I:
-        for t in T:
-            for u in T:
-                if t==u: continue
-                y[(i,t,u)] = model.NewBoolVar(f'y_{i}_{t}_{u}')
-    q = {}  # q[t,u,k] symmetric; define for all t!=u and any k that is feasible for both
-    for t in T:
-        for u in T:
-            if t==u: continue
-            for k in K:
-                # q only meaningful if both z(t,k) and z(u,k) allowed
-                if (z.get((t,k)) is not None) and (z.get((u,k)) is not None):
-                    q[(t,u,k)] = model.NewBoolVar(f'q_{t}_{u}_{k}')
+    # 每个货箱包含的货物种类集合 S_k
+    S = [
+        {0},    # container 0 包含物品类型 0
+        {1},  # container 1 包含物品类型 0 和 1
+        {2},
+        {3}
+    ]
+    
+    # 任务执行时间 R_t（不含换箱）
+    R = [4, 3, 5, 60]  # length T
+    
+    # 转换时间：相同箱 vs 不同箱 (可以依赖任务对)
+    # 这里为简化，使用统一参数矩阵（T x T）
+    s_same = [[0]*T for _ in range(T)]
+    s_diff = [[1]*T for _ in range(T)]
+    # 使对角无意义（任务对相同通常不会出现，但保留为0）
+    for t in range(T):
+        s_diff[t][t] = 0
+        s_same[t][t] = 0
+    
+    # AGV 从初始位置开始到执行任务 t 的前置时间 I_{i,t}
+    I = [[2 for _ in range(T)] for _ in range(A)]
+    
+    # big-M 常数（应足够大，视实例扩大）
+    M = 1e6
+    
+    # -------------------- 构建求解器 --------------------
+    solver = pywraplp.Solver.CreateSolver('CBC')
+    if not solver:
+        raise Exception("无法创建 CBC 求解器（ortools 未正确安装？）")
+    
+    # 变量 ----------------------------------------
+    x = {}  # x[i,t] in {0,1}
+    for i in range(A):
+        for t in range(T):
+            x[(i,t)] = solver.IntVar(0, 1, f"x_{i}_{t}")
+    
+    # z[i,t,k] 仅为可行组合创建（即 container k 包含任务 t 所需货物）
+    z = {}
+    for i in range(A):
+        for t in range(T):
+            for k in range(K):
+                if g[t] in S[k]:
+                    z[(i,t,k)] = solver.IntVar(0, 1, f"z_{i}_{t}_{k}")
                 else:
-                    q[(t,u,k)] = None
+                    # 不可行组合 - 不创建变量，也可以显式置为 0（此处用 None 占位）
+                    z[(i,t,k)] = None
     
-    # start and completion times (integers)
-    # choose a horizon bound:
-    horizon = 50
-    s = {}
-    c = {}
-    for t in T:
-        s[t] = model.NewIntVar(0, horizon, f's_{t}')
-        c[t] = model.NewIntVar(0, horizon, f'c_{t}')
+    # y[i,t,u] 表示在同一 AGV i 上，任务 t 的直接后继是 u
+    y = {}
+    for i in range(A):
+        for t in range(T):
+            for u in range(T):
+                if t == u:
+                    y[(i,t,u)] = None  # 不需要 t->t
+                else:
+                    y[(i,t,u)] = solver.IntVar(0, 1, f"y_{i}_{t}_{u}")
     
-    Cmax = model.NewIntVar(0, horizon, 'Cmax')
+    # 完成时间变量 C_t >= 0
+    C = [solver.NumVar(0.0, solver.infinity(), f"C_{t}") for t in range(T)]
+    C_max = solver.NumVar(0.0, solver.infinity(), "C_max")
     
-    # Constraints
-    # Each task assigned to exactly one AGV
-    for t in T:
-        model.Add(sum(x[(i,t)] for i in I) == 1)
-    # Each task chooses exactly one box among allowed ones
-    for t in T:
-        allowed_boxes = [k for k in K if z.get((t,k)) is not None]
-        model.Add(sum(z[(t,k)] for k in allowed_boxes) == 1)
-    # connect x and y: outdegree equals x_{i,t}
-    for i in I:
-        for t in T:
-            model.Add(sum(y[(i,t,u)] for u in T if u!=t) == x[(i,t)])
-    # indegree equals x_{i,t}
-    for i in I:
-        for u in T:
-            model.Add(sum(y[(i,t,u)] for t in T if t!=u) == x[(i,u)])
-    # y only allowed if both tasks assigned to same AGV (implied by above but we add guards)
-    for i in I:
-        for t in T:
-            for u in T:
-                if t==u: continue
-                model.AddImplication(y[(i,t,u)], x[(i,t)])
-                model.AddImplication(y[(i,t,u)], x[(i,u)])
-    # c_t = s_t + p_t
-    for t in T:
-        model.Add(c[t] == s[t] + p[t])
-    # q linearization: q <= z_tk, q <= z_uk, q >= z_tk + z_uk -1
-    for t in T:
-        for u in T:
-            if t==u: continue
-            for k in K:
-                if q.get((t,u,k)) is None: continue
-                model.Add(q[(t,u,k)] <= z[(t,k)])
-                model.Add(q[(t,u,k)] <= z[(u,k)])
-                model.Add(q[(t,u,k)] >= z[(t,k)] + z[(u,k)] - 1)
-    # time transition constraints for y: if y(i,t,u)=1 then s_u >= c_t + Trans_{t,u}
-    # Trans_{t,u} = d[t,u] + sum_ret(z_tk) + sum_pick(z_uk) - sum(ret+pick)*q_tuk
-    for i in I:
-        for t in T:
-            for u in T:
-                if t==u: continue
-                # build linear expression for trans
-                # Note: OR-Tools CP-SAT needs linearexpr: coefficients for IntVars/bools fine.
-                expr_terms = []
-                const_term = d[(t,u)]
-                # sum ret_k * z_tk
-                for k in K:
-                    if z.get((t,k)) is not None:
-                        expr_terms.append((ret[k], z[(t,k)]))
-                # sum pick_k * z_uk
-                for k in K:
-                    if z.get((u,k)) is not None:
-                        expr_terms.append((pick[k], z[(u,k)]))
-                # minus sum (ret+pick) * q_tuk
-                for k in K:
-                    if q.get((t,u,k)) is None: continue
-                    coeff = -(ret[k] + pick[k])
-                    expr_terms.append((coeff, q[(t,u,k)]))
-                # Build RHS: c_t + const_term + linear terms <= s_u + M*(1-y)
-                # Move all to LHS: c_t + const + sum(coeff*var) - s_u <= M*(1 - y)
-                # Implement using linear constraint with allowed slack via big-M
-                # Left side linear: c_t - s_u + const + sum(coeff*var) <= M*(1-y)
-                left_vars = []
-                left_coeffs = []
-                left_vars.append(c[t]); left_coeffs.append(1)
-                left_vars.append(s[u]); left_coeffs.append(-1)
-                # add z/q terms
-                for coeff,var in expr_terms:
-                    left_vars.append(var); left_coeffs.append(coeff)
-                # constant
-                lhs_const = const_term
-                # Create constraint: sum(coeffs*vars) + lhs_const <= M*(1 - y)
-                # Convert to: sum(coeffs*vars) + lhs_const + M*y <= M
-                # i.e., sum(coeffs*vars) + M*y <= M - lhs_const
-                # We'll use M_big large enough (horizon*10)
-                M_big = 1000
-                # left expression + M*y <= M - lhs_const
-                model.Add(sum(left_coeffs[i]*left_vars[i] for i in range(len(left_vars))) + M_big * y[(i,t,u)] <= M_big - lhs_const)
-    # Start from AGV start to first task: if y[i,S,u]=1 then s_u >= a_i + dS + sum_pick(z_u)
-    # We don't have explicit S node; we emulate by: for each i and u, define a bool start_i_u indicating it's first task.
-    start_bool = {}
-    for i in I:
-        for u in T:
-            start_bool[(i,u)] = model.NewBoolVar(f'start_{i}_{u}')
-            # relate start_bool to y: start_bool == y from a virtual S which has outgoing sum = x_i_*
-            # We'll enforce: start_bool <= x_{i,u} and sum_u start_bool ==  sum_t x_{i,t}? simpler: require start_bool <= x_{i,u},
-            model.AddImplication(start_bool[(i,u)], x[(i,u)])
-    # Ensure each AGV has at most one start (if it does tasks) and if it has tasks then exactly one start_bool =1
-    for i in I:
-        # sum start_bool == (sum x_{i,t} >= 1) ? We'll enforce sum_start == 1 if sum_x >=1, else 0.
-        sum_x = sum(x[(i,t)] for t in T)
-        sum_start = sum(start_bool[(i,u)] for u in T)
-        # sum_start <= sum_x  (if no tasks, no start)
-        model.Add(sum_start <= sum_x)
-        # sum_start >= sum_x / C  -> not linear; but we can enforce sum_x >=1 => sum_start >=1 via big-M
-        # Introduce used_i bool
-        used_i = model.NewBoolVar(f'used_{i}')
-        model.Add(sum_x >= 1).OnlyEnforceIf(used_i)
-        model.Add(sum_x == 0).OnlyEnforceIf(used_i.Not())
-        model.Add(sum_start == 1).OnlyEnforceIf(used_i)
-        model.Add(sum_start == 0).OnlyEnforceIf(used_i.Not())
-    # Now start constraints: if start_bool true then s_u >= a_i + dS[i,u] + sum_k pick_k * z[u,k]
-    for i in I:
-        for u in T:
-            # left: s_u - sum(pick*z_uk) >= a_i + dS - M*(1-start_bool)
-            # convert to: s_u - sum(pick*z_uk) + M*(1-start_bool) >= a_i + dS
-            # OR-Tools uses OnlyEnforceIf for implications; simpler: Add(s_u >= a_i + dS + sum(pick*z_uk)) with enforcement
-            # Use half-reified constraint:
-            picks = []
-            for k in K:
-                if z.get((u,k)) is not None:
-                    picks.append((pick[k], z[(u,k)]))
-            # Build expression: s_u >= a_i + dS + sum(pick*z_uk)  if start_bool true
-            if picks:
-                model.Add(s[u] >= a_i[i] + dS[(i,u)] + sum(coeff*var for coeff,var in picks)).OnlyEnforceIf(start_bool[(i,u)])
+    # 约束 ----------------------------------------
+    # 每个任务被且仅被一个 AGV 执行
+    for t in range(T):
+        solver.Add(sum(x[(i,t)] for i in range(A)) == 1)
+    
+    # 若 AGV i 执行任务 t，则为其选择且仅选择一个可行的 container k
+    for i in range(A):
+        for t in range(T):
+            feasible_z = [z[(i,t,k)] for k in range(K) if z[(i,t,k)] is not None]
+            # sum z = x
+            if feasible_z:
+                solver.Add(solver.Sum(feasible_z) == x[(i,t)])
             else:
-                model.Add(s[u] >= a_i[i] + dS[(i,u)]).OnlyEnforceIf(start_bool[(i,u)])
-    # Cmax constraints
-    for t in T:
-        model.Add(c[t] <= Cmax)
-    # Objective: minimize Cmax
-    model.Minimize(Cmax)
+                # 如果没有可行容器，这个任务不可被任何 AGV 执行（模型数据有问题）
+                solver.Add(x[(i,t)] == 0)
     
-    # Solve
-    solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 20
-    solver.parameters.num_search_workers = 8
-    result = solver.Solve(model)
-    status = solver.StatusName(result)
-    out = {'status':status}
-    if result == cp_model.OPTIMAL or result == cp_model.FEASIBLE:
-        out['Cmax'] = solver.Value(Cmax)
-        assignments = {}
-        boxes = {}
-        starts_out = {}
-        completions_out = {}
-        order_arcs = []
-        for t in T:
-            # find assigned i
-            for i in I:
-                if solver.Value(x[(i,t)])==1:
-                    assignments[t]=i
-            # box
-            for k in K:
-                if z.get((t,k)) is not None and solver.Value(z[(t,k)])==1:
-                    boxes[t]=k
-            starts_out[t]=solver.Value(s[t])
-            completions_out[t]=solver.Value(c[t])
-        # reconstruct sequences per AGV using y
-        seqs = {i:[] for i in I}
-        # build adjacency for each AGV
-        for i in I:
-            adj = {t: None for t in T}
-            preds = {t: None for t in T}
-            for t in T:
-                for u in T:
-                    if t==u: continue
-                    if solver.Value(y[(i,t,u)])==1:
-                        adj[t] = u
-                        preds[u] = t
-            # find start: node with no predecessor but assigned to i
-            start_node = None
-            for t in T:
-                if assignments.get(t)==i and preds[t] is None:
-                    start_node = t; break
-            # follow path
-            cur = start_node
-            while cur is not None:
-                seqs[i].append(cur)
-                cur = adj[cur] if adj.get(cur) is not None else None
-        out['assignments'] = assignments
-        out['boxes'] = boxes
-        out['starts'] = starts_out
-        out['completions'] = completions_out
-        out['sequences'] = seqs
+    # y 的 "直接后继" 定义：若任务 t 被分配给 i，则恰好有一个直接后继或为末尾（允许无后继）
+    # 我们要求：sum_u y_{i,t,u} == x_{i,t}
+    for i in range(A):
+        for t in range(T):
+            succ_vars = [y[(i,t,u)] for u in range(T) if y[(i,t,u)] is not None]
+            solver.Add(solver.Sum(succ_vars) <= x[(i,t)])
+    # 每个任务 u 在 AGV i 上最多有一个前驱
+    for i in range(A):
+        for u in range(T):
+            pred_vars = [y[(i,t,u)] for t in range(T) if y[(i,t,u)] is not None]
+            solver.Add(solver.Sum(pred_vars) <= x[(i,u)])
+    
+    # 起始任务的初始时间下界：若 t 是 AGV i 的首个任务（即 x_{i,t}=1 并且没有前驱），
+    # 我们使用松弛的约束： C_t >= I_{i,t} + R_t - M*(1 - x_{i,t})，以确保若 x_{i,t}=1 则满足
+    for i in range(A):
+        for t in range(T):
+            solver.Add(C[t] >= I[i][t] + R[t] - M * (1 - x[(i,t)]))
+    
+    # 若 t 的直接后继是 u，则完成时间递推： C_u >= C_t + R_t + switch_time - bigM * (inactive)
+    # 需要考虑相同 container (k==l) 和 不同 container (k!=l) 两种情形
+    for i in range(A):
+        for t in range(T):
+            for u in range(T):
+                if t == u: 
+                    continue
+                # for same container k:
+                for k in range(K):
+                    zk_t = z[(i,t,k)]
+                    zk_u = z[(i,u,k)]
+                    if zk_t is None or zk_u is None:
+                        continue  # 不可行
+                    # C_u >= C_t + R_t + s_same[t][u] - M*(1 - y) - M*(1 - zk_t) - M*(1 - zk_u)
+                    solver.Add(C[u] >= C[t] + R[t] + s_same[t][u] - M*(1 - y[(i,t,u)]) - M*(1 - zk_t) - M*(1 - zk_u))
+                # for different containers k != l:
+                for k in range(K):
+                    for l in range(K):
+                        if k == l:
+                            continue
+                        zk_t = z[(i,t,k)]
+                        zl_u = z[(i,u,l)]
+                        if zk_t is None or zl_u is None:
+                            continue
+                        solver.Add(C[u] >= C[t] + R[t] + s_diff[t][u] - M*(1 - y[(i,t,u)]) - M*(1 - zk_t) - M*(1 - zl_u))
+    
+    # makespan 定义
+    for t in range(T):
+        solver.Add(C_max >= C[t])
+    
+    # 对称性与可行性提示（可选）：
+    # 若想避免同等等价解的对称性，可以对 AGV 编号强制某些顺序（此处不强制）
+    
+    # 目标：最小化 C_max
+    solver.Minimize(C_max)
+    
+    # 求解
+    status = solver.Solve()
+    
+    # 结果解析与展示
+    if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
+        print("解决状态:", "OPTIMAL" if status == pywraplp.Solver.OPTIMAL else "FEASIBLE")
+        print("最优的 C_max =", C_max.solution_value())
+        for i in range(A):
+            print(f"\nAGV {i} 分配的任务序列：")
+            # 打印分配给 i 的任务
+            assigned = [t for t in range(T) if x[(i,t)].solution_value() > 0.5]
+            if not assigned:
+                print("  (无任务)")
+                continue
+            # 简单重构任务顺序：从任意被分配任务找链（注意：若存在多条链/循环，需进一步处理）
+            # 找出没有前驱的任务作为起点（在 AGV i 上）
+            preds = {u: sum(y[(i,t,u)].solution_value() for t in range(T) if y[(i,t,u)] is not None) for u in assigned}
+            start_tasks = [u for u in assigned if preds[u] < 0.5]
+            # 逐链打印（通常应该只有一条链/若有多条，则说明并行或多段）
+            for start in start_tasks:
+                cur = start
+                seq = [cur]
+                while True:
+                    # 找直接后继
+                    succ = None
+                    for u in range(T):
+                        if y.get((i,cur,u)) is None:
+                            continue
+                        if y[(i,cur,u)].solution_value() > 0.5:
+                            succ = u
+                            break
+                    if succ is None:
+                        break
+                    seq.append(succ)
+                    cur = succ
+                # 打印序列及使用的 containers（若有）
+                print("  序列起点 task", start, " -> ", seq)
+                for t in seq:
+                    used_k = None
+                    for k in range(K):
+                        if z[(i,t,k)] is not None and z[(i,t,k)].solution_value() > 0.5:
+                            used_k = k
+                            break
+                    print(f"    task {t}: 完成时间 C[{t}]={C[t].solution_value():.1f}, 使用 container={used_k}")
     else:
-        out['message'] = 'No feasible solution found or solver status not optimal/feasible.'
-    return out, {'data':{'I':I,'K':K,'T':T,'p':p,'d':d,'dS':dS,'pick':pick,'ret':ret,'h':h}}
+        print("未找到可行解或求解器失败，状态码：", status)
 
-if __name__ == '__main__':
-    try:
-        result, meta = build_and_solve_example()
-        print('Solver status:', result['status'])
-        if result['status'] in ('OPTIMAL','FEASIBLE'):
-            print('Makespan Cmax =', result['Cmax'])
-            print('Assignments (task -> AGV):', result['assignments'])
-            print('Selected boxes (task -> box):', result['boxes'])
-            print('Start times:', result['starts'])
-            print('Completion times:', result['completions'])
-            print('Sequences per AGV:', result['sequences'])
-        else:
-            print(result.get('message', 'No solution data.'))
-    except ImportError as e:
-        print('OR-Tools not installed in this environment. Error:', e)
-    except Exception as e:
-        print('Error during solving:', e)
+if __name__ == "__main__":
+    build_and_solve_example()
