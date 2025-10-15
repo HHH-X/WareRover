@@ -24,7 +24,7 @@ def build_and_solve_example():
     ]
     
     # 任务执行时间 R_t（不含换箱）
-    R = [4, 3, 5, 60]  # length T
+    R = [4, 3, 5, 6]  # length T
     
     # 转换时间：相同箱 vs 不同箱 (可以依赖任务对)
     # 这里为简化，使用统一参数矩阵（T x T）
