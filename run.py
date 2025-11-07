@@ -54,10 +54,10 @@ async def simulator_loop(websocket, message_queue):
     ordermanager = OrderManager(cfg, grid_map)
     agv_manager = load_agvs_from_config(cfg, grid_map, ordermanager)
     env = Env(agv_manager, grid_map)
-    scheduler = RandomScheduler(ordermanager, grid_map, agv_manager)
-    # scheduler = TAScheduler(ordermanager, grid_map, agv_manager)
-    planner = AStarPlanner(env)
-    # planner = FixedWindowCBSPlanner(env)
+    # scheduler = RandomScheduler(ordermanager, grid_map, agv_manager)
+    scheduler = TAScheduler(ordermanager, grid_map, agv_manager)
+    # planner = AStarPlanner(env)
+    planner = FixedWindowCBSPlanner(env)
     simulator = Simulator(cfg, grid_map, agv_manager, env, scheduler, planner)
 
     # 初始化 FaultManager

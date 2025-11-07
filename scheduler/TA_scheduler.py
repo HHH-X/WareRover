@@ -130,45 +130,53 @@ class TAScheduler(BaseScheduler):
         """
         if self.order_manager.is_all_orders_completed() or not idle_agv_ids:
             return {}
-
-        # 1. 根据 goods_id 把订单分组
-        goods_to_orders = defaultdict(list)
+        
+        # 1. 获取所有订单并按尺寸分类
+        size_to_orders = defaultdict(list)
         for order in self.order_manager.get_unprocessed_orders():
-            goods_to_orders[order.goods_id].append(order)
-        grouped_orders = list(goods_to_orders.values())  # M 个任务组
+            size_to_orders[order.required_size].append(order)
 
-        # 2. 构建成本矩阵
-        idle_agv_ids_list = list(idle_agv_ids)
-        cost_matrix = self.build_cost_matrix(idle_agv_ids_list, grouped_orders)
+        # 2. 获取所有AGV及其尺寸，并按尺寸分类
+        size_to_agvs = defaultdict(list)
+        for agv_id in idle_agv_ids:
+            agv_size = self.agv_manager.get_agv_size(agv_id)
+            size_to_agvs[agv_size].append(agv_id)
 
-        # 3. 调用 CBS-TA 的任务分配算法
-        assignment = self.task_assignment(cost_matrix)
-
-        # 4. 构建 agv -> orders 映射
-        agv_to_orders = defaultdict(list)
-        for agv_idx, task_idx in assignment.items():
-            agv_id = idle_agv_ids_list[agv_idx]
-            agv_to_orders[agv_id] = grouped_orders[task_idx]
-
-        # 5. 转换 orders -> tasks
         agv_task_map = {}
-        for agv_id, orders in agv_to_orders.items():
-            # **深拷贝** orders，避免修改原始 Order
-            copied_orders = deepcopy(orders)
 
-            # 为每个订单分配 box_id
-            for order in copied_orders:
-                box_ids = self.map.get_boxes_by_goods(order.goods_id)
-                if not box_ids:
-                    raise ValueError(f"No available box found for goods_id={order.goods_id}")
-                order.box_id = random.choice(box_ids)
+        # 3. 对每种尺寸分别进行任务分配
+        for size, agv_ids in size_to_agvs.items():
+            valid_orders = size_to_orders.get(size, [])
+            if not valid_orders:
+                continue  # 该尺寸没有订单，跳过
+            #按 goods_id 分组
+            goods_to_orders = defaultdict(list)
+            for order in valid_orders:
+                goods_to_orders[order.goods_id].append(order)
+            grouped_orders = list(goods_to_orders.values())
 
-            # 调用 orders_to_tasks
-            agv_task_map[agv_id] = orders_to_tasks(copied_orders, self.map)
-            
-            # **标记原始订单为正在处理**
-            for original_order in orders:
-                self.order_manager.mark_order_as_processing(original_order.order_id)
+            #构建成本矩阵并分配
+            cost_matrix = self.build_cost_matrix(agv_ids, grouped_orders)
+            assignment = self.task_assignment(cost_matrix)
+
+            #构建 agv -> orders 映射
+            agv_to_orders = defaultdict(list)
+            for agv_idx, task_idx in assignment.items():
+                agv_id = agv_ids[agv_idx]
+                agv_to_orders[agv_id] = grouped_orders[task_idx]
+
+            #转换 orders -> tasks
+            for agv_id, orders in agv_to_orders.items():
+                copied_orders = deepcopy(orders)
+                for order in copied_orders:
+                    box_ids = self.map.get_boxes_by_goods(order.goods_id)
+                    if not box_ids:
+                        raise ValueError(f"No available box found for goods_id={order.goods_id}")
+                    order.box_id = random.choice(box_ids)
+
+                agv_task_map[agv_id] = orders_to_tasks(copied_orders, self.map)
+                for original_order in orders:
+                    self.order_manager.mark_order_as_processing(original_order.order_id)
 
         return agv_task_map
     
