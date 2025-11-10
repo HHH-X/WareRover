@@ -129,6 +129,7 @@ class OrderManager:
             # 从源字典中移除并添加到完成订单
             self.finished_orders[order_id] = order_source.pop(order_id)
             global_logger.add_runtime_log(f"finish order: {order_id}")
+            global_logger.task_completed()
             return True
         else:
             self.logs.append(

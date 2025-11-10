@@ -4,6 +4,7 @@ import { Box } from './entities/box.js';
 import { Obstacle } from './entities/obstacle.js';
 import { RestArea } from './entities/restArea.js';
 import { ReceiveArea } from './entities/receiveArea.js';
+import { updateMetrics } from './panel.js';
 
 let ws = null;
 
@@ -89,6 +90,10 @@ function connectWebSocket(world) {
       //更新安全路径
       if (data.safe_paths) {
         world.safePathRenderer.updatePaths(data.safe_paths);
+      }
+
+      if (data.metrics) {
+        updateMetrics(data.metrics);
       }
     }
   };

@@ -130,14 +130,20 @@ function initPanel() {
   });
 }
 
-function updateMetrics(data) {
+function updateMetrics(metrics) {
   const metricsContent = document.getElementById('metricsContent');
   if (!metricsContent) return;
-  metricsContent.innerHTML = `
-    <p>AGVs: ${data.agvs ?? 0}</p>
-    <p>Tasks: ${data.tasks ?? 0}</p>
-    <p>FPS: ${data.fps ?? 0}</p>
-  `;
+
+  // 动态生成指标显示
+  let html = '';
+  for (const [key, value] of Object.entries(metrics)) {
+    const formattedKey = key
+      .replace(/_/g, ' ')            // 下划线转空格
+      .replace(/\b\w/g, c => c.toUpperCase()); // 每个单词首字母大写
+    html += `<p>${formattedKey}: ${value.toFixed(2)}</p>`;
+  }
+
+  metricsContent.innerHTML = html;
 }
 
 // === 折叠逻辑 ===

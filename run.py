@@ -17,6 +17,7 @@ from core.env import Env
 from core.simulator import Simulator
 from core.data_generator import generate_send_data
 from core.fault_manager import FaultManager
+from utils.logger import global_logger
 from scheduler.random_scheduler import RandomScheduler
 from scheduler.TA_scheduler import TAScheduler
 from planner.astar_planner import AStarPlanner
@@ -48,6 +49,7 @@ async def simulator_loop(websocket, message_queue):
     print("Simulation begin")
 
     cfg = init_sim_config("config/test_map_v2.json")
+    global_logger.init_from_config(cfg)
 
     # --- 初始化各组件 ---
     grid_map = load_map_from_config(cfg)

@@ -4,6 +4,7 @@ from core.gridmap import GridMap
 from core.env import Env
 from core.agvmanager import AGVManager
 from core.order import OrderManager
+from utils.logger import global_logger
 
 
 def to_real_position(pos: Tuple[int, int], size: int = 1) -> Tuple[float, float]:
@@ -106,5 +107,7 @@ def generate_send_data(map: GridMap, agvmanager: AGVManager, data_type: str = "i
         for agv_id, occupied_set in map.dynamic_occupied.items():
             safe_paths[agv_id] = [to_real_position(pos) for pos in occupied_set]
         data['safe_paths'] = safe_paths
+        # 指标数据
+        data['metrics'] = global_logger.get_metrics()
 
     return data
