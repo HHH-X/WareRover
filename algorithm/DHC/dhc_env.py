@@ -1,10 +1,19 @@
 # 文件名: dhc_agv_wrapper.py
 import numpy as np
 from typing import List, Dict, Tuple
-from environment import Environment as BaseDHCEnv  # 你原来的 DHC environment.py（只为了继承部分属性）
-from your_real_agv_env import YourRealAGVEnv         # ← 改成你的真实 AGV env 类名
-from dhc_converter import DHCCompatibleConverter     # 我之前给你写的转换器
-
+from config.settings import init_sim_config
+from core.agvmanager import load_agvs_from_config
+from core.gridmap import load_map_from_config
+from core.order import OrderManager
+from core.env import Env
+from core.simulator import Simulator
+from core.data_generator import generate_send_data
+from core.fault_manager import FaultManager
+from utils.logger import global_logger
+from scheduler.random_scheduler import RandomScheduler
+from scheduler.TA_scheduler import TAScheduler
+from planner.astar_planner import AStarPlanner
+from planner.cbs_fw_planner import FixedWindowCBSPlanner
 
 class DHCAVGWrapper:
     """
@@ -17,6 +26,15 @@ class DHCAVGWrapper:
         obs_radius: int = 5,
         reward_fn: dict = None,
     ):
+        cfg = init_sim_config("config/test_map_v2.json")
+        global_logger.init_from_config(cfg)
+        # --- 初始化各组件 ---
+        grid_map = load_map_from_config(cfg)
+        ordermanager = OrderManager(cfg, grid_map)
+        self.agv_manager = load_agvs_from_config(cfg, grid_map, ordermanager)
+        self.real_env = Env(self.agv_manager, grid_map)
+        self.scheduler = TAScheduler(ordermanager, grid_map, agv_manager)
+
         self.real_env = real_env
         self.obs_radius = obs_radius
         
@@ -56,6 +74,12 @@ class DHCAVGWrapper:
         # 1. 把动作映射回真实 AGV 的 id
         active_ids = list(self.current_targets.keys())
         action_dict = {agv_id: actions[i] for i, agv_id in enumerate(active_ids)}
+
+        idle_agv_set = self.agv_manager.get_idle_agv_ids()
+        if idle_agv_set:
+            agv_tasks = self.scheduler.assign_tasks(idle_agv_set)
+            if(agv_tasks):
+                self.agv_manager.assign_tasks(agv_tasks)
 
         # 2. 执行真实环境一步
         real_obs, real_rewards, done, info = self.real_env.step(action_dict)
