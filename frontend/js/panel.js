@@ -46,9 +46,10 @@ function initPanel() {
       </div>
     </div>
 
-    <!-- === 停止模拟按钮 === -->
+  <!-- === 停止与重置按钮 === -->
     <div class="stop-section">
-      <button id="stopBtn" class="stop-btn">Stop Simulation</button>
+      <button id="stopBtn" class="stop-btn">Stop</button>
+      <button id="resetBtn" class="reset-btn">Reset</button>
     </div>
   `;
 
@@ -109,6 +110,22 @@ function initPanel() {
   stopBtn.onclick = () => {
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ cmd: "stop" }));
+    }
+  };
+
+  // === 重置仿真按钮 ===
+  const resetBtn = document.getElementById('resetBtn');
+  resetBtn.onclick = () => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      console.log("发送 reset 命令");
+      ws.send(JSON.stringify({ cmd: "reset" }));
+      // 可选：给用户一点反馈（按钮变灰 1 秒）
+      resetBtn.disabled = true;
+      resetBtn.textContent = "Resetting...";
+      setTimeout(() => {
+        resetBtn.disabled = false;
+        resetBtn.textContent = "Reset";
+      }, 1500);
     }
   };
 

@@ -1,5 +1,5 @@
 from typing import Deque, List, Tuple, Optional, Dict, Set, Generator
-from core.agv import AGV,AGVAction
+from core.agv import AGV,AGVAction, StepInfo
 from core.gridmap import GridMap
 from core.order import OrderManager
 from config.settings import SimConfig
@@ -24,8 +24,6 @@ class AGVManager:
             self.agvs_by_size.setdefault(agv.size, set()).add(agv.id)
         # 每个 AGV 的尺寸映射
         self.agv_sizes: Dict[int, int] = {agv.id: agv.size for agv in agv_list}
-        # 每个agv的运行状态
-        self.agv_active_status: Dict[int, bool] = {agv.is_working: True for agv in agv_list}
 
     # 获取指定 ID 的 AGV 实例
     def get_agv(self, agv_id: int) -> AGV:
@@ -125,10 +123,12 @@ class AGVManager:
         self.block_counts[agv_id] = 0
 
     # 执行所有 AGV 的一步移动，更新其状态集合
-    def step_all(self, next_positions: Dict[int, Tuple[int, int]]):
+    def step_all(self, next_positions: Dict[int, Tuple[int, int]]) -> Dict[int, StepInfo]:
+        step_info_dict: Dict[int, StepInfo] = {}
         for agv_id, next_pos in next_positions.items():
             agv = self._agvs[agv_id]
-            need_replan = agv.step(next_pos)
+            need_replan, step_info = agv.step(next_pos)
+            step_info_dict[agv_id] = step_info
 
             if agv.is_idle:
                 self.idle_agvs.add(agv_id)
@@ -138,6 +138,7 @@ class AGVManager:
             if need_replan or self.block_counts[agv_id] >= 3:
                 self.need_replan_agvs.add(agv_id)
                 self.reset_block_count(agv_id)
+        return step_info_dict
 
     # 分配任务给指定 AGV
     def assign_tasks(self, task_dict: Dict[int, List[Tuple[Tuple[int, int], AGVAction, int]]]):
@@ -180,6 +181,18 @@ class AGVManager:
         agv = self._agvs.get(agv_id)
         if agv:
             agv.is_working = is_working
+    
+    def reset_agvs(self):
+        """重置所有 AGV 到初始状态和位置。
+        """
+        for agv in self._agvs.values():
+            agv.reset()
+        # Manager 本身的集合和统计全部清空/重建
+        all_agv_ids = set(self._agvs.keys())
+        self.idle_agvs = all_agv_ids.copy()
+        self.need_rest_agvs = all_agv_ids.copy()
+        self.need_replan_agvs = all_agv_ids.copy()
+        self.block_counts = {agv_id: 0 for agv_id in all_agv_ids}
 
 
 def load_agvs_from_config(cfg: SimConfig, map_inst: GridMap, order_manager:OrderManager) -> AGVManager:

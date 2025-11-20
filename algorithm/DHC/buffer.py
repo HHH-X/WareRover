@@ -1,6 +1,5 @@
 import numpy as np
-import configs
-
+from . import configs
 
 class SumTree:
     '''used for prioritized experience replay''' 

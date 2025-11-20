@@ -1,6 +1,6 @@
 from collections import deque
 from typing import Deque, List, Tuple, Optional, Dict, Set, Generator
-from enum import Enum
+from enum import Enum, auto
 from core.gridmap import GridMap
 from core.order import OrderManager
 from config.settings import SimConfig
@@ -12,6 +12,14 @@ class AGVAction(Enum):
     PICK = "pick"         # 取货
     PLACE = "place"       # 放置货物
     HANDOVER = "handover" # 交接货物，在接收区等待被拾取
+
+class StepInfo(Enum):
+    MOVE = auto()          # 移动一步
+    COLLISION = auto()     # 碰撞（墙/障碍/其他AGV）
+    STAY_OFF_GOAL = auto() # 非目标点且不动
+    STAY_ON_GOAL = auto()  # 在目标点上静止
+    FINISH = auto()        # 完成任务
+    OTHER = auto()       # 其他情况
 
 class AGV:
     def __init__(
@@ -26,6 +34,7 @@ class AGV:
         # AGV的大小
         self.size: int  = size
         # AGV 当前网格位置 (x, y)
+        self.init_grid_pos: Tuple[int, int] = init_grid_pos
         # 对于size大于1的agv来说，坐标为左上角
         self.grid_pos: Tuple[int, int] = init_grid_pos
         # 精确位置 (x, y)
@@ -68,10 +77,10 @@ class AGV:
         return abs(rx - expected_x) < epsilon and abs(ry - expected_y) < epsilon
 
 
-    def step(self, next_grid: Tuple[int, int]) -> Tuple[bool, bool]:
+    def step(self, next_grid: Tuple[int, int]) -> Tuple[bool, StepInfo]:
         if not self.is_working:
-            return False
-        self.update_position(next_grid)
+            return False, StepInfo.OTHER
+        _, step_info = self.update_position(next_grid)
         replan_required = False
 
         # 情况 1：有路径，正常前进
@@ -83,6 +92,7 @@ class AGV:
                 _, action, extra = self.task_queue.popleft()
                 self._execute_action(action, extra)
                 replan_required = True
+                step_info = StepInfo.FINISH
 
         # 情况 2：没有路径，但当前位置刚好是任务点
         elif not self.action_queue and self.task_queue and self.grid_pos == self.task_queue[0][0]:
@@ -94,13 +104,14 @@ class AGV:
         elif not self.action_queue and not self.is_resting:
             replan_required = True
 
-        return replan_required
+        return replan_required, step_info
 
 
-    def update_position(self, next_grid: Tuple[int, int]) -> bool:
+    def update_position(self, next_grid: Tuple[int, int]) -> tuple[bool, StepInfo]:
         dx = next_grid[0] - self.grid_pos[0]
         dy = next_grid[1] - self.grid_pos[1]
 
+        step_info = StepInfo.MOVE
         # 判断方向
         if dx == 1:
             self.direction = 'RIGHT'
@@ -112,6 +123,7 @@ class AGV:
             self.direction = 'UP'
         else:
             self.direction = 'WAIT'
+            step_info = StepInfo.STAY_OFF_GOAL
 
         self.speed = self.max_speed
         offset = self.speed * self.time_step
@@ -138,7 +150,7 @@ class AGV:
         # 如果移动到了方格中心，则更新grid_pos
         if moved:
             self.grid_pos = next_grid
-        return moved
+        return moved, step_info
 
     def _pick_box(self):
         box_id = self.map.pick_box_at(self.grid_pos)
@@ -185,3 +197,18 @@ class AGV:
             self._place_box()
         elif action == AGVAction.HANDOVER:
             self._handover_box(extra)
+
+    def reset(self):
+        """重置 AGV 到初始状态和位置。
+        """
+        # 位置复原
+        self.grid_pos = self.init_grid_pos
+        self.real_pos = (self.init_grid_pos[0] + 0.5, self.init_grid_pos[1] + 0.5)
+
+        # 任务相关全部清空
+        self.task_queue.clear()
+        self.action_queue.clear()
+        self.rest_target = None
+        self.carried_box_id = None
+        self.is_working = True
+        self.direction = None

@@ -2,6 +2,7 @@
 import numpy as np
 from typing import List, Dict, Tuple
 from config.settings import init_sim_config
+from core.agv import StepInfo
 from core.agvmanager import load_agvs_from_config
 from core.gridmap import load_map_from_config
 from core.order import OrderManager
@@ -14,6 +15,26 @@ from scheduler.random_scheduler import RandomScheduler
 from scheduler.TA_scheduler import TAScheduler
 from planner.astar_planner import AStarPlanner
 from planner.cbs_fw_planner import FixedWindowCBSPlanner
+from .dhc_wrapper import DHCCompatibleConverter
+from . import configs
+
+# 动作对应的坐标偏移（x右 y下 为正，常见仓库地图坐标系）
+ACTION_DELTA = {
+    0: (0,  0),   # stay
+    1: (0, -1),   # up
+    2: (0,  1),   # down
+    3: (-1, 0),   # left
+    4: (1,  0)    # right
+}
+
+DHC_REWARD = {
+    'move':          -0.075,
+    'collision':     -0.5,
+    'stay_off_goal': -0.1,
+    'stay_on_goal':   0.0,
+    'finish':        +5.0,
+    'other':         -0.075,
+}
 
 class DHCAVGWrapper:
     """
@@ -22,46 +43,30 @@ class DHCAVGWrapper:
     """
     def __init__(
         self,
-        real_env: YourRealAGVEnv,
-        obs_radius: int = 5,
-        reward_fn: dict = None,
+        curriculum
     ):
-        cfg = init_sim_config("config/test_map_v2.json")
-        global_logger.init_from_config(cfg)
-        # --- 初始化各组件 ---
-        grid_map = load_map_from_config(cfg)
-        ordermanager = OrderManager(cfg, grid_map)
-        self.agv_manager = load_agvs_from_config(cfg, grid_map, ordermanager)
-        self.real_env = Env(self.agv_manager, grid_map)
-        self.scheduler = TAScheduler(ordermanager, grid_map, agv_manager)
-
-        self.real_env = real_env
-        self.obs_radius = obs_radius
         
-        # DHC 标准奖励（你可以根据真实任务调整）
-        self.reward_fn = reward_fn or {
-            'move': -0.05,
-            'stay_off_goal': -0.1,
-            'stay_on_goal': 0.0,
-            'collision': -1.0,
-            'finish': 10.0,
-        }
+        self.cfg = init_sim_config("config/test_map_v2.json")
+        global_logger.init_from_config(self.cfg)
+        # --- 初始化各组件 ---
+        grid_map = load_map_from_config(self.cfg)
+        self.ordermanager = OrderManager(self.cfg, grid_map)
+        self.agv_manager = load_agvs_from_config(self.cfg, grid_map, self.ordermanager)
+        self.real_env = Env(self.agv_manager, grid_map, self.ordermanager)
+        self.scheduler = TAScheduler(self.ordermanager, grid_map, self.agv_manager)
 
+        self.obs_radius = configs.obs_radius
         # 转换器
-        self.converter = DHCCompatibleConverter(obs_radius=obs_radius)
+        self.converter = DHCCompatibleConverter(obs_radius=self.obs_radius)
 
         # 下面这些属性是为了完美兼容 DHC 训练脚本而伪造的
         self.num_agents = 0                     # 动态变化，每步更新
-        self.map_size = (real_env.height, real_env.width)
         self.steps = 0
-        self.last_actions = None                # 用于可选的 last_action 通道
 
-    def reset(self, *args, **kwargs):
-        # 调用你的真实环境 reset
-        real_obs = self.real_env.reset(*args, **kwargs)
-        
+    def reset(self):
+        self.real_env.reset()
+ 
         self.steps = 0
-        self._update_internal_state()
         
         # 返回 DHC 格式的观测
         return self.observe()
@@ -71,51 +76,80 @@ class DHCAVGWrapper:
         actions: List[int] 长度 = 当前需要决策的 AGV 数量，值 0~4
         返回: obs, rewards, done, info   （完全和 DHC 一致）
         """
-        # 1. 把动作映射回真实 AGV 的 id
-        active_ids = list(self.current_targets.keys())
-        action_dict = {agv_id: actions[i] for i, agv_id in enumerate(active_ids)}
+
+        replanning_targets = self.agv_manager.get_replan_targets()
+        next_pos_dict: Dict[int, Tuple[int, int]] = {}
+        for agv_id, (current_pos, goal_pos) in replanning_targets.items():
+                # 边界检查
+                if agv_id >= len(actions):
+                    raise IndexError(f"AGV {agv_id} 的动作索引超出 actions 列表长度 {len(actions)}")
+
+                action = actions[agv_id]
+                if action not in ACTION_DELTA:
+                    raise ValueError(f"AGV {agv_id} 的动作值 {action} 非法")
+
+                dx, dy = ACTION_DELTA[action]
+                next_x = current_pos[0] + dx
+                next_y = current_pos[1] + dy
+
+                next_pos_dict[agv_id] = list(tuple(next_x, next_y))
+        # 执行动作  
+        self.agv_manager.replan_paths(next_pos_dict)
+        step_info = self.real_env.step()     
 
         idle_agv_set = self.agv_manager.get_idle_agv_ids()
         if idle_agv_set:
             agv_tasks = self.scheduler.assign_tasks(idle_agv_set)
             if(agv_tasks):
                 self.agv_manager.assign_tasks(agv_tasks)
+        # 2. 分配休息区给任务完成的AGV
+        agvs_needing_rest = self.agv_manager.get_need_rest_agv_ids()
+        if agvs_needing_rest:
+            rest_assignments = self.scheduler.assign_rest_areas(agvs_needing_rest)
+            self.agv_manager.assign_rest_zones(rest_assignments)
 
-        # 2. 执行真实环境一步
-        real_obs, real_rewards, done, info = self.real_env.step(action_dict)
+        # 3. 获取需要重规划的AGV的当前位置与目标
+        replanning_targets = self.agv_manager.get_replan_targets()
+        
+        env_info = self.real_env.get_env_info()
+        static_grid = env_info['static_grid']
+        agv_positions = env_info['current_grid_pos']
 
-        self.steps += 1
-        self._update_internal_state()
-
-        # 3. 构造 DHC 风格的奖励（只给活跃的 AGV，非活跃的补0）
-        dhc_rewards = [0.0] * self.num_agents
-        for i, agv_id in enumerate(active_ids):
-            # 你可以在这里把 real_rewards 映射成 DHC 的奖励结构
-            # 简单示例：碰撞就-1，成功到达就+10，每步-0.05
-            if real_rewards.get(agv_id, 0) == "collision":
-                dhc_rewards[i] = self.reward_fn['collision']
-            elif real_rewards.get(agv_id, 0) == "success":
-                dhc_rewards[i] = self.reward_fn['finish']
-            else:
-                dhc_rewards[i] = self.reward_fn['move']
-
-        # 4. 判断整体 done（所有任务都完成了，或者你自己定义）
-        overall_done = done  # 你可以改成 len(self.real_env.pending_tasks) == 0
-
-        return self.observe(), dhc_rewards, overall_done, {'step': self.steps}
-
-    def observe(self) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        返回和 DHC 一模一样的 observe()
-        obs:  (N_active, 6, 2*r+1, 2*r+1) bool
-        pos:  (N_active, 2) int
-        """
         obs, pos = self.converter.convert(
-            static_grid=self.real_env.static_grid,           # (H, W)
-            agv_positions=self.real_env.agv_positions,       # Dict[id -> (x,y)]
-            targets=self.real_env.current_targets,           # Dict[id -> (curr, goal)]
+            static_grid=static_grid,
+            agv_positions=agv_positions,
+            targets=replanning_targets
         )
-        return obs, pos
+        
+            
+        self.steps += 1
+
+        # 找出所有出现的 id 并排序
+        sorted_ids = sorted(step_info.keys())
+
+        rewards = []
+        for agv_id in sorted_ids:
+            info = step_info[agv_id]
+
+            if info == StepInfo.FINISH:
+                r = DHC_REWARD['finish']
+            elif info == StepInfo.MOVE:
+                r = DHC_REWARD['move']
+            elif info == StepInfo.COLLISION:
+                r = DHC_REWARD['collision']
+            elif info == StepInfo.STAY_OFF_GOAL:
+                r = DHC_REWARD['stay_off_goal']
+            elif info == StepInfo.STAY_ON_GOAL:
+                r = DHC_REWARD['stay_on_goal']
+            elif info == StepInfo.OTHER:
+                r = DHC_REWARD['other']   # 默认当普通移动处理
+            else:
+                raise ValueError(f"Unknown StepInfo: {info}")
+
+            rewards.append(r)
+
+        overall_done = self.ordermanager.is_all_orders_completed() or self.steps >= self.cfg.max_steps
+        return obs, rewards, overall_done, info
 
     def render(self):
         # 直接调用你的真实环境渲染，或者自己画
@@ -124,40 +158,15 @@ class DHCAVGWrapper:
     def close(self):
         self.real_env.close()
 
-    # ==================== 下面是为了 100% 兼容 DHC 训练脚本加的伪属性 ====================
-    def _update_internal_state(self):
-        """每步更新活跃 AGV 数量、last_actions 等"""
-        self.num_agents = len(self.real_env.current_targets)
-        if self.num_agents > 0:
-            if self.last_actions is None or self.last_actions.shape[0] != self.num_agents:
-                self.last_actions = np.zeros(
-                    (self.num_agents, 5, 2*self.obs_radius+1, 2*self.obs_radius+1), dtype=bool
-                )
-        else:
-            self.last_actions = np.zeros((0, 5, 1, 1), dtype=bool)
+    def observe(self):
+        env_info = self.real_env.get_env_info()
+        static_grid = env_info['static_grid']
+        agv_positions = env_info['current_grid_pos']
+        replanning_targets = self.agv_manager.get_replan_targets()
+        obs, pos = self.converter.convert(
+            static_grid=static_grid,
+            agv_positions=agv_positions,
+            targets=replanning_targets
+        )
 
-    # 伪造的属性，让 DHC 训练代码不报错
-    @property
-    def agents_pos(self):
-        active_ids = list(self.real_env.current_targets.keys())
-        return np.array([self.real_env.agv_positions[i] for i in active_ids])
-
-    @property
-    def goals_pos(self):
-        active_ids = list(self.real_env.current_targets.keys())
-        return np.array([self.real_env.current_targets[i][1] for i in active_ids])
-
-    # 如果你想加 last_action 通道（强烈建议加！防止来回晃）
-    def get_full_obs_with_last_action(self):
-        obs, pos = self.observe()
-        if obs.shape[0] == 0:
-            return obs, pos
-        # 扩展到 11 通道
-        full_obs = np.concatenate([obs, self.last_actions[:obs.shape[0]]], axis=1)
-        return full_obs, pos
-
-    def update_last_actions(self, actions: List[int]):
-        """在 step 后调用，更新 last_actions（和原 DHC 一样）"""
-        if self.num_agents > 0:
-            self.last_actions.fill(0)
-            self.last_actions[np.arange(self.num_agents), actions] = 1
+        return obs, pos

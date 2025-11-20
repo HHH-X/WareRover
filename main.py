@@ -18,7 +18,7 @@ def main():
     grid_map = load_map_from_config(cfg)
     ordermanager = OrderManager(cfg,grid_map)
     agv_manager = load_agvs_from_config(cfg,grid_map,ordermanager)
-    env = Env(agv_manager,grid_map)
+    env = Env(agv_manager,grid_map, ordermanager)
 
     scheduler = RandomScheduler(ordermanager,grid_map)
     # scheduler = TAScheduler(ordermanager,grid_map,agv_manager)

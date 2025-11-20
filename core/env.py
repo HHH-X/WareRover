@@ -1,12 +1,15 @@
 from typing import Dict, Tuple, Set, List
 from core.gridmap import GridMap
 from core.agvmanager import AGVManager
+from core.agv import StepInfo
+from core.order import OrderManager
 epsilon = 1e-4  # 精度容差，可调
 
 class Env:
-    def __init__(self, agv_manager: AGVManager, map_inst: GridMap):
+    def __init__(self, agv_manager: AGVManager, map_inst: GridMap, order_manager: OrderManager):
         self.agv_manager = agv_manager
         self.map = map_inst
+        self.order_manager = order_manager
 
     def get_env_info(self):
         static_grid = self.map.static_grid
@@ -29,17 +32,21 @@ class Env:
     def is_walkable(self, agv_id: int, to_pos: Tuple[int, int], from_pos: Tuple[int, int], carrying_goods: bool) -> bool:
         return self.map.is_walkable(self.agv_manager.get_agv_size(agv_id), to_pos, from_pos, carrying_goods)
 
-    def step(self):
-        next_positions = self.resolve_conflicts()
-        self.agv_manager.step_all(next_positions)
+    def step(self) -> Dict[int, StepInfo]:
+        next_positions, block_agvs = self.resolve_conflicts()
+        step_info_dict = self.agv_manager.step_all(next_positions)
+        for agv_id in block_agvs:
+            step_info_dict[agv_id] = StepInfo.COLLISION
+        return step_info_dict
 
-    def resolve_conflicts(self) -> Dict[int, Tuple[int, int]]:
+    def resolve_conflicts(self) -> Tuple[Dict[int, Tuple[int, int]], Set[int]]:
         current_pos = self.agv_manager.get_all_current_pos()
         next_pos = self.agv_manager.get_all_next_pos()
         real_pos = self.agv_manager.get_all_real_positions()
         carrying_status = self.agv_manager.get_carrying_status()
 
         final_next_pos: Dict[int, Tuple[int, int]] = dict(next_pos)
+        block_agvs: Set[int] = set()
 
         for agv_id, tgt in next_pos.items():
             cur = current_pos[agv_id]
@@ -135,9 +142,10 @@ class Env:
                 for agv_id in in_center:
                     if final_next_pos[agv_id] != next_pos[agv_id]:
                         self.agv_manager.increment_block_count(agv_id)
+                        block_agvs.add(agv_id)
                 break
 
-        return final_next_pos
+        return final_next_pos, block_agvs
 
     def _get_next_occupied_positions(
         self, agv_id: int, cur: Tuple[int, int], tgt: Tuple[int, int]
@@ -206,5 +214,6 @@ class Env:
         return in_center, not_in_center
 
     def reset(self):
-        # TODO: 可按需扩展重置逻辑
-        pass
+        self.agv_manager.reset_agvs()
+        self.map.reset_map()
+        self.order_manager.reset_order()

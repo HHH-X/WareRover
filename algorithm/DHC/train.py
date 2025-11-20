@@ -6,8 +6,8 @@ import torch
 import numpy as np
 import ray
 
-from worker import GlobalBuffer, Learner, Actor
-import configs
+from .worker import GlobalBuffer, Learner, Actor
+from . import configs
 
 os.environ["OMP_NUM_THREADS"] = "1"
 torch.manual_seed(0)

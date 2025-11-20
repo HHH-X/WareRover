@@ -241,7 +241,7 @@ class DHCCompatibleConverter:
         """
         height, width = static_grid.shape
         active_ids = list(targets.keys())                    # 只有这些 AGV 需要规划
-        N = len(active_ids)
+        N = 10
         if N == 0:
             # 极端情况：当前没有需要规划的 AGV 为 0
             return np.zeros((0, 6, 2*self.obs_radius+1, 2*self.obs_radius+1), dtype=bool), np.zeros((0, 2), dtype=int)

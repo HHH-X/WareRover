@@ -98,6 +98,29 @@ body {
   background-color: #e74c3c;
 }
 
+/* Reset 按钮 - 绿色，和 Stop 并排 */
+.reset-btn {
+  background-color: #27ae60;     /* 鲜绿色 */
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  font-size: 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 8px;              /* 与 Stop 按钮间隔 */
+}
+
+.reset-btn:hover {
+  background-color: #2ecc71;
+  transform: scale(1.05);
+}
+
+.reset-btn:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+  transform: none;
+}
 
 /* 默认灰色按钮（其余按钮）
 #panel button:not(#toggleBtn):not(#stepBtn):not(#damageBtn):not(#repairBtn) {

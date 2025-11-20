@@ -148,8 +148,10 @@ class OrderManager:
     def get_logs(self) -> List[str]:
         return self.logs
 
-    def reset(self):
-        self._order_counter = 0
+    def reset_order(self):
+        self.all_orders.clear()
         self.unprocessed_orders.clear()
+        self.processing_orders.clear()
         self.finished_orders.clear()
         self.logs.clear()
+        self._produce_orders()

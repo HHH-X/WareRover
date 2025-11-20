@@ -327,6 +327,12 @@ class GridMap:
 
     def get_wait_zone_position(self, zone_id: int) -> Optional[Tuple[int, int]]:
         return self.wait_zones.get(zone_id)
+    
+    def reset_map(self):
+        """重置地图上的动态状态"""
+        for box_id in self.box_status:
+            self.box_status[box_id] = True
+        self.dynamic_occupied.clear()
 
 
 def load_map_from_config(cfg: SimConfig) -> GridMap:

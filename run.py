@@ -32,7 +32,8 @@ STATE = {
 
 # 是否继续运行主循环
 RUNNING = True
-
+# 重置标志
+NEED_RESET = False
 
 # ---------------- HTTP 服务 ----------------
 def start_http_server(port=8000):
@@ -46,6 +47,7 @@ def start_http_server(port=8000):
 
 async def simulator_loop(websocket, message_queue):
     global RUNNING
+    global NEED_RESET
     print("Simulation begin")
 
     cfg = init_sim_config("config/test_map_v2.json")
@@ -55,7 +57,7 @@ async def simulator_loop(websocket, message_queue):
     grid_map = load_map_from_config(cfg)
     ordermanager = OrderManager(cfg, grid_map)
     agv_manager = load_agvs_from_config(cfg, grid_map, ordermanager)
-    env = Env(agv_manager, grid_map)
+    env = Env(agv_manager, grid_map, ordermanager)
     # scheduler = RandomScheduler(ordermanager, grid_map, agv_manager)
     scheduler = TAScheduler(ordermanager, grid_map, agv_manager)
     # planner = AStarPlanner(env)
@@ -69,27 +71,45 @@ async def simulator_loop(websocket, message_queue):
     init_data = generate_send_data(grid_map, agv_manager, data_type="init")
     await websocket.send(json.dumps(init_data))
 
-    # --- 主循环 ---
-    while (
-        RUNNING
-        and not ordermanager.is_all_orders_completed()
-        and simulator.step_count < cfg.max_steps
-    ):
-        if not STATE["paused"] or STATE["step_trigger"]:
-            simulator.step()
-            STATE["step_trigger"] = False
+    while RUNNING:
+        if NEED_RESET:
+            print("Resetting simulation...")
+            simulator.step_count = 0
+            env.reset()
+            NEED_RESET = False
+            # 重新发送初始化数据
+            # init_data = generate_send_data(grid_map, agv_manager, data_type="init")
+            # await websocket.send(json.dumps(init_data))
+            print("Reset complete.")
+            continue
+        # 正常仿真步进
+        while (RUNNING
+               and not NEED_RESET
+               and not ordermanager.is_all_orders_completed()
+               and simulator.step_count < cfg.max_steps):
 
-            # 每步生成并发送状态
-            step_data = generate_send_data(grid_map, agv_manager, data_type="update")
-            await websocket.send(json.dumps(step_data))
+            if not STATE["paused"] or STATE["step_trigger"]:
+                simulator.step()
+                STATE["step_trigger"] = False
 
-        # 检查是否收到消息队列中的命令
-        while not message_queue.empty():
-            msg = await message_queue.get()
-            fault_manager.handle_message(msg)
-            print("处理完消息")
+                # 每步生成并发送状态
+                step_data = generate_send_data(grid_map, agv_manager, data_type="update")
+                await websocket.send(json.dumps(step_data))
 
-        await asyncio.sleep(0.1)
+            # 检查是否收到消息队列中的命令
+            while not message_queue.empty():
+                msg = await message_queue.get()
+                fault_manager.handle_message(msg)
+                print("处理完消息")
+
+            await asyncio.sleep(0.1)
+
+        # 仿真自然结束（所有订单完成或超步数）
+        if not NEED_RESET:
+            print("所有订单已完成，仿真结束，等待 reset 或 stop")
+        # 卡在这里等 reset 或 stop
+        while RUNNING and not NEED_RESET:
+            await asyncio.sleep(0.1)
 
     print("Simulation loop ended.")
 
@@ -120,6 +140,12 @@ async def ws_handler(websocket):
                     await websocket.send(json.dumps({"status": "stopping"}))
                     await websocket.close()
                     break  # 退出消息监听循环
+                elif cmd == "reset":
+                    print("收到 reset 命令")
+                    global NEED_RESET
+                    NEED_RESET = True
+                    # await websocket.send(json.dumps({"status": "resetting"}))
+                    # continue
                 else:
                     # 非控制命令放入队列，让 FaultManager 处理
                     await message_queue.put(msg)

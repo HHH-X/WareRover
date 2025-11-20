@@ -11,10 +11,10 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import MultiStepLR
 from torch.cuda.amp import GradScaler
 import numpy as np
-from model import Network
-from environment import Environment
-from buffer import SumTree, LocalBuffer
-import configs
+from .model import Network
+from .dhc_env import DHCAVGWrapper
+from .buffer import SumTree, LocalBuffer
+from . import configs
 
 @ray.remote(num_cpus=1)
 class GlobalBuffer:
@@ -38,13 +38,13 @@ class GlobalBuffer:
         self.lock = threading.Lock()
         self.env_settings_set = ray.put([init_env_settings])
 
-        self.obs_buf = np.zeros(((local_buffer_capacity+1)*episode_capacity, configs.max_num_agents, *configs.obs_shape), dtype=np.bool)
+        self.obs_buf = np.zeros(((local_buffer_capacity+1)*episode_capacity, configs.max_num_agents, *configs.obs_shape), dtype=bool)
         self.act_buf = np.zeros((local_buffer_capacity*episode_capacity), dtype=np.uint8)
         self.rew_buf = np.zeros((local_buffer_capacity*episode_capacity), dtype=np.float16)
         self.hid_buf = np.zeros((local_buffer_capacity*episode_capacity, configs.max_num_agents, configs.hidden_dim), dtype=np.float16)
-        self.done_buf = np.zeros(episode_capacity, dtype=np.bool)
+        self.done_buf = np.zeros(episode_capacity, dtype=bool)
         self.size_buf = np.zeros(episode_capacity, dtype=np.uint)
-        self.comm_mask_buf = np.zeros(((local_buffer_capacity+1)*episode_capacity, configs.max_num_agents, configs.max_num_agents), dtype=np.bool)
+        self.comm_mask_buf = np.zeros(((local_buffer_capacity+1)*episode_capacity, configs.max_num_agents, configs.max_num_agents), dtype=bool)
 
 
     def __len__(self):
@@ -373,7 +373,7 @@ class Actor:
         self.id = worker_id
         self.model = Network()
         self.model.eval()
-        self.env = Environment(curriculum=True)
+        self.env = DHCAVGWrapper(curriculum=True)
         self.epsilon = epsilon
         self.learner = learner
         self.global_buffer = buffer
