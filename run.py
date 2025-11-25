@@ -22,6 +22,7 @@ from scheduler.random_scheduler import RandomScheduler
 from scheduler.TA_scheduler import TAScheduler
 from planner.astar_planner import AStarPlanner
 from planner.cbs_fw_planner import FixedWindowCBSPlanner
+from planner.dhc_planner import DHCPlanner
 import websockets
 
 # 控制状态
@@ -50,7 +51,7 @@ async def simulator_loop(websocket, message_queue):
     global NEED_RESET
     print("Simulation begin")
 
-    cfg = init_sim_config("config/test_map_v2.json")
+    cfg = init_sim_config("config/test_map_v3.json")
     global_logger.init_from_config(cfg)
 
     # --- 初始化各组件 ---
@@ -61,7 +62,8 @@ async def simulator_loop(websocket, message_queue):
     # scheduler = RandomScheduler(ordermanager, grid_map, agv_manager)
     scheduler = TAScheduler(ordermanager, grid_map, agv_manager)
     # planner = AStarPlanner(env)
-    planner = FixedWindowCBSPlanner(env)
+    # planner = FixedWindowCBSPlanner(env)
+    planner = DHCPlanner(env, model_path=cfg.dhc_model_path, forward_steps=1, device="cuda")
     simulator = Simulator(cfg, grid_map, agv_manager, env, scheduler, planner)
 
     # 初始化 FaultManager

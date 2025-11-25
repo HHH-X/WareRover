@@ -17,11 +17,16 @@ random.seed(0)
 
 def main(num_actors=configs.num_actors, log_interval=configs.log_interval):
     ray.init()
+    # ray.init(local_mode=True)   # 这行最重要！！
 
     buffer = GlobalBuffer.remote()
     learner = Learner.remote(buffer)
     time.sleep(1)
-    actors = [Actor.remote(i, 0.4**(1+(i/(num_actors-1))*7), learner, buffer) for i in range(num_actors)]
+    # actors = [Actor.remote(i, 0.4**(1+(i/(num_actors-1))*7), learner, buffer) for i in range(num_actors)]
+    if num_actors == 1:
+        actors = [Actor.remote(0, 0.4, learner, buffer)]
+    else:
+        actors = [Actor.remote(i, 0.4**(1 + (i / (num_actors - 1)) * 7), learner, buffer) for i in range(num_actors)]
 
     for actor in actors:
         actor.run.remote()

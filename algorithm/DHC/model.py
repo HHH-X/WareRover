@@ -179,7 +179,7 @@ class Network(nn.Module):
         in_obs_mask = (pos_mat<=configs.obs_radius).all(2)
         # mask out agents that are far away
         _, ranking = dist_mat.topk(min(self.max_comm_agents, num_agents), dim=1, largest=False)
-        dist_mask = torch.zeros((num_agents, num_agents), dtype=torch.bool)
+        dist_mask = torch.zeros((num_agents, num_agents), dtype=torch.bool, device=obs.device)
         dist_mask.scatter_(1, ranking, True)
 
         comm_mask = torch.bitwise_and(in_obs_mask, dist_mask)
@@ -194,7 +194,11 @@ class Network(nn.Module):
 
         actions = torch.argmax(q_val, 1).tolist()
 
-        return actions, q_val.numpy(), self.hidden.numpy(), comm_mask.numpy()
+        # return actions, q_val.numpy(), self.hidden.numpy(), comm_mask.numpy()
+        return (actions,
+            q_val.cpu().numpy(),         # 先搬到CPU
+            self.hidden.cpu().numpy(),
+            comm_mask.cpu().numpy())
 
     def reset(self):
         self.hidden = None

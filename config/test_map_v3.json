@@ -1,0 +1,70 @@
+{
+  "map": {
+    "width": 25,
+    "height": 20
+  },
+  "boxes": [
+    { "box_id": 0, "position": [7, 6], "goods_ids": [0] },
+    { "box_id": 1, "position": [8, 6], "goods_ids": [1] },
+    { "box_id": 2, "position": [9, 6], "goods_ids": [2] },
+    { "box_id": 3, "position": [10, 6], "goods_ids": [3] },
+    { "box_id": 4, "position": [7, 7], "goods_ids": [4] },
+    { "box_id": 5, "position": [8, 7], "goods_ids": [5] },
+    { "box_id": 6, "position": [9, 7], "goods_ids": [6] },
+    { "box_id": 7, "position": [10, 7], "goods_ids": [7] },
+    { "box_id": 8, "position": [7, 10], "goods_ids": [8] },
+    { "box_id": 9, "position": [8, 10], "goods_ids": [9] },
+    { "box_id": 10, "position": [9, 10], "goods_ids": [10] },
+    { "box_id": 11, "position": [10, 10], "goods_ids": [11] },
+    { "box_id": 12, "position": [7, 11], "goods_ids": [12] },
+    { "box_id": 13, "position": [8, 11], "goods_ids": [13] },
+    { "box_id": 14, "position": [9, 11], "goods_ids": [14] },
+    { "box_id": 15, "position": [10, 11], "goods_ids": [15] },
+    { "box_id": 16, "position": [14, 7], "goods_ids": [16], "size": 1 },
+    { "box_id": 17, "position": [16, 7], "goods_ids": [17], "size": 1 },
+    { "box_id": 18, "position": [14, 9], "goods_ids": [18], "size": 1 },
+    { "box_id": 19, "position": [16, 9], "goods_ids": [19], "size": 1 }
+  ],
+  "receivers": [
+    { "receiver_id": 0, "position": [2, 19] },
+    { "receiver_id": 1, "position": [5, 19] },
+    { "receiver_id": 2, "position": [8, 19] },
+    { "receiver_id": 3, "position": [11, 19] },
+    { "receiver_id": 4, "position": [14, 19] },
+    { "receiver_id": 5, "position": [17, 19] },
+    { "receiver_id": 6, "position": [0, 10] },
+    { "receiver_id": 7, "position": [0, 15] },
+    { "receiver_id": 8, "position": [23, 12], "size": 1 },
+    { "receiver_id": 9, "position": [23, 18], "size": 1 }
+  ],
+  "wait_zones": [
+    { "wait_zone_id": 0, "position": [2, 1] },
+    { "wait_zone_id": 1, "position": [4, 1] },
+    { "wait_zone_id": 2, "position": [6, 1] },
+    { "wait_zone_id": 3, "position": [8, 1] },
+    { "wait_zone_id": 4, "position": [10, 1] },
+    { "wait_zone_id": 5, "position": [12, 1] },
+    { "wait_zone_id": 6, "position": [14, 1] },
+    { "wait_zone_id": 7, "position": [16, 1] },
+    { "wait_zone_id": 8, "position": [18, 1], "size": 1 },
+    { "wait_zone_id": 9, "position": [21, 1], "size": 1 }
+  ],
+  "agvs": [
+    { "agv_id": 0 },
+    { "agv_id": 1 },
+    { "agv_id": 2 },
+    { "agv_id": 3 },
+    { "agv_id": 4 },
+    { "agv_id": 5 },
+    { "agv_id": 6 },
+    { "agv_id": 7 },
+    { "agv_id": 8, "size": 1 },
+    { "agv_id": 9, "size": 1 }
+  ],
+  "obstacles": [
+    [18, 9],
+    [18, 10],
+    [19, 9],
+    [19, 10]
+  ]
+}

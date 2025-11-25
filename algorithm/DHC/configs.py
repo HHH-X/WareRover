@@ -6,7 +6,7 @@ communication = False
 ####################    environment     ####################
 ############################################################
 map_length = 50
-num_agents = 2
+num_agents = 10
 obs_radius = 4
 reward_fn = dict(move=-0.075,
                 stay_on_goal=0,
@@ -24,15 +24,16 @@ action_dim = 5
 ############################################################
 
 # basic training setting
-num_actors = 20
+# num_actors = 20
+num_actors = 1
 log_interval = 10
-training_times = 600000
-save_interval=2000
+training_times = 6000 #600000
+save_interval=50 #2000
 gamma=0.99
 batch_size=192
-learning_starts=50000
+learning_starts=1000 #50000
 target_network_update_freq=2000
-save_path='./models'
+save_path='D:\\Project\\AGVSim\\algorithm\\DHC\\models'
 max_episode_length = 256
 seq_len = 16
 load_model = None
@@ -56,7 +57,7 @@ prioritized_replay_beta=0.4
 
 # curriculum learning
 init_env_settings = (1, 10)
-max_num_agents = 2
+max_num_agents = 10
 max_map_lenght = 40
 pass_rate = 0.9
 

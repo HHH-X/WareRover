@@ -58,16 +58,18 @@ class DHCAVGWrapper:
         self.obs_radius = configs.obs_radius
         # 转换器
         self.converter = DHCCompatibleConverter(obs_radius=self.obs_radius)
-
-        # 下面这些属性是为了完美兼容 DHC 训练脚本而伪造的
-        self.num_agents = 0                     # 动态变化，每步更新
         self.steps = 0
+        self.num_agents =  10
+        self.map_size = (self.cfg.width, self.cfg.height)
 
     def reset(self):
         self.real_env.reset()
- 
         self.steps = 0
-        
+        idle_agv_set = self.agv_manager.get_idle_agv_ids()
+        if idle_agv_set:
+            agv_tasks = self.scheduler.assign_tasks(idle_agv_set)
+            if(agv_tasks):
+                self.agv_manager.assign_tasks(agv_tasks)
         # 返回 DHC 格式的观测
         return self.observe()
 
@@ -78,7 +80,7 @@ class DHCAVGWrapper:
         """
 
         replanning_targets = self.agv_manager.get_replan_targets()
-        next_pos_dict: Dict[int, Tuple[int, int]] = {}
+        next_pos_dict: Dict[int, List[Tuple[int, int]]] = {}
         for agv_id, (current_pos, goal_pos) in replanning_targets.items():
                 # 边界检查
                 if agv_id >= len(actions):
@@ -92,7 +94,7 @@ class DHCAVGWrapper:
                 next_x = current_pos[0] + dx
                 next_y = current_pos[1] + dy
 
-                next_pos_dict[agv_id] = list(tuple(next_x, next_y))
+                next_pos_dict[agv_id] = [(next_x, next_y)]
         # 执行动作  
         self.agv_manager.replan_paths(next_pos_dict)
         step_info = self.real_env.step()     
@@ -117,7 +119,7 @@ class DHCAVGWrapper:
 
         obs, pos = self.converter.convert(
             static_grid=static_grid,
-            agv_positions=agv_positions,
+            agv_positions_xy=agv_positions,
             targets=replanning_targets
         )
         
@@ -149,7 +151,7 @@ class DHCAVGWrapper:
             rewards.append(r)
 
         overall_done = self.ordermanager.is_all_orders_completed() or self.steps >= self.cfg.max_steps
-        return obs, rewards, overall_done, info
+        return (obs, pos) , rewards, overall_done, info
 
     def render(self):
         # 直接调用你的真实环境渲染，或者自己画
@@ -165,8 +167,11 @@ class DHCAVGWrapper:
         replanning_targets = self.agv_manager.get_replan_targets()
         obs, pos = self.converter.convert(
             static_grid=static_grid,
-            agv_positions=agv_positions,
+            agv_positions_xy=agv_positions,
             targets=replanning_targets
         )
 
         return obs, pos
+    
+    def update_env_settings_set(self, test):
+        pass
