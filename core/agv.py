@@ -99,6 +99,7 @@ class AGV:
             _, action, extra = self.task_queue.popleft()
             self._execute_action(action, extra)
             replan_required = True
+            step_info = StepInfo.FINISH
 
         # 情况 3：完全没有路径，且不是休息状态 -> 需要重新规划
         elif not self.action_queue and not self.is_resting:

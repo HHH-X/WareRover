@@ -9,9 +9,9 @@ from socketserver import TCPServer
 import random
 import numpy as np
 
-from config.settings import init_sim_config
-from core.agvmanager import load_agvs_from_config
-from core.gridmap import load_map_from_config
+from config.settings import SimConfig
+from core.agvmanager import AGVManager
+from core.gridmap import GridMap
 from core.order import OrderManager
 from core.env import Env
 from core.simulator import Simulator
@@ -51,13 +51,13 @@ async def simulator_loop(websocket, message_queue):
     global NEED_RESET
     print("Simulation begin")
 
-    cfg = init_sim_config("config/test_map_v3.json")
+    cfg = SimConfig("config/test_map_v3.json")
     global_logger.init_from_config(cfg)
 
     # --- 初始化各组件 ---
-    grid_map = load_map_from_config(cfg)
+    grid_map = GridMap(cfg)
     ordermanager = OrderManager(cfg, grid_map)
-    agv_manager = load_agvs_from_config(cfg, grid_map, ordermanager)
+    agv_manager = AGVManager(cfg, grid_map, ordermanager)
     env = Env(agv_manager, grid_map, ordermanager)
     # scheduler = RandomScheduler(ordermanager, grid_map, agv_manager)
     scheduler = TAScheduler(ordermanager, grid_map, agv_manager)

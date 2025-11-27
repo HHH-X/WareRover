@@ -55,7 +55,7 @@ class Simulator:
             self.agv_manager.replan_paths(new_paths)
 
         # 4. 执行一步环境逻辑（含冲突检测与AGV移动）
-        self.env.step()
+        step_info_dict = self.env.step()
 
         self.step_count += 1
 

@@ -5,7 +5,11 @@ import json
 
 
 class GridMap:
-    def __init__(self, map_data: Dict):
+    def __init__(self, cfg: SimConfig):
+        
+        with open(cfg.map_file, "r") as f:
+            map_data = json.load(f)
+            
         # ====== 地图基本属性 ======
         self.width = map_data["map"]["width"]
         self.height = map_data["map"]["height"]
@@ -334,8 +338,3 @@ class GridMap:
             self.box_status[box_id] = True
         self.dynamic_occupied.clear()
 
-
-def load_map_from_config(cfg: SimConfig) -> GridMap:
-    with open(cfg.map_file, "r") as f:
-        data = json.load(f)
-    return GridMap(data)

@@ -12,7 +12,7 @@ from torch.optim.lr_scheduler import MultiStepLR
 from torch.cuda.amp import GradScaler
 import numpy as np
 from .model import Network
-from .dhc_env import DHCAVGWrapper
+from .dhc_env import DHCAVGEnv
 from .buffer import SumTree, LocalBuffer
 from . import configs
 
@@ -373,7 +373,7 @@ class Actor:
         self.id = worker_id
         self.model = Network()
         self.model.eval()
-        self.env = DHCAVGWrapper(curriculum=True)
+        self.env = DHCAVGEnv(curriculum=True)
         self.epsilon = epsilon
         self.learner = learner
         self.global_buffer = buffer

@@ -7,17 +7,9 @@ import os
 
 from core.env import Env
 from planner.base_planner import BasePlanner
-from algorithm.DHC.dhc_wrapper import DHCCompatibleConverter
+from algorithm.DHC.dhc_converter import DHCCompatibleConverter
 from algorithm.DHC.model import Network  # 注意：这是你训练的 DHC 模型
-
-# 动作映射（和 DHCAVGWrapper 完全一致）
-ACTION_DELTA = {
-    0: (0,  0),   # stay
-    1: (0, -1),   # up
-    2: (0,  1),   # down
-    3: (-1, 0),   # left
-    4: (1,  0)    # right
-}
+from algorithm.DHC.dhc_env import ACTION_DELTA
 
 class DHCPlanner(BasePlanner):
     """
@@ -36,7 +28,7 @@ class DHCPlanner(BasePlanner):
         self.forward_steps = forward_steps
 
         # DHC 观测生成器（和训练时 100% 一致）
-        self.converter = DHCCompatibleConverter(obs_radius=4)
+        self.converter = DHCCompatibleConverter(num_agvs=self.env.agv_manager.num_agvs)
 
         # 加载训练好的模型
         self.model = Network().to(self.device)

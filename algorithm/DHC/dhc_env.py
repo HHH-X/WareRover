@@ -1,10 +1,10 @@
 # 文件名: dhc_agv_wrapper.py
 import numpy as np
 from typing import List, Dict, Tuple
-from config.settings import init_sim_config
+from config.settings import SimConfig
 from core.agv import StepInfo
-from core.agvmanager import load_agvs_from_config
-from core.gridmap import load_map_from_config
+from core.agvmanager import AGVManager
+from core.gridmap import GridMap
 from core.order import OrderManager
 from core.env import Env
 from core.simulator import Simulator
@@ -15,7 +15,7 @@ from scheduler.random_scheduler import RandomScheduler
 from scheduler.TA_scheduler import TAScheduler
 from planner.astar_planner import AStarPlanner
 from planner.cbs_fw_planner import FixedWindowCBSPlanner
-from .dhc_wrapper import DHCCompatibleConverter
+from .dhc_converter import DHCCompatibleConverter
 from . import configs
 
 # 动作对应的坐标偏移（x右 y下 为正，常见仓库地图坐标系）
@@ -36,7 +36,7 @@ DHC_REWARD = {
     'other':         -0.075,
 }
 
-class DHCAVGWrapper:
+class DHCAVGEnv:
     """
     完全模仿 DHC Environment 的接口，但底层使用你的真实仓库 AGV 环境
     可直接替换所有 DHC 训练代码中的 env = Environment(...)
@@ -46,21 +46,21 @@ class DHCAVGWrapper:
         curriculum
     ):
         
-        self.cfg = init_sim_config("config/test_map_v2.json")
+        self.cfg = SimConfig("config/test_map_v3.json")
         global_logger.init_from_config(self.cfg)
         # --- 初始化各组件 ---
-        grid_map = load_map_from_config(self.cfg)
+        grid_map = GridMap(self.cfg)
         self.ordermanager = OrderManager(self.cfg, grid_map)
-        self.agv_manager = load_agvs_from_config(self.cfg, grid_map, self.ordermanager)
+        self.agv_manager = AGVManager(self.cfg, grid_map, self.ordermanager)
         self.real_env = Env(self.agv_manager, grid_map, self.ordermanager)
         self.scheduler = TAScheduler(self.ordermanager, grid_map, self.agv_manager)
 
         self.obs_radius = configs.obs_radius
         # 转换器
-        self.converter = DHCCompatibleConverter(obs_radius=self.obs_radius)
+        self.converter = DHCCompatibleConverter(num_agvs=self.agv_manager.num_agvs)
         self.steps = 0
-        self.num_agents =  10
-        self.map_size = (self.cfg.width, self.cfg.height)
+        self.num_agents =  self.agv_manager.num_agvs
+        self.map_size = (self.real_env.map.height, self.real_env.map.width)
 
     def reset(self):
         self.real_env.reset()

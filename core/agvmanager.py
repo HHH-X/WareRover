@@ -7,7 +7,20 @@ import json
 
 
 class AGVManager:
-    def __init__(self, agv_list: List[AGV]):
+    def __init__(self, cfg: SimConfig, map_inst: GridMap, order_manager:OrderManager):
+        with open(cfg.map_file, "r") as f:
+            data = json.load(f)
+
+        agv_data = data.get("agvs", [])
+        wait_zones = {w["wait_zone_id"]: tuple(w["position"]) for w in data.get("wait_zones", [])}
+        agv_list = []
+        for agv_entry in agv_data:
+            agv_id = agv_entry["agv_id"]
+            wait_id = agv_id
+            agv_size = agv_entry.get("size", 1)
+            init_grid = wait_zones[wait_id]
+            agv = AGV(agv_id=agv_id, size=agv_size, init_grid_pos=init_grid, map_inst=map_inst, order_manager=order_manager)
+            agv_list.append(agv)
         # 所有 AGV 实例，按 ID 索引
         self._agvs: Dict[int, AGV] = {agv.id: agv for agv in agv_list}
         # 当前处于空闲状态的 AGV ID（刚完成任务、去休息区途中、或在休息区）
@@ -24,6 +37,7 @@ class AGVManager:
             self.agvs_by_size.setdefault(agv.size, set()).add(agv.id)
         # 每个 AGV 的尺寸映射
         self.agv_sizes: Dict[int, int] = {agv.id: agv.size for agv in agv_list}
+        self.num_agvs = len(agv_list)
 
     # 获取指定 ID 的 AGV 实例
     def get_agv(self, agv_id: int) -> AGV:
@@ -194,28 +208,3 @@ class AGVManager:
         self.need_replan_agvs = all_agv_ids.copy()
         self.block_counts = {agv_id: 0 for agv_id in all_agv_ids}
 
-
-def load_agvs_from_config(cfg: SimConfig, map_inst: GridMap, order_manager:OrderManager) -> AGVManager:
-    """
-    从配置文件中读取AGV信息，初始化所有AGV实例，并创建AGVManager实例。
-    参数：
-        cfg: SimConfig 实例，包含 map_file 路径。
-    返回：
-        agv_manager: AGVManager 管理器实例
-    """
-    with open(cfg.map_file, "r") as f:
-        data = json.load(f)
-
-    agv_data = data.get("agvs", [])
-    wait_zones = {w["wait_zone_id"]: tuple(w["position"]) for w in data.get("wait_zones", [])}
-
-    agv_list = []
-    for agv_entry in agv_data:
-        agv_id = agv_entry["agv_id"]
-        wait_id = agv_id
-        agv_size = agv_entry.get("size", 1)
-        init_grid = wait_zones[wait_id]
-        agv = AGV(agv_id=agv_id, size=agv_size, init_grid_pos=init_grid, map_inst=map_inst, order_manager=order_manager)
-        agv_list.append(agv)
-
-    return AGVManager(agv_list)

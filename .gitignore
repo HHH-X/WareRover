@@ -4,3 +4,4 @@
 # （可选）忽略 Python 缓存目录
 __pycache__/
 .vscode/
+algorithm/DHC/models/
