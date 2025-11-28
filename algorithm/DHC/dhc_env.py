@@ -46,7 +46,7 @@ class DHCAVGEnv:
         curriculum
     ):
         
-        self.cfg = SimConfig("config/test_map_v3.json")
+        self.cfg = SimConfig()
         global_logger.init_from_config(self.cfg)
         # --- 初始化各组件 ---
         grid_map = GridMap(self.cfg)

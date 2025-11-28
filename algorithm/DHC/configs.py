@@ -6,7 +6,7 @@ communication = False
 ####################    environment     ####################
 ############################################################
 map_length = 50
-num_agents = 10
+# num_agents = 2
 obs_radius = 4
 reward_fn = dict(move=-0.075,
                 stay_on_goal=0,
@@ -28,10 +28,10 @@ action_dim = 5
 num_actors = 1
 log_interval = 10
 training_times = 6000 #600000
-save_interval=500 #2000
+save_interval=1000 #2000
 gamma=0.99
 batch_size=192
-learning_starts=5000 #50000
+learning_starts=10000 #50000
 target_network_update_freq=2000
 save_path='D:\\Project\\AGVSim\\algorithm\\DHC\\models'
 max_episode_length = 256

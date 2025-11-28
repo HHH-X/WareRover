@@ -51,7 +51,7 @@ async def simulator_loop(websocket, message_queue):
     global NEED_RESET
     print("Simulation begin")
 
-    cfg = SimConfig("config/test_map_v3.json")
+    cfg = SimConfig()
     global_logger.init_from_config(cfg)
 
     # --- 初始化各组件 ---

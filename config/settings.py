@@ -7,7 +7,7 @@ class SimConfig:
     num_orders_size1 = 20
     num_orders_size2 = 0
 
-    map_file: str = "config/default_map.json"  # 默认地图路径
+    map_file: str = "config/map_8_6.json"  # 默认地图路径
     max_steps: int = 1000
 
     cell_size: int = 40
