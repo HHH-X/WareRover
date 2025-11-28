@@ -277,6 +277,31 @@ class Learner:
         self.done = False
         self.loss = 0
 
+        # ========== 新增：加载模型 ==========
+        if configs.load_model is not None and os.path.exists(configs.load_model):
+            print(f"\n加载模型权重: {configs.load_model}")
+            state_dict = torch.load(configs.load_model, map_location=self.device)
+            self.model.load_state_dict(state_dict)
+            self.tar_model.load_state_dict(state_dict)
+
+            # 尝试从文件名恢复 counter（可选但强烈推荐！）
+            filename = os.path.basename(configs.load_model)
+            import re
+            match = re.search(r'(\d+)\.pth', filename)
+            if match:
+                resume_step = int(match.group(1))
+                self.counter = resume_step
+                self.last_counter = resume_step
+                print(f"恢复训练步数: {resume_step}")
+            else:
+                self.counter = 0
+                self.last_counter = 0
+        else:
+            self.counter = 0
+            self.last_counter = 0
+            print("未找到模型，从头训练")
+        # =====================================
+
         self.store_weights()
 
     def get_weights(self):

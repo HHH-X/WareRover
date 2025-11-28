@@ -37,6 +37,7 @@ save_path='D:\\Project\\AGVSim\\algorithm\\DHC\\models'
 max_episode_length = 256
 seq_len = 16
 load_model = None
+# load_model = 'D:\\Project\\AGVSim\\algorithm\\DHC\models\\old_models\\2000.pth'
 
 max_episode_length = max_episode_length
 

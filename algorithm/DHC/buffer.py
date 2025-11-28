@@ -111,6 +111,14 @@ class LocalBuffer:
         self.q_buf = self.q_buf[:self.size+1]
         self.comm_mask_buf = self.comm_mask_buf[:self.size+1]
 
+        
+        episode_reward_sum = float(self.rew_buf[:self.size].sum())
+        episode_length = self.size
+        print(f"\n[Episode Finish] Actor={self.actor_id} | "
+          f"Steps={episode_length} | "
+          f"Reward_Sum={episode_reward_sum:+8.4f} | "
+          f"Done={done}")
+
         # caculate td errors for prioritized experience replay
         td_errors = np.zeros(self.capacity, dtype=np.float32)
         q_max = np.max(self.q_buf[:self.size], axis=1)

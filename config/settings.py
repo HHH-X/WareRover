@@ -4,8 +4,8 @@ import json
 @dataclass
 class SimConfig:
 
-    num_orders_size1 = 20
-    num_orders_size2 = 0
+    num_orders_size1:int = 20
+    num_orders_size2:int = 0
 
     map_file: str = "config/map_8_6.json"  # 默认地图路径
     max_steps: int = 1000
@@ -13,5 +13,5 @@ class SimConfig:
     cell_size: int = 40
     panel_width: int = 300
 
-    dhc_model_path = 'D:\\Project\\AGVSim\\algorithm\\DHC\\models\\10000.pth'
+    dhc_model_path:str = 'D:\\Project\\AGVSim\\algorithm\\DHC\\models\\10000.pth'
 
