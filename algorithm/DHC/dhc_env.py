@@ -53,7 +53,8 @@ class DHCAVGEnv:
         self.ordermanager = OrderManager(self.cfg, grid_map)
         self.agv_manager = AGVManager(self.cfg, grid_map, self.ordermanager)
         self.real_env = Env(self.agv_manager, grid_map, self.ordermanager)
-        self.scheduler = TAScheduler(self.ordermanager, grid_map, self.agv_manager)
+        # self.scheduler = TAScheduler(self.ordermanager, grid_map, self.agv_manager)
+        self.scheduler = RandomScheduler(self.ordermanager, grid_map, self.agv_manager)
 
         self.obs_radius = configs.obs_radius
         # 转换器
@@ -64,6 +65,7 @@ class DHCAVGEnv:
 
     def reset(self):
         self.real_env.reset()
+        self.scheduler.reset()
         self.steps = 0
         idle_agv_set = self.agv_manager.get_idle_agv_ids()
         if idle_agv_set:

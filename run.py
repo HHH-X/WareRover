@@ -59,11 +59,11 @@ async def simulator_loop(websocket, message_queue):
     ordermanager = OrderManager(cfg, grid_map)
     agv_manager = AGVManager(cfg, grid_map, ordermanager)
     env = Env(agv_manager, grid_map, ordermanager)
-    # scheduler = RandomScheduler(ordermanager, grid_map, agv_manager)
-    scheduler = TAScheduler(ordermanager, grid_map, agv_manager)
+    scheduler = RandomScheduler(ordermanager, grid_map, agv_manager)
+    # scheduler = TAScheduler(ordermanager, grid_map, agv_manager)
     # planner = AStarPlanner(env)
-    # planner = FixedWindowCBSPlanner(env)
-    planner = DHCPlanner(env, model_path=cfg.dhc_model_path, forward_steps=1, device="cuda")
+    planner = FixedWindowCBSPlanner(env)
+    # planner = DHCPlanner(env, model_path=cfg.dhc_model_path, forward_steps=1, device="cuda")
     simulator = Simulator(cfg, grid_map, agv_manager, env, scheduler, planner)
 
     # 初始化 FaultManager
@@ -78,6 +78,7 @@ async def simulator_loop(websocket, message_queue):
             print("Resetting simulation...")
             simulator.step_count = 0
             env.reset()
+            scheduler.reset()
             NEED_RESET = False
             # 重新发送初始化数据
             # init_data = generate_send_data(grid_map, agv_manager, data_type="init")

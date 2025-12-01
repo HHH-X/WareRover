@@ -36,3 +36,10 @@ class BaseScheduler(ABC):
                 break
 
         return rest_assignments
+    
+    def reset(self) -> None:
+        """
+        当外部调用 order_manager.reset_order() 之后，
+        一定要同步调用 scheduler.reset()，让调度器“感知”到新一批订单。
+        """
+        pass

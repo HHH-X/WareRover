@@ -24,14 +24,14 @@ action_dim = 5
 ############################################################
 
 # basic training setting
-# num_actors = 20
-num_actors = 1
+num_actors = 20
+# num_actors = 1
 log_interval = 10
-training_times = 6000 #600000
-save_interval=1000 #2000
+training_times = 600000 #600000
+save_interval=2000
 gamma=0.99
 batch_size=192
-learning_starts=10000 #50000
+learning_starts=50000
 target_network_update_freq=2000
 save_path='D:\\Project\\AGVSim\\algorithm\\DHC\\models'
 max_episode_length = 256

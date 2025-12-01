@@ -13,5 +13,5 @@ class SimConfig:
     cell_size: int = 40
     panel_width: int = 300
 
-    dhc_model_path:str = 'D:\\Project\\AGVSim\\algorithm\\DHC\\models\\10000.pth'
+    dhc_model_path:str = 'D:\\Project\\AGVSim\\algorithm\\DHC\\models\\old_models\\2000.pth'
 
