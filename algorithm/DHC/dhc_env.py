@@ -30,7 +30,7 @@ ACTION_DELTA = {
 DHC_REWARD = {
     'move':          -0.075,
     'collision':     -0.5,
-    'stay_off_goal': -0.1,
+    'stay_off_goal': -0.075,
     'stay_on_goal':   0.0,
     'finish':        +5.0,
     'other':         -0.075,
@@ -62,6 +62,8 @@ class DHCAVGEnv:
         self.steps = 0
         self.num_agents =  self.agv_manager.num_agvs
         self.map_size = (self.real_env.map.height, self.real_env.map.width)
+
+        self.prev_goal_distances = {}  # {agv_id: 上一次到目标的曼哈顿距离}
 
     def reset(self):
         self.real_env.reset()

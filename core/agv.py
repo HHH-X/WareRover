@@ -7,6 +7,11 @@ from config.settings import SimConfig
 import json
 
 epsilon = 1e-4 
+class Direction(Enum):
+    UP = auto()
+    DOWN = auto()
+    LEFT = auto()
+    RIGHT = auto()
 
 class AGVAction(Enum):
     PICK = "pick"         # 取货
@@ -19,6 +24,7 @@ class StepInfo(Enum):
     STAY_OFF_GOAL = auto() # 非目标点且不动
     STAY_ON_GOAL = auto()  # 在目标点上静止
     FINISH = auto()        # 完成任务
+    TURNING = auto()
     OTHER = auto()       # 其他情况
 
 class AGV:
@@ -50,9 +56,14 @@ class AGV:
         self.action_queue: Deque[Tuple[int, int]] = deque()
 
         self.speed: float = 0.0
-        self.max_speed: float = 0.3
-        self.time_step: float = 1.0
-        self.direction: Optional[str] = None
+        self.max_speed: float =  SimConfig.agv_max_speed
+        self.time_step: float = SimConfig.time_step
+
+        self.direction: Optional[Direction] = Direction.LEFT # 初始朝向向下
+        turning_time_90: float = SimConfig.agv_turn_time_90
+        self.turning_steps_90: int = int(round(turning_time_90 / self.time_step))
+        self.turning_timer: int = 0
+        self.target_direction: Optional[Direction] = None
 
         self.carried_box_id: int = None
 
@@ -80,6 +91,13 @@ class AGV:
     def step(self, next_grid: Tuple[int, int]) -> Tuple[bool, StepInfo]:
         if not self.is_working:
             return False, StepInfo.OTHER
+        
+        if self.turning_timer > 0:
+            self.turning_timer -= 1
+            if(self.turning_timer == 0):
+                self.direction = self.target_direction
+            return False, StepInfo.TURNING
+               
         _, step_info = self.update_position(next_grid)
         replan_required = False
 
@@ -101,8 +119,8 @@ class AGV:
             replan_required = True
             step_info = StepInfo.FINISH
 
-        # 情况 3：完全没有路径，且不是休息状态 -> 需要重新规划
-        elif not self.action_queue and not self.is_resting:
+        # 没有路径，且不是休息状态 -> 需要重新规划
+        if not self.action_queue and not self.is_resting:
             replan_required = True
 
         return replan_required, step_info
@@ -115,17 +133,24 @@ class AGV:
         step_info = StepInfo.MOVE
         # 判断方向
         if dx == 1:
-            self.direction = 'RIGHT'
+            self.target_direction = Direction.RIGHT
         elif dx == -1:
-            self.direction = 'LEFT'
+            self.target_direction = Direction.LEFT
         elif dy == 1:
-            self.direction = 'DOWN'
+            self.target_direction = Direction.DOWN
         elif dy == -1:
-            self.direction = 'UP'
+            self.target_direction = Direction.UP
         else:
-            self.direction = 'WAIT'
+            self.target_direction = None
             step_info = StepInfo.STAY_OFF_GOAL
-
+        #处理目标方向
+        self.turning_timer = self._calculate_turn_time(self.direction, self.target_direction)
+        if( self.turning_timer > 0):
+            self.turning_timer -= 1
+            if(self.turning_timer == 0):
+                self.direction = self.target_direction
+            return False, StepInfo.TURNING
+        
         self.speed = self.max_speed
         offset = self.speed * self.time_step
         x, y = self.real_pos
@@ -213,3 +238,16 @@ class AGV:
         self.carried_box_id = None
         self.is_working = True
         self.direction = None
+    
+    def _calculate_turn_time(self, current_direction: Direction, target_direction: Optional[Direction],) -> int:
+        if target_direction is None or current_direction == target_direction:
+            return 0
+        opposites = {
+            Direction.UP: Direction.DOWN,
+            Direction.DOWN: Direction.UP,
+            Direction.LEFT: Direction.RIGHT,
+            Direction.RIGHT: Direction.LEFT,
+        }
+        if opposites.get(current_direction) == target_direction:
+            return self.turning_steps_90 * 2
+        return self.turning_steps_90

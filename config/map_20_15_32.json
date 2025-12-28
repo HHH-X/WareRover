@@ -1,0 +1,84 @@
+{
+  "map": {
+    "width": 20,
+    "height": 15
+  },
+
+  "boxes": [
+    { "box_id": 0, "position": [4, 5], "goods_ids": [0] },
+    { "box_id": 1, "position": [5, 5], "goods_ids": [1] },
+    { "box_id": 2, "position": [6, 5], "goods_ids": [2] },
+    { "box_id": 3, "position": [7, 5], "goods_ids": [3] },
+    { "box_id": 4, "position": [11, 5], "goods_ids": [4] },
+    { "box_id": 5, "position": [12, 5], "goods_ids": [5] },
+    { "box_id": 6, "position": [13, 5], "goods_ids": [6] },
+    { "box_id": 7, "position": [14, 5], "goods_ids": [7] },
+
+    { "box_id": 8, "position": [4, 6], "goods_ids": [8] },
+    { "box_id": 9, "position": [5, 6], "goods_ids": [9] },
+    { "box_id": 10, "position": [6, 6], "goods_ids": [10] },
+    { "box_id": 11, "position": [7, 6], "goods_ids": [11] },
+    { "box_id": 12, "position": [11, 6], "goods_ids": [12] },
+    { "box_id": 13, "position": [12, 6], "goods_ids": [13] },
+    { "box_id": 14, "position": [13, 6], "goods_ids": [14] },
+    { "box_id": 15, "position": [14, 6], "goods_ids": [15] },
+
+    { "box_id": 16, "position": [4, 9], "goods_ids": [16] },
+    { "box_id": 17, "position": [5, 9], "goods_ids": [17] },
+    { "box_id": 18, "position": [6, 9], "goods_ids": [18] },
+    { "box_id": 19, "position": [7, 9], "goods_ids": [19] },
+    { "box_id": 20, "position": [11, 9], "goods_ids": [20] },
+    { "box_id": 21, "position": [12, 9], "goods_ids": [21] },
+    { "box_id": 22, "position": [13, 9], "goods_ids": [22] },
+    { "box_id": 23, "position": [14, 9], "goods_ids": [23] },
+    
+    { "box_id": 24, "position": [4, 10], "goods_ids": [24] },
+    { "box_id": 25, "position": [5, 10], "goods_ids": [25] },
+    { "box_id": 26, "position": [6, 10], "goods_ids": [26] },
+    { "box_id": 27, "position": [7, 10], "goods_ids": [27] },
+    { "box_id": 28, "position": [11, 10], "goods_ids": [28] },
+    { "box_id": 29, "position": [12, 10], "goods_ids": [29] },
+    { "box_id": 30, "position": [13, 10], "goods_ids": [30] },
+    { "box_id": 31, "position": [14, 10], "goods_ids": [31] }
+  ],
+
+  "receivers": [
+    { "receiver_id": 0, "position": [0, 8] },
+    { "receiver_id": 1, "position": [19, 8] },
+    { "receiver_id": 2, "position": [0, 11] },
+    { "receiver_id": 3, "position": [19, 11] },
+    { "receiver_id": 4, "position": [4, 14] },
+    { "receiver_id": 5, "position": [7, 14] },
+    { "receiver_id": 6, "position": [11, 14] },
+    { "receiver_id": 7, "position": [14, 14] }
+  ],
+
+  "wait_zones": [
+    { "wait_zone_id": 0, "position": [1, 0] },
+    { "wait_zone_id": 1, "position": [3, 0] },
+    { "wait_zone_id": 2, "position": [5, 0] },
+    { "wait_zone_id": 3, "position": [7, 0] },
+    { "wait_zone_id": 4, "position": [9, 0] },
+    { "wait_zone_id": 5, "position": [11, 0] },
+    { "wait_zone_id": 6, "position": [13, 0] },
+    { "wait_zone_id": 7, "position": [15, 0] },
+    { "wait_zone_id": 8, "position": [17, 0] },
+    { "wait_zone_id": 9, "position": [19, 0] }
+  ],
+
+  "agvs": [
+    { "agv_id": 0 },
+    { "agv_id": 1 },
+    { "agv_id": 2 },
+    { "agv_id": 3 },
+    { "agv_id": 4 },
+    { "agv_id": 5 },
+    { "agv_id": 6 },
+    { "agv_id": 7 },
+    { "agv_id": 8 },
+    { "agv_id": 9 }
+  ],
+
+  "obstacles": [
+  ]
+}
