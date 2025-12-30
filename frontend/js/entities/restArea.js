@@ -3,7 +3,7 @@ import * as THREE from 'three';
 class RestArea {
   constructor(pos, size = 1) {
     const geometry = new THREE.PlaneGeometry(size, size);
-    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide });
+    const material = new THREE.MeshBasicMaterial({ color: 0x6d6dfc, side: THREE.DoubleSide });
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.rotation.x = -Math.PI / 2;
 

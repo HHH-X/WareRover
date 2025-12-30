@@ -4,17 +4,19 @@ from config.settings import SimConfig
 from core.gridmap import GridMap
 from core.agvmanager import AGVManager
 from core.env import Env
+from core.ordermanager import OrderManager
 from scheduler.base_scheduler import BaseScheduler
 from planner.base_planner import BasePlanner
 
 
 class Simulator:
     def __init__(self, sim_config: SimConfig, map_inst: GridMap,
-                 agv_manager: AGVManager, env: Env,
+                 agv_manager: AGVManager, order_manager: OrderManager, env: Env,
                  scheduler: BaseScheduler, planner: BasePlanner):
         self.config = sim_config
         self.map = map_inst
         self.agv_manager = agv_manager
+        self.order_manager = order_manager
         self.env = env
         self.scheduler = scheduler
         self.planner = planner
@@ -35,6 +37,8 @@ class Simulator:
         if self.step_count % 30 == 0:
             print(f"\n--- Simulator Step {self.step_count} ---")
 
+        if(self.order_manager.can_generate_more_orders()):
+            self.order_manager.step(self.step_count)
         # 1. 获取空闲AGV并尝试分配任务
         idle_agv_set = self.agv_manager.get_idle_agv_ids()
         if idle_agv_set:

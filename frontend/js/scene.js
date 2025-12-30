@@ -13,7 +13,7 @@ import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 function createScene() {
   // ---------------- 场景 & 渲染器 ----------------
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xf0f0f0);
+  scene.background = new THREE.Color(0x141319);
 
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
   camera.position.set(25, 8, 20);
@@ -66,7 +66,7 @@ function createScene() {
     addMap(mapSize) {
       this.mapSize = mapSize;
       const grid = new THREE.Group();
-      const material = new THREE.LineBasicMaterial({ color: 0x888888 });
+      const material = new THREE.LineBasicMaterial({ color: 0xffffff });
 
       // 竖线
       for (let x = 0; x <= mapSize.width; x++) {
@@ -86,7 +86,7 @@ function createScene() {
 
       // 地板
       const geometry = new THREE.PlaneGeometry(mapSize.width, mapSize.height);
-      const materialFloor = new THREE.MeshPhongMaterial({ color: 0xeeeeee });
+      const materialFloor = new THREE.MeshPhongMaterial({ color: 0xaca7fb });
       const floor = new THREE.Mesh(geometry, materialFloor);
       floor.rotation.x = -Math.PI / 2;
       floor.position.x = mapSize.width / 2;

@@ -4,7 +4,8 @@ import math
 
 from core.agv import AGVAction
 from core.gridmap import GridMap
-from core.order import OrderManager, Order
+from core.order import Order
+from core.ordermanager import OrderManager
 from .base_scheduler import BaseScheduler
 
 

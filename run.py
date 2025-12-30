@@ -12,7 +12,7 @@ import numpy as np
 from config.settings import SimConfig
 from core.agvmanager import AGVManager
 from core.gridmap import GridMap
-from core.order import OrderManager
+from core.ordermanager import OrderManager
 from core.env import Env
 from core.simulator import Simulator
 from core.data_generator import generate_send_data
@@ -55,8 +55,8 @@ async def simulator_loop(websocket, message_queue):
     global_logger.init_from_config(cfg)
 
     # --- 初始化各组件 ---
-    grid_map = GridMap(cfg)
-    ordermanager = OrderManager(cfg, grid_map)
+    grid_map = GridMap()
+    ordermanager = OrderManager(grid_map)
     agv_manager = AGVManager(cfg, grid_map, ordermanager)
     env = Env(agv_manager, grid_map, ordermanager)
     # scheduler = RandomScheduler(ordermanager, grid_map, agv_manager)
@@ -64,7 +64,7 @@ async def simulator_loop(websocket, message_queue):
     # planner = AStarPlanner(env)
     planner = FixedWindowCBSPlanner(env)
     # planner = DHCPlanner(env, model_path=cfg.dhc_model_path, forward_steps=1, device="cuda")
-    simulator = Simulator(cfg, grid_map, agv_manager, env, scheduler, planner)
+    simulator = Simulator(cfg, grid_map, agv_manager, ordermanager, env, scheduler, planner)
 
     # 初始化 FaultManager
     fault_manager = FaultManager(agv_manager, env, grid_map)

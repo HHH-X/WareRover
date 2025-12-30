@@ -19,7 +19,7 @@ body {
   top: 20px;
   left: 20px; /* 放在左上角，可改为 right: 20px 放右上角 */
   width: 260px;
-  background: rgba(35, 35, 35, 0.8);
+  background: rgba(81, 69, 81, 0.9);
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0,0,0,0.3);
   color: #f0f0f0;
@@ -34,7 +34,7 @@ body {
 #panel h2 {
   font-size: 18px;
   margin-bottom: 12px;
-  color: #4fc3f7;
+  color: #aaa6fa;
 }
 
 /* ===============================
@@ -62,10 +62,10 @@ body {
   background-color: #4caf50; /* 绿色运行 */
 }
 #toggleBtn.paused {
-  background-color: #f44336; /* 红色暂停 */
+  background-color: #e97550; /* 红色暂停 */
 }
 #stepBtn {
-  background-color: #2196f3; /* 蓝色 Step */
+  background-color: #4171f9; /* 蓝色 Step */
 }
 
 /* 新增：Damage / Repair 按钮样式 */
@@ -84,7 +84,7 @@ body {
 }
 
 .stop-btn {
-  background-color: #c0392b;
+  background-color: #d580f9;
   color: white;
   border: none;
   padding: 8px 16px;
@@ -95,12 +95,12 @@ body {
 }
 
 .stop-btn:hover {
-  background-color: #e74c3c;
+  background-color: #d580f9;
 }
 
 /* Reset 按钮 - 绿色，和 Stop 并排 */
 .reset-btn {
-  background-color: #27ae60;     /* 鲜绿色 */
+  background-color: #52ba89;     /* 鲜绿色 */
   color: white;
   border: none;
   padding: 8px 16px;

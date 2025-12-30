@@ -4,7 +4,8 @@ from typing import Dict, List, Set, Tuple
 
 from core.agv import AGVAction
 from core.gridmap import GridMap
-from core.order import OrderManager, Order
+from core.order import Order
+from core.ordermanager import OrderManager
 from core.agvmanager import AGVManager
 from scheduler.base_scheduler import BaseScheduler
 

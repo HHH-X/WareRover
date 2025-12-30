@@ -5,9 +5,9 @@ import json
 
 
 class GridMap:
-    def __init__(self, cfg: SimConfig):
+    def __init__(self):
         
-        with open(cfg.map_file, "r") as f:
+        with open(SimConfig.map_file, "r") as f:
             map_data = json.load(f)
             
         # ====== 地图基本属性 ======

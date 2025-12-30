@@ -1,5 +1,6 @@
 from typing import List, Dict
 import threading
+from config.settings import SimConfig
 
 
 class GlobalLogger:
@@ -19,6 +20,7 @@ class GlobalLogger:
         # 运行日志
         self._runtime_logs: List[str] = []
         self._max_runtime_logs = 100  # 保存最近100条
+        self._log_to_console = SimConfig.log_to_console
 
         # 指标日志
         self._metrics: Dict[str, float] = {
@@ -58,6 +60,8 @@ class GlobalLogger:
         with self._log_lock:
             # self._runtime_logs.append(f"[{timestamp}] {msg}")
             self._runtime_logs.append(msg)
+            if self._log_to_console:
+                print(msg)
             if len(self._runtime_logs) > self._max_runtime_logs:
                 self._runtime_logs.pop(0)
 

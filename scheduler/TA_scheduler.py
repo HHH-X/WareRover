@@ -3,7 +3,8 @@ from copy import deepcopy
 from collections import defaultdict
 from typing import List, Dict, Tuple, Set
 from core.gridmap import GridMap
-from core.order import OrderManager, Order
+from core.order import Order
+from core.ordermanager import OrderManager
 from core.agv import AGVAction
 from core.agvmanager import AGVManager
 from scheduler.base_scheduler import BaseScheduler
