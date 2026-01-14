@@ -36,6 +36,8 @@ DHC_REWARD = {
     'other':         -0.075,
 }
 
+DIST_REWARD_SCALE = 0.1
+
 class DHCAVGEnv:
     """
     完全模仿 DHC Environment 的接口，但底层使用你的真实仓库 AGV 环境
@@ -46,12 +48,10 @@ class DHCAVGEnv:
         curriculum
     ):
         
-        self.cfg = SimConfig()
-        global_logger.init_from_config(self.cfg)
         # --- 初始化各组件 ---
-        grid_map = GridMap(self.cfg)
-        self.ordermanager = OrderManager(self.cfg, grid_map)
-        self.agv_manager = AGVManager(self.cfg, grid_map, self.ordermanager)
+        grid_map = GridMap()
+        self.ordermanager = OrderManager(grid_map)
+        self.agv_manager = AGVManager(grid_map, self.ordermanager)
         self.real_env = Env(self.agv_manager, grid_map, self.ordermanager)
         # self.scheduler = TAScheduler(self.ordermanager, grid_map, self.agv_manager)
         self.scheduler = RandomScheduler(self.ordermanager, grid_map, self.agv_manager)
@@ -66,14 +66,26 @@ class DHCAVGEnv:
         self.prev_goal_distances = {}  # {agv_id: 上一次到目标的曼哈顿距离}
 
     def reset(self):
-        self.real_env.reset()
-        self.scheduler.reset()
         self.steps = 0
+        # self.ordermanager.reset_order()
+        self.real_env.reset()
+        if(self.ordermanager.can_generate_more_orders()):
+            self.ordermanager.step(self.steps)        
+        self.scheduler.reset()
+        self.prev_goal_distances.clear()
+        
         idle_agv_set = self.agv_manager.get_idle_agv_ids()
         if idle_agv_set:
             agv_tasks = self.scheduler.assign_tasks(idle_agv_set)
             if(agv_tasks):
                 self.agv_manager.assign_tasks(agv_tasks)
+
+        # 初始化 prev_goal_distances
+        replanning_targets = self.agv_manager.get_replan_targets()
+        for agv_id, (curr_pos, goal_pos) in replanning_targets.items():
+            dist = abs(curr_pos[0] - goal_pos[0]) + abs(curr_pos[1] - goal_pos[1])
+            self.prev_goal_distances[agv_id] = dist
+
         # 返回 DHC 格式的观测
         return self.observe()
 
@@ -129,12 +141,14 @@ class DHCAVGEnv:
         
             
         self.steps += 1
+        if(self.ordermanager.can_generate_more_orders()):
+            self.ordermanager.step(self.steps)
 
-        # 找出所有出现的 id 并排序
-        sorted_ids = sorted(step_info.keys())
+        # 所有的agv id
+        all_agv_ids = self.agv_manager.all_agv_ids
 
         rewards = []
-        for agv_id in sorted_ids:
+        for agv_id in all_agv_ids:
             info = step_info[agv_id]
 
             if info == StepInfo.FINISH:
@@ -152,9 +166,23 @@ class DHCAVGEnv:
             else:
                 raise ValueError(f"Unknown StepInfo: {info}")
 
+            # ---------- 曼哈顿距离 shaping reward ----------
+            if agv_id in replanning_targets:
+                curr_pos, goal_pos = replanning_targets[agv_id]
+                curr_dist = abs(curr_pos[0] - goal_pos[0]) + abs(curr_pos[1] - goal_pos[1])
+                if info == StepInfo.FINISH:
+                    self.prev_goal_distances[agv_id] = curr_dist
+                else:
+                    prev_dist = self.prev_goal_distances.get(agv_id, curr_dist)
+                    delta_dist = prev_dist - curr_dist
+                    r += DIST_REWARD_SCALE * delta_dist
+                    self.prev_goal_distances[agv_id] = curr_dist
+            else:
+                # 没有目标的 AGV（理论上很少）
+                self.prev_goal_distances.pop(agv_id, None)
             rewards.append(r)
 
-        overall_done = self.ordermanager.is_all_orders_completed() or self.steps >= self.cfg.max_steps
+        overall_done = self.ordermanager.is_all_orders_completed() or self.steps >= SimConfig.max_steps
         return (obs, pos) , rewards, overall_done, info
 
     def render(self):

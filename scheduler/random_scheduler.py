@@ -8,7 +8,7 @@ from core.order import Order
 from core.ordermanager import OrderManager
 from core.agvmanager import AGVManager
 from scheduler.base_scheduler import BaseScheduler
-
+from utils.logger import global_logger
 
 class RandomScheduler(BaseScheduler):
     """
@@ -38,6 +38,7 @@ class RandomScheduler(BaseScheduler):
         当外部调用 order_manager.reset_order() 之后，
         一定要同步调用 scheduler.reset()，让调度器“感知”到新一批订单。
         """
+        global_logger.add_runtime_log("[RandomScheduler] Resetting scheduler and refreshing orders.")
         # 重新获取当前所有未处理订单
         fresh_orders = self.order_manager.get_unprocessed_orders()
 

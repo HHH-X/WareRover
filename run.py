@@ -51,20 +51,18 @@ async def simulator_loop(websocket, message_queue):
     global NEED_RESET
     print("Simulation begin")
 
-    cfg = SimConfig()
-    global_logger.init_from_config(cfg)
 
     # --- 初始化各组件 ---
     grid_map = GridMap()
     ordermanager = OrderManager(grid_map)
-    agv_manager = AGVManager(cfg, grid_map, ordermanager)
+    agv_manager = AGVManager(grid_map, ordermanager)
     env = Env(agv_manager, grid_map, ordermanager)
     # scheduler = RandomScheduler(ordermanager, grid_map, agv_manager)
     scheduler = TAScheduler(ordermanager, grid_map, agv_manager)
     # planner = AStarPlanner(env)
-    planner = FixedWindowCBSPlanner(env)
-    # planner = DHCPlanner(env, model_path=cfg.dhc_model_path, forward_steps=1, device="cuda")
-    simulator = Simulator(cfg, grid_map, agv_manager, ordermanager, env, scheduler, planner)
+    # planner = FixedWindowCBSPlanner(env)
+    planner = DHCPlanner(env, model_path=SimConfig.dhc_model_path, forward_steps=1, device="cuda")
+    simulator = Simulator(grid_map, agv_manager, ordermanager, env, scheduler, planner)
 
     # 初始化 FaultManager
     fault_manager = FaultManager(agv_manager, env, grid_map)
@@ -89,7 +87,7 @@ async def simulator_loop(websocket, message_queue):
         while (RUNNING
                and not NEED_RESET
                and not ordermanager.is_all_orders_completed()
-               and simulator.step_count < cfg.max_steps):
+               and simulator.step_count < SimConfig.max_steps):
 
             if not STATE["paused"] or STATE["step_trigger"]:
                 simulator.step()

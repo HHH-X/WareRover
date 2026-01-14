@@ -10,10 +10,9 @@ from planner.base_planner import BasePlanner
 
 
 class Simulator:
-    def __init__(self, sim_config: SimConfig, map_inst: GridMap,
+    def __init__(self, map_inst: GridMap,
                  agv_manager: AGVManager, order_manager: OrderManager, env: Env,
                  scheduler: BaseScheduler, planner: BasePlanner):
-        self.config = sim_config
         self.map = map_inst
         self.agv_manager = agv_manager
         self.order_manager = order_manager

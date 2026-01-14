@@ -13,7 +13,7 @@ class OrderMode(Enum):
 
 @dataclass
 class SimConfig:
-    order_mode: OrderMode = OrderMode.CONTINUOUS_PARETO  # 订单生成模式
+    order_mode: OrderMode = OrderMode.ONESHOT  # 订单生成模式
     total_orders_limit = 50
     size2_ratio: float = 0.0
     # size2 订单占总订单的比例，取值 0.0 ~ 1.0
@@ -28,9 +28,12 @@ class SimConfig:
     cell_size: int = 40
     panel_width: int = 300
 
-    dhc_model_path:str = 'D:\\Project\\AGVSim\\algorithm\\DHC\\models\\74000.pth'
+    dhc_model_path:str = 'D:\\Project\\AGVSim\\algorithm\\DHC\\models\\old_models\\V2\\74000.pth'
 
-    log_to_console: bool = True
+    force_replan_every_step: bool = True
+    # 是否强制每个需要决策的 AGV 每步都重新规划路径
+
+    log_to_console: bool = False
 
 # ==================== 各种模式对应的配置 dataclass ====================
 @dataclass

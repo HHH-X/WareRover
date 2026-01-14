@@ -31,16 +31,8 @@ class GlobalLogger:
 
         # 线程安全锁
         self._log_lock = threading.Lock()
-    # ================= 配置注入 =================
-    def init_from_config(self, cfg):
-        """根据配置初始化指标参数（后置依赖注入）"""
-        with self._log_lock:
-            self._completed_tasks = 0
-            total_orders = getattr(cfg, "num_orders_size1", 0) + getattr(cfg, "num_orders_size2", 0)
-            self._total_tasks = total_orders
-            # self.config_info["map_file"] = getattr(cfg, "map_file", "unknown")
-            # self.config_info["total_orders"] = str(total_orders)
-            # self.add_runtime_log(f"Initialized logger with {total_orders} total orders.")
+        self._completed_tasks = 0
+        self._total_tasks = SimConfig.total_orders_limit
 
     # ================= 配置日志 =================
     def set_config(self, key: str, value: str):
@@ -57,13 +49,13 @@ class GlobalLogger:
     def add_runtime_log(self, msg: str):
         """添加运行日志"""
         # timestamp = time.strftime("%H:%M:%S", time.localtime())
-        with self._log_lock:
+        # with self._log_lock:
             # self._runtime_logs.append(f"[{timestamp}] {msg}")
-            self._runtime_logs.append(msg)
-            if self._log_to_console:
-                print(msg)
-            if len(self._runtime_logs) > self._max_runtime_logs:
-                self._runtime_logs.pop(0)
+        self._runtime_logs.append(msg)
+        if self._log_to_console:
+            print(msg)
+        if len(self._runtime_logs) > self._max_runtime_logs:
+            self._runtime_logs.pop(0)
 
     def get_runtime_logs(self, n: int = 10) -> List[str]:
         """获取最近 n 条运行日志"""

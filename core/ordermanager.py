@@ -126,3 +126,4 @@ class OrderManager:
         self.logs.clear()
         self.next_order_id = 0
         self.strategy = self._create_strategy()  # 重新创建策略
+        global_logger.add_runtime_log("[OrderManager] Orders have been reset.")

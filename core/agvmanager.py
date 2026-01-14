@@ -4,11 +4,12 @@ from core.gridmap import GridMap
 from core.ordermanager import OrderManager
 from config.settings import SimConfig
 import json
+from utils.logger import global_logger
 
 
 class AGVManager:
-    def __init__(self, cfg: SimConfig, map_inst: GridMap, order_manager:OrderManager):
-        with open(cfg.map_file, "r") as f:
+    def __init__(self, map_inst: GridMap, order_manager:OrderManager):
+        with open(SimConfig.map_file, "r") as f:
             data = json.load(f)
 
         agv_data = data.get("agvs", [])
@@ -38,6 +39,9 @@ class AGVManager:
         # 每个 AGV 的尺寸映射
         self.agv_sizes: Dict[int, int] = {agv.id: agv.size for agv in agv_list}
         self.num_agvs = len(agv_list)
+        self.all_agv_ids = set(self._agvs.keys())
+
+        self.force_replan_every_step = SimConfig.force_replan_every_step
 
     # 获取指定 ID 的 AGV 实例
     def get_agv(self, agv_id: int) -> AGV:
@@ -173,7 +177,11 @@ class AGVManager:
     # 获取需要重规划的 AGV 的当前位置和目标位置
     def get_replan_targets(self) -> Dict[int, Tuple[Tuple[int, int], Tuple[int, int]]]:
         result = {}
-        for agv_id in self.need_replan_agvs:
+        if self.force_replan_every_step:
+            replan_agvs = self.all_agv_ids
+        else:
+            replan_agvs = set(self.need_replan_agvs)
+        for agv_id in replan_agvs:
             agv = self._agvs[agv_id]
             current = agv.grid_pos
             if agv.task_queue:
@@ -207,4 +215,5 @@ class AGVManager:
         self.need_rest_agvs = all_agv_ids.copy()
         self.need_replan_agvs = all_agv_ids.copy()
         self.block_counts = {agv_id: 0 for agv_id in all_agv_ids}
+        global_logger.add_runtime_log("[AGVManager] All AGVs have been reset to initial states.")
 
