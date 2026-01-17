@@ -14,7 +14,7 @@ from order_strategies import (
 )
 from utils.logger import global_logger
 from core.order import Order
-
+from utils.simulation_clock import clock
 
 class OrderManager:
     def __init__(self, map_inst: GridMap):
@@ -27,8 +27,6 @@ class OrderManager:
         self.processing_orders: Dict[int, Order] = {}
         self.finished_orders: Dict[int, Order] = {}
 
-        # 日志记录（异常信息）
-        self.logs: List[str] = []
         self.next_order_id = 0
 
         self.strategy = self._create_strategy()
@@ -51,21 +49,26 @@ class OrderManager:
     def can_generate_more_orders(self) -> bool:
         return len(self.all_orders) < self.total_orders_limit
 
-    def step(self, current_step: int):
+    def step(self):
         """由 Simulator 每 step 调用一次"""
-        new_orders = self.strategy.update(current_step)
-        accepted_count = 0
-        for order in new_orders:
-            if(self.can_generate_more_orders()):
-                order.order_id = self.next_order_id  # 确保 id 唯一
-                self.unprocessed_orders[self.next_order_id] = order
-                self.all_orders.append(order)
-                self.next_order_id += 1
-                accepted_count += 1
-            else:
-                break  # 达到总订单限制，停止添加
-        if( accepted_count ):
-            global_logger.add_runtime_log(f"[OrderManager] Step {current_step}: Accepted {accepted_count} new orders. Total orders: {len(self.all_orders)}")
+        if(self.can_generate_more_orders()):  
+            current_step = clock.now()
+            new_orders = self.strategy.update(current_step)
+            accepted_count = 0
+            for order in new_orders:
+                if(self.can_generate_more_orders()):
+                    order.order_id = self.next_order_id  # 确保 id 唯一
+                    order.created_step = current_step
+                    self.unprocessed_orders[self.next_order_id] = order
+                    self.all_orders.append(order)
+                    self.next_order_id += 1
+                    accepted_count += 1
+                else:
+                    break  # 达到总订单限制，停止添加
+            if( accepted_count ):
+                global_logger.add_runtime_log(f"[OrderManager] Step {current_step}: Accepted {accepted_count} new orders. Total orders: {len(self.all_orders)}")
+        self.check_processing_timeouts()
+        
     # ========== 第二块功能：订单管理 ==========
     def get_all_orders(self) -> List[Order]:
         return self.all_orders
@@ -74,7 +77,10 @@ class OrderManager:
         return list(self.unprocessed_orders.values())
     
     def mark_order_as_processing(self, order_id: int) -> bool:
+        if order_id not in self.unprocessed_orders:
+            return False
         order = self.unprocessed_orders.pop(order_id)
+        order.start_processing_step = clock.now()
         self.processing_orders[order_id] = order
         return True
     
@@ -88,7 +94,7 @@ class OrderManager:
         elif order_id in self.unprocessed_orders:
             order_source = self.unprocessed_orders
         else:
-            self.logs.append(f"[ERROR] Order {order_id} not found in processing or unprocessed orders.")
+            global_logger.add_runtime_log(f"[ERROR] Order {order_id} not found in processing or unprocessed orders.")
             return False
 
         order = order_source[order_id]
@@ -97,12 +103,13 @@ class OrderManager:
 
         if order.goods_id in goods_list and agv_pos == receiver_pos:
             # 从源字典中移除并添加到完成订单
+            order.finished_step = clock.now()
             self.finished_orders[order_id] = order_source.pop(order_id)
-            global_logger.add_runtime_log(f"finish order: {order_id}")
+            global_logger.add_runtime_log(f"[OrderManager] Order {order_id} completed by AGV {agv_id} at step {clock.now()}.")
             global_logger.task_completed()
             return True
         else:
-            self.logs.append(
+            global_logger.add_runtime_log(
                 f"[FAIL] Order {order_id} not fulfilled by AGV {agv_id}. "
                 f"Expected goods {order.goods_id} at receiver {receiver_pos}, "
                 f"but got goods {goods_list} at {agv_pos} with box_id={box_id}."
@@ -113,17 +120,32 @@ class OrderManager:
     def is_all_orders_completed(self) -> bool:
         return len(self.unprocessed_orders) == 0 and len(self.processing_orders) == 0 and not self.can_generate_more_orders()
 
-    # ========== 日志访问 ==========
+    def check_processing_timeouts(self):
+        """
+        将超时未完成的 processing 订单退回 unprocessed
+        """
+        timeout_orders = []
+        current_step = clock.now()
+        for order_id, order in self.processing_orders.items():
+            if order.start_processing_step is None:
+                continue
+            if current_step - order.start_processing_step > SimConfig.order_processing_timeout:
+                timeout_orders.append(order_id)
 
-    def get_logs(self) -> List[str]:
-        return self.logs
+        for order_id in timeout_orders:
+            order = self.processing_orders.pop(order_id)
+            order.start_processing_step = None  # 重置
+            self.unprocessed_orders[order_id] = order
+
+            global_logger.add_runtime_log(
+                f"[OrderManager] Order {order_id} timeout, returned to unprocessed queue."
+            )
 
     def reset_order(self):
         self.all_orders.clear()
         self.unprocessed_orders.clear()
         self.processing_orders.clear()
         self.finished_orders.clear()
-        self.logs.clear()
         self.next_order_id = 0
         self.strategy = self._create_strategy()  # 重新创建策略
         global_logger.add_runtime_log("[OrderManager] Orders have been reset.")

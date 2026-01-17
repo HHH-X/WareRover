@@ -41,8 +41,6 @@ class AGVManager:
         self.num_agvs = len(agv_list)
         self.all_agv_ids = set(self._agvs.keys())
 
-        self.force_replan_every_step = SimConfig.force_replan_every_step
-
     # 获取指定 ID 的 AGV 实例
     def get_agv(self, agv_id: int) -> AGV:
         return self._agvs[agv_id]
@@ -177,7 +175,7 @@ class AGVManager:
     # 获取需要重规划的 AGV 的当前位置和目标位置
     def get_replan_targets(self) -> Dict[int, Tuple[Tuple[int, int], Tuple[int, int]]]:
         result = {}
-        if self.force_replan_every_step:
+        if SimConfig.force_replan_every_step:
             replan_agvs = self.all_agv_ids
         else:
             replan_agvs = set(self.need_replan_agvs)

@@ -3,6 +3,16 @@ from typing import Optional
 import json
 from enum import Enum
 
+
+class SchedulerType(Enum):
+    RANDOM = "random"
+    TA = "ta"
+
+class PlannerType(Enum):
+    ASTAR = "astar"
+    CBS_FW = "cbs_fw"
+    DHC = "dhc"
+
 class OrderMode(Enum):
     """所有支持的订单生成模式"""
     ONESHOT = "oneshot"                  # 一次性生成所有订单（原有模式）
@@ -13,11 +23,21 @@ class OrderMode(Enum):
 
 @dataclass
 class SimConfig:
+    """仿真配置参数"""
+
+    # ==================== 算法选择配置 ====================
+    scheduler_type: SchedulerType = SchedulerType.RANDOM
+    planner_type: PlannerType = PlannerType.ASTAR
+    force_replan_every_step: bool = False# 是否强制每个需要决策的 AGV 每步都重新规划路径，自动联动 DHC 使用
+    dhc_model_path:str = 'D:\\Project\\AGVSim\\algorithm\\DHC\\models\\36000.pth'
+
+    #=================== 仿真参数配置 ====================
     order_mode: OrderMode = OrderMode.ONESHOT  # 订单生成模式
     total_orders_limit = 50
-    size2_ratio: float = 0.0
-    # size2 订单占总订单的比例，取值 0.0 ~ 1.0
+    size2_ratio: float = 0.0 # size2 订单占总订单的比例，取值 0.0 ~ 1.0
+    order_processing_timeout:int = 30 # 订单处理超时时间，单位秒，超过该时间未完成的订单会被重新放回未处理队列
 
+    # 地图和仿真步长配置
     map_file: str = "config/map_20_15_32.json"  # 默认地图路径
     max_steps: int = 1000
 
@@ -25,15 +45,10 @@ class SimConfig:
     agv_max_speed: float = 1  # AGV 最大速度，单位格/STEP
     agv_turn_time_90: float = 0  # AGV 转向所需时间，单位秒
 
+    #=================== 前端显示配置 ====================
     cell_size: int = 40
     panel_width: int = 300
-
-    dhc_model_path:str = 'D:\\Project\\AGVSim\\algorithm\\DHC\\models\\old_models\\V2\\74000.pth'
-
-    force_replan_every_step: bool = True
-    # 是否强制每个需要决策的 AGV 每步都重新规划路径
-
-    log_to_console: bool = False
+    log_to_console: bool = True
 
 # ==================== 各种模式对应的配置 dataclass ====================
 @dataclass

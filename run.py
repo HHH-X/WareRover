@@ -18,12 +18,9 @@ from core.simulator import Simulator
 from core.data_generator import generate_send_data
 from core.fault_manager import FaultManager
 from utils.logger import global_logger
-from scheduler.random_scheduler import RandomScheduler
-from scheduler.TA_scheduler import TAScheduler
-from planner.astar_planner import AStarPlanner
-from planner.cbs_fw_planner import FixedWindowCBSPlanner
-from planner.dhc_planner import DHCPlanner
 import websockets
+from utils.simulation_clock import clock
+from utils.algorithm_factory import build_scheduler, build_planner
 
 # 控制状态
 STATE = {
@@ -57,11 +54,9 @@ async def simulator_loop(websocket, message_queue):
     ordermanager = OrderManager(grid_map)
     agv_manager = AGVManager(grid_map, ordermanager)
     env = Env(agv_manager, grid_map, ordermanager)
-    # scheduler = RandomScheduler(ordermanager, grid_map, agv_manager)
-    scheduler = TAScheduler(ordermanager, grid_map, agv_manager)
-    # planner = AStarPlanner(env)
-    # planner = FixedWindowCBSPlanner(env)
-    planner = DHCPlanner(env, model_path=SimConfig.dhc_model_path, forward_steps=1, device="cuda")
+    scheduler = build_scheduler(ordermanager, grid_map, agv_manager)
+    planner = build_planner(env)
+
     simulator = Simulator(grid_map, agv_manager, ordermanager, env, scheduler, planner)
 
     # 初始化 FaultManager
@@ -74,7 +69,7 @@ async def simulator_loop(websocket, message_queue):
     while RUNNING:
         if NEED_RESET:
             print("Resetting simulation...")
-            simulator.step_count = 0
+            clock.reset()
             env.reset()
             scheduler.reset()
             NEED_RESET = False
@@ -87,7 +82,7 @@ async def simulator_loop(websocket, message_queue):
         while (RUNNING
                and not NEED_RESET
                and not ordermanager.is_all_orders_completed()
-               and simulator.step_count < SimConfig.max_steps):
+               and clock.now() < SimConfig.max_steps):
 
             if not STATE["paused"] or STATE["step_trigger"]:
                 simulator.step()

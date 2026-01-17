@@ -12,8 +12,8 @@ class BaseScheduler(ABC):
     def __init__(self, order_manager: OrderManager, map_instance: GridMap):
         self.order_manager = order_manager
         self.map = map_instance
-        self.orders = self.order_manager.get_all_orders()
-        self.order_iter = iter(self.orders)
+        # self.orders = self.order_manager.get_all_orders()
+        # self.order_iter = iter(self.orders)
 
     @abstractmethod
     def assign_tasks(self, idle_agv_ids: Set[int]) -> Dict[int, List[Tuple[Tuple[int, int], AGVAction, int]]]:

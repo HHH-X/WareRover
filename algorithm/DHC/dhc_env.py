@@ -64,13 +64,13 @@ class DHCAVGEnv:
         self.map_size = (self.real_env.map.height, self.real_env.map.width)
 
         self.prev_goal_distances = {}  # {agv_id: 上一次到目标的曼哈顿距离}
-
+        SimConfig.force_replan_every_step = True
     def reset(self):
         self.steps = 0
         # self.ordermanager.reset_order()
         self.real_env.reset()
         if(self.ordermanager.can_generate_more_orders()):
-            self.ordermanager.step(self.steps)        
+            self.ordermanager.step()   
         self.scheduler.reset()
         self.prev_goal_distances.clear()
         

@@ -7,7 +7,7 @@ from core.env import Env
 from core.ordermanager import OrderManager
 from scheduler.base_scheduler import BaseScheduler
 from planner.base_planner import BasePlanner
-
+from utils.simulation_clock import clock
 
 class Simulator:
     def __init__(self, map_inst: GridMap,
@@ -19,7 +19,6 @@ class Simulator:
         self.env = env
         self.scheduler = scheduler
         self.planner = planner
-        self.step_count = 0  # 当前仿真步数计数器
 
     def step(self):
         """
@@ -30,14 +29,10 @@ class Simulator:
         - 执行AGV动作与冲突检测
         """
         
-        # if self.step_count ==366:
-        #     print("Debug: Step 27 reached.")
-        # print(f"\n--- Simulator Step {self.step_count} ---")
-        if self.step_count % 30 == 0:
-            print(f"\n--- Simulator Step {self.step_count} ---")
-
-        if(self.order_manager.can_generate_more_orders()):
-            self.order_manager.step(self.step_count)
+        if clock.now() % 30 == 0:
+            print(f"\n--- Simulator Step {clock.now()} ---")
+        # 订单管理器执行一步（处理新订单、更新订单状态等）
+        self.order_manager.step()
         # 1. 获取空闲AGV并尝试分配任务
         idle_agv_set = self.agv_manager.get_idle_agv_ids()
         if idle_agv_set:
@@ -60,7 +55,7 @@ class Simulator:
         # 4. 执行一步环境逻辑（含冲突检测与AGV移动）
         step_info_dict = self.env.step()
 
-        self.step_count += 1
+        clock.tick()
 
         # 5. 检查仿真终止条件（例如订单全部完成）
         if self.order_all_finished():
