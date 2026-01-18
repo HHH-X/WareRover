@@ -1,4 +1,3 @@
-import random
 from typing import List
 
 from core.order import Order
@@ -34,7 +33,7 @@ class ContinuousBurstStrategy(OrderGenerationStrategy):
     def _try_trigger_burst(self, current_step: int) -> bool:
         """根据概率判断是否触发一次促销"""
         prob_per_step = self.config.burst_probability_per_1000_steps / 1000.0
-        return random.random() < prob_per_step
+        return self.rng.random() < prob_per_step
 
     def update(self, current_step: int) -> List[Order]:
         new_orders = []

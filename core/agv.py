@@ -181,7 +181,7 @@ class AGV:
     def _pick_box(self):
         box_id = self.map.pick_box_at(self.grid_pos)
         box_size = self.map.box_sizes.get(box_id, 1)
-        if box_size != self.size:
+        if box_id is not None and box_size != self.size:
             raise ValueError(f"AGV {self.id} 尝试拾取尺寸不匹配的货箱 {box_id}（AGV尺寸：{self.size}，货箱尺寸：{box_size}）")
         if box_id is not None:
             self.carried_box_id = int(box_id)

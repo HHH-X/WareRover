@@ -5,7 +5,7 @@ from core.env import Env
 from core.agvmanager import AGVManager
 from core.ordermanager import OrderManager
 from utils.logger import global_logger
-
+from utils.simulation_clock import clock
 
 def to_real_position(pos: Tuple[int, int], size: int = 1) -> Tuple[float, float]:
     """逻辑坐标 → 实际坐标（中心点），考虑size偏移"""
@@ -108,6 +108,6 @@ def generate_send_data(map: GridMap, agvmanager: AGVManager, data_type: str = "i
             safe_paths[agv_id] = [to_real_position(pos) for pos in occupied_set]
         data['safe_paths'] = safe_paths
         # 指标数据
-        data['metrics'] = global_logger.get_metrics()
+        data['metrics'] = global_logger.get_runtime_metrics(clock.now())
 
     return data

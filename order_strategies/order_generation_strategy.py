@@ -6,12 +6,13 @@ from typing import List, Dict, Optional
 from config.settings import SimConfig
 from core.gridmap import GridMap
 from core.order import Order  # Order dataclass 所在位置
-
+from config.settings import SimConfig
 
 class OrderGenerationStrategy(ABC):
     """订单生成策略抽象接口"""
 
     def __init__(self):
+        self.rng = random.Random(SimConfig.order_seed)
         # self.map = map_inst
 
         # 预先从地图文件读取并按 size 分类的 box 和 receiver 数据
@@ -75,13 +76,13 @@ class OrderGenerationStrategy(ABC):
         if not boxes or not receivers:
             return None
 
-        box = random.choice(boxes)
+        box = self.rng.choice(boxes)
         goods_ids = box.get("goods_ids", [])
         if not goods_ids:
             return None
 
-        goods_id = random.choice(goods_ids)
-        receiver = random.choice(receivers)
+        goods_id = self.rng.choice(goods_ids)
+        receiver = self.rng.choice(receivers)
 
         return Order(
             order_id=-1,

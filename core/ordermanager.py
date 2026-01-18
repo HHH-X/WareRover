@@ -106,7 +106,7 @@ class OrderManager:
             order.finished_step = clock.now()
             self.finished_orders[order_id] = order_source.pop(order_id)
             global_logger.add_runtime_log(f"[OrderManager] Order {order_id} completed by AGV {agv_id} at step {clock.now()}.")
-            global_logger.task_completed()
+            global_logger.record_order_completed(self.finished_orders[order_id])
             return True
         else:
             global_logger.add_runtime_log(

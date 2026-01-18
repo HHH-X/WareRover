@@ -27,15 +27,16 @@ class SimConfig:
 
     # ==================== 算法选择配置 ====================
     scheduler_type: SchedulerType = SchedulerType.RANDOM
-    planner_type: PlannerType = PlannerType.ASTAR
+    planner_type: PlannerType = PlannerType.DHC
     force_replan_every_step: bool = False# 是否强制每个需要决策的 AGV 每步都重新规划路径，自动联动 DHC 使用
     dhc_model_path:str = 'D:\\Project\\AGVSim\\algorithm\\DHC\\models\\36000.pth'
 
     #=================== 仿真参数配置 ====================
     order_mode: OrderMode = OrderMode.ONESHOT  # 订单生成模式
-    total_orders_limit = 50
+    total_orders_limit = 100
     size2_ratio: float = 0.0 # size2 订单占总订单的比例，取值 0.0 ~ 1.0
     order_processing_timeout:int = 30 # 订单处理超时时间，单位秒，超过该时间未完成的订单会被重新放回未处理队列
+    order_seed: Optional[int] = None  # 订单生成随机种子，None 则不固定
 
     # 地图和仿真步长配置
     map_file: str = "config/map_20_15_32.json"  # 默认地图路径

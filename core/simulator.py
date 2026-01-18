@@ -8,6 +8,7 @@ from core.ordermanager import OrderManager
 from scheduler.base_scheduler import BaseScheduler
 from planner.base_planner import BasePlanner
 from utils.simulation_clock import clock
+from utils.logger import global_logger
 
 class Simulator:
     def __init__(self, map_inst: GridMap,
@@ -28,15 +29,15 @@ class Simulator:
         - 为需要重规划的AGV生成新路径
         - 执行AGV动作与冲突检测
         """
-        
-        if clock.now() % 30 == 0:
+        if SimConfig.log_to_console and clock.now() % 30 == 0:
             print(f"\n--- Simulator Step {clock.now()} ---")
         # 订单管理器执行一步（处理新订单、更新订单状态等）
         self.order_manager.step()
         # 1. 获取空闲AGV并尝试分配任务
         idle_agv_set = self.agv_manager.get_idle_agv_ids()
         if idle_agv_set:
-            agv_tasks = self.scheduler.assign_tasks(idle_agv_set)
+            with global_logger.computation_timer("scheduler"):
+                agv_tasks = self.scheduler.assign_tasks(idle_agv_set)
             if(agv_tasks):
                 self.agv_manager.assign_tasks(agv_tasks)
 
@@ -49,7 +50,8 @@ class Simulator:
         # 3. 获取需要重规划的AGV的当前位置与目标
         replanning_targets = self.agv_manager.get_replan_targets()
         if replanning_targets:
-            new_paths = self.planner.plan(replanning_targets)       
+            with global_logger.computation_timer("planner"):
+                new_paths = self.planner.plan(replanning_targets)       
             self.agv_manager.replan_paths(new_paths)
 
         # 4. 执行一步环境逻辑（含冲突检测与AGV移动）

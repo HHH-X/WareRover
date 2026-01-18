@@ -4,6 +4,8 @@ from typing import Dict, Tuple, List, Optional
 from collections import deque
 from core.env import Env
 from . import configs
+from core.gridmap import GridMap
+from core.agvmanager import AGVManager
 
 class DHCCompatibleConverter:
     """
@@ -11,10 +13,12 @@ class DHCCompatibleConverter:
     输出格式完全兼容你贴的那个 environment.py 中的 observe() 返回值
     """
     
-    def __init__(self, num_agvs:int):
+    def __init__(self, num_agvs:int, gridmap: GridMap, agvmanager: AGVManager):
         self.obs_radius = configs.obs_radius
         self.padding = self.obs_radius
         self.N = num_agvs
+        self.gridmap = gridmap
+        self.agvmanager = agvmanager
 
     def convert(
         self,
@@ -39,11 +43,16 @@ class DHCCompatibleConverter:
 
         # 1. 构建全局 other-agent 地图（所有 AGV 位置，包含非活跃的，因为别人能看到你）
         global_agent_map = np.zeros((height, width), dtype=bool)
-        for pos in agv_positions.values():
-            x, y = pos
-            if 0 <= x < height and 0 <= y < width:
-                global_agent_map[x, y] = True
+        for agv_id, (cx, cy) in agv_positions.items():
+            agv = self.agvmanager.get_agv(agv_id)
+            size = agv.size  # 1 or 2
 
+            for dx in range(size):
+                for dy in range(size):
+                    x = cx + dx
+                    y = cy + dy
+                    if 0 <= x < height and 0 <= y < width:
+                        global_agent_map[x, y] = True
         # 2. 为每个 active AGV 单独构建个性化 obstacle map
         personalized_obstacle_maps = np.zeros((self.N, height, width), dtype=bool)
         goal_positions = np.zeros((self.N, 2), dtype=int)
@@ -90,12 +99,35 @@ class DHCCompatibleConverter:
             y2 = cy + 2*self.obs_radius + 1
 
             # channel 0: 其他 AGV（自己位置挖空）
+            # agent_slice = padded_agent_map[x1:x2, y1:y2].copy()
+            # agent_slice[self.obs_radius, self.obs_radius] = False
+            # obs[agv_id, 0] = agent_slice
             agent_slice = padded_agent_map[x1:x2, y1:y2].copy()
-            agent_slice[self.obs_radius, self.obs_radius] = False
+            agv = self.agvmanager.get_agv(agv_id)
+            size = agv.size
+            center = self.obs_radius
+
+            # 清除「自己」的 footprint（而不是只清一个点）
+            for dx in range(size):
+                for dy in range(size):
+                    lx = center + dx
+                    ly = center + dy
+                    if 0 <= lx < agent_slice.shape[0] and 0 <= ly < agent_slice.shape[1]:
+                        agent_slice[lx, ly] = False
+
             obs[agv_id, 0] = agent_slice
 
             # channel 1: 个性化障碍物
-            obs[agv_id, 1] = padded_obs_maps[agv_id, x1:x2, y1:y2]
+            # obs[agv_id, 1] = padded_obs_maps[agv_id, x1:x2, y1:y2]
+            # channel 1: 个性化障碍物（加入不可通行方向的前向障碍）
+            obstacle_slice = padded_obs_maps[agv_id, x1:x2, y1:y2]
+            obstacle_slice = self._inject_unwalkable_as_obstacle(
+                agv_id=agv_id,
+                cx=cx,
+                cy=cy,
+                obstacle_slice=obstacle_slice
+            )
+            obs[agv_id, 1] = obstacle_slice
 
             # channel 2~5: 四个方向 heuristic
             obs[agv_id, 2:6] = padded_heuri[agv_id, :, x1:x2, y1:y2]
@@ -163,3 +195,61 @@ class DHCCompatibleConverter:
                         heuri[i, 3, x, y] = True
 
         return heuri
+    
+    def _inject_unwalkable_as_obstacle(
+        self,
+        agv_id: int,
+        cx: int,
+        cy: int,
+        obstacle_slice: np.ndarray
+    ) -> np.ndarray:
+        """
+        当某个方向在 GridMap 中不可通行时，
+        将该方向前方一格在 channel 1（障碍物）中标记为 True
+        """
+
+        # 拷贝，避免原地污染
+        patched = obstacle_slice.copy()
+
+        # 当前 AGV 状态
+        agv = self.agvmanager.get_agv(agv_id)
+        agv_size = agv.size
+        carrying = agv.carried_box_id is not None
+
+        # 坐标系转换
+        # DHC: (cx, cy) = (row, col)
+        # GridMap: (x, y)
+        cur_x, cur_y = cy, cx
+
+        # obs 中心
+        center = self.obs_radius
+
+        # 方向顺序：上、下、左、右
+        directions = [
+            (0, -1),   # 上
+            (0, 1),    # 下
+            (-1, 0),   # 左
+            (1, 0),    # 右
+        ]
+
+        for dx, dy in directions:
+            next_x = cur_x + dx
+            next_y = cur_y + dy
+
+            can_walk = self.gridmap.is_walkable(
+                agv_size=agv_size,
+                from_pos=(cur_x, cur_y),
+                to_pos=(next_x, next_y),
+                carrying_goods=carrying
+            )
+
+            if not can_walk:
+                # 对应到局部观测中的位置
+                local_x = center + dy   # row
+                local_y = center + dx   # col
+
+                # 防御性边界检查（虽然理论上一定在）
+                if 0 <= local_x < patched.shape[0] and 0 <= local_y < patched.shape[1]:
+                    patched[local_x, local_y] = True
+
+        return patched

@@ -28,7 +28,7 @@ class DHCPlanner(BasePlanner):
         self.forward_steps = forward_steps
 
         # DHC 观测生成器（和训练时 100% 一致）
-        self.converter = DHCCompatibleConverter(num_agvs=self.env.agv_manager.num_agvs)
+        self.converter = DHCCompatibleConverter(num_agvs=self.env.agv_manager.num_agvs, gridmap=self.env.map, agvmanager=self.env.agv_manager)
 
         # 加载训练好的模型
         self.model = Network().to(self.device)

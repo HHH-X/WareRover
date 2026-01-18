@@ -58,7 +58,7 @@ class DHCAVGEnv:
 
         self.obs_radius = configs.obs_radius
         # 转换器
-        self.converter = DHCCompatibleConverter(num_agvs=self.agv_manager.num_agvs)
+        self.converter = DHCCompatibleConverter(num_agvs=self.agv_manager.num_agvs, gridmap=grid_map, agvmanager=self.agv_manager)
         self.steps = 0
         self.num_agents =  self.agv_manager.num_agvs
         self.map_size = (self.real_env.map.height, self.real_env.map.width)

@@ -72,6 +72,7 @@ async def simulator_loop(websocket, message_queue):
             clock.reset()
             env.reset()
             scheduler.reset()
+            global_logger.reset()
             NEED_RESET = False
             # 重新发送初始化数据
             # init_data = generate_send_data(grid_map, agv_manager, data_type="init")
@@ -103,6 +104,8 @@ async def simulator_loop(websocket, message_queue):
         # 仿真自然结束（所有订单完成或超步数）
         if not NEED_RESET:
             print("所有订单已完成，仿真结束，等待 reset 或 stop")
+            print(global_logger.get_final_metrics(clock.now()))
+
         # 卡在这里等 reset 或 stop
         while RUNNING and not NEED_RESET:
             await asyncio.sleep(0.1)
