@@ -17,13 +17,14 @@ import random
 import numpy as np
 from typing import List, Dict
 
-from config.settings import SimConfig
+from config.settings import SimConfig,FaultConfig
 from core.gridmap import GridMap
 from core.ordermanager import OrderManager
 from core.agvmanager import AGVManager
 from core.env import Env
 from core.simulator import Simulator
 from utils.algorithm_factory import build_scheduler, build_planner
+from core.fault_manager import FaultManager
 from utils.logger import global_logger
 from utils.simulation_clock import clock
 from tqdm import trange
@@ -40,6 +41,8 @@ def run_single_episode(seed: int) -> Dict:
     random.seed(seed)
     np.random.seed(seed)
     SimConfig.order_seed = seed
+    FaultConfig.fault_seed = seed
+    SimConfig.log_to_console = False
 
     # --- reset 全局状态 ---
     clock.reset()
@@ -50,6 +53,7 @@ def run_single_episode(seed: int) -> Dict:
     ordermanager = OrderManager(grid_map)
     agv_manager = AGVManager(grid_map, ordermanager)
     env = Env(agv_manager, grid_map, ordermanager)
+    fault_manager = FaultManager(agv_manager, env, grid_map)
 
     scheduler = build_scheduler(ordermanager, grid_map, agv_manager)
     planner = build_planner(env)
@@ -69,6 +73,7 @@ def run_single_episode(seed: int) -> Dict:
         and clock.now() < SimConfig.max_steps
     ):
         simulator.step()
+        fault_manager.step()
 
     # --- 读取最终指标 ---
     metrics = global_logger.get_final_metrics(clock.now())

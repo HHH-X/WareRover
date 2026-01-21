@@ -24,6 +24,7 @@ class GlobalLogger:
         self._runtime_logs: List[str] = []
         self._max_runtime_logs = 200
         self._log_to_console = SimConfig.log_to_console
+        self.total_agv_collisions = 0
 
         # ---------- Order Statistics ----------
         self.total_orders = SimConfig.total_orders_limit
@@ -49,6 +50,13 @@ class GlobalLogger:
 
     def get_runtime_logs(self, n: int = 10) -> List[str]:
         return self._runtime_logs[-n:]
+    
+    def record_agv_collision(self, agv_id: int):
+        """
+        Record an AGV collision event.
+        """
+        self.total_agv_collisions += 1
+
 
     # ================= Order Metrics =================
     def record_order_completed(self, order: Order):
@@ -133,7 +141,8 @@ class GlobalLogger:
                 if final_step > 0
                 else 0.0
             ),
-
+            # ---------- Collision ----------
+            "Total AGV Collisions": self.total_agv_collisions,
             # ---------- Scheduler ----------
             "Scheduler Calls": scheduler["calls"],
             "Scheduler Total Time": scheduler["total_time"],

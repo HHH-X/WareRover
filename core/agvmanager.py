@@ -134,6 +134,7 @@ class AGVManager:
         # 只有当 AGV 没有休息目标，或者有目标但没到达时，才算被阻塞
         if agv.rest_target is None or agv.grid_pos != agv.rest_target:
             self.block_counts[agv_id] += 1
+            global_logger.record_agv_collision(agv_id)
 
     def reset_block_count(self, agv_id: int):
         self.block_counts[agv_id] = 0

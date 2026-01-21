@@ -27,7 +27,7 @@ class SimConfig:
 
     # ==================== 算法选择配置 ====================
     scheduler_type: SchedulerType = SchedulerType.RANDOM
-    planner_type: PlannerType = PlannerType.DHC
+    planner_type: PlannerType = PlannerType.ASTAR
     force_replan_every_step: bool = False# 是否强制每个需要决策的 AGV 每步都重新规划路径，自动联动 DHC 使用
     dhc_model_path:str = 'D:\\Project\\AGVSim\\algorithm\\DHC\\models\\36000.pth'
 
@@ -40,7 +40,7 @@ class SimConfig:
 
     # 地图和仿真步长配置
     map_file: str = "config/map_20_15_32.json"  # 默认地图路径
-    max_steps: int = 1000
+    max_steps: int = 700
 
     time_step: float = 1.0  # 每个仿真步长的时间，单位秒
     agv_max_speed: float = 1  # AGV 最大速度，单位格/STEP
@@ -50,6 +50,18 @@ class SimConfig:
     cell_size: int = 40
     panel_width: int = 300
     log_to_console: bool = True
+
+# ==================== 故障管理配置 dataclass ====================
+@dataclass
+class FaultConfig:
+    enable_faults: bool = False
+    # 每 step、每 AGV 的故障概率
+    fault_prob: float = 0.01
+    # 平均维修时间（step）
+    mean_repair_time: int = 20
+    # 是否允许多个 AGV 同时故障
+    allow_multiple_faults: bool = True
+    fault_seed: Optional[int] = None  # 故障相关随机种子，None 则不固定
 
 # ==================== 各种模式对应的配置 dataclass ====================
 @dataclass
