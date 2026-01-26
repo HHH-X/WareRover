@@ -3,6 +3,7 @@ import time
 from contextlib import contextmanager
 from config.settings import SimConfig
 from core.order import Order
+import os
 
 class GlobalLogger:
     """单线程仿真环境下的全局 Logger（单例）"""
@@ -24,6 +25,8 @@ class GlobalLogger:
         self._runtime_logs: List[str] = []
         self._max_runtime_logs = 200
         self._log_to_console = SimConfig.log_to_console
+        self._log_to_file = SimConfig.log_to_file
+
         self.total_agv_collisions = 0
 
         # ---------- Order Statistics ----------
@@ -39,14 +42,37 @@ class GlobalLogger:
         if self._log_to_console:
             print("[GlobalLogger] Logger has been reset.")
 
+        # ---------- File Logger ----------
+        self._log_file = None
+        if self._log_to_file:
+            os.makedirs(SimConfig.log_dir, exist_ok=True)
+            self._log_file_path = os.path.join(
+                SimConfig.log_dir,
+                SimConfig.log_file_name
+            )
+
+            mode = "w" if SimConfig.log_overwrite else "a"
+            self._log_file = open(self._log_file_path, mode, encoding="utf-8")
+
+
     # ================= Runtime Logs =================
     def add_runtime_log(self, msg: str):
-        self._runtime_logs.append(msg)
-        if self._log_to_console:
-            print(msg)
+        timestamp = time.strftime("[%H:%M:%S]")
+        line = f"{timestamp} {msg}"
 
+        # 1. 内存
+        self._runtime_logs.append(line)
         if len(self._runtime_logs) > self._max_runtime_logs:
             self._runtime_logs.pop(0)
+
+        # 2. 控制台
+        if self._log_to_console:
+            print(line)
+
+        # 3. 文件
+        if self._log_to_file and self._log_file:
+            self._log_file.write(line + "\n")
+            self._log_file.flush()
 
     def get_runtime_logs(self, n: int = 10) -> List[str]:
         return self._runtime_logs[-n:]
@@ -164,6 +190,11 @@ class GlobalLogger:
             # ---------- Runtime ----------
             "Sim Steps": final_step,
         }
+    
+    def close(self):
+        if self._log_file:
+            self._log_file.close()
+            self._log_file = None
 
 
 # Global instance

@@ -31,6 +31,7 @@ class Simulator:
         """
         if SimConfig.log_to_console and clock.now() % 30 == 0:
             print(f"\n--- Simulator Step {clock.now()} ---")
+        global_logger.add_runtime_log(f"Simulator Step {clock.now()}")
         # 订单管理器执行一步（处理新订单、更新订单状态等）
         self.order_manager.step()
         # 1. 获取空闲AGV并尝试分配任务

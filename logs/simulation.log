@@ -1,0 +1,622 @@
+[22:49:35] Simulator Step 0
+[22:49:35] [OrderManager] Step 0: Accepted 100 new orders. Total orders: 100
+[22:49:35] [FaultManager] AGV 5 failed at step 1
+[22:49:35] Simulator Step 1
+[22:49:35] Simulator Step 2
+[22:49:35] Simulator Step 3
+[22:49:35] Simulator Step 4
+[22:49:35] Simulator Step 5
+[22:49:35] Simulator Step 6
+[22:49:35] Simulator Step 7
+[22:49:35] Simulator Step 8
+[22:49:35] Simulator Step 9
+[22:49:35] Simulator Step 10
+[22:49:35] Simulator Step 11
+[22:49:36] Simulator Step 12
+[22:49:36] Simulator Step 13
+[22:49:36] Simulator Step 14
+[22:49:36] Simulator Step 15
+[22:49:36] Simulator Step 16
+[22:49:36] Simulator Step 17
+[22:49:36] Simulator Step 18
+[22:49:36] [OrderManager] Order 9 completed by AGV 7 at step 18.
+[22:49:36] Simulator Step 19
+[22:49:36] [OrderManager] Order 13 completed by AGV 0 at step 19.
+[22:49:36] Simulator Step 20
+[22:49:36] [OrderManager] Order 0 completed by AGV 1 at step 20.
+[22:49:36] Simulator Step 21
+[22:49:36] [OrderManager] Order 16 completed by AGV 2 at step 21.
+[22:49:36] Simulator Step 22
+[22:49:36] [OrderManager] Order 17 completed by AGV 4 at step 22.
+[22:49:36] Simulator Step 23
+[22:49:36] Simulator Step 24
+[22:49:36] [OrderManager] Order 85 completed by AGV 2 at step 24.
+[22:49:36] [OrderManager] Order 3 completed by AGV 8 at step 24.
+[22:49:36] Simulator Step 25
+[22:49:36] [OrderManager] Order 70 completed by AGV 8 at step 25.
+[22:49:36] Simulator Step 26
+[22:49:36] Simulator Step 27
+[22:49:36] Simulator Step 28
+[22:49:36] [OrderManager] Order 19 completed by AGV 9 at step 28.
+[22:49:36] Simulator Step 29
+[22:49:36] [OrderManager] Order 89 completed by AGV 8 at step 29.
+[22:49:36] Simulator Step 30
+[22:49:36] [OrderManager] Order 31 completed by AGV 9 at step 30.
+[22:49:36] Simulator Step 31
+[22:49:36] [OrderManager] Order 38 timeout, returned to unprocessed queue.
+[22:49:36] [OrderManager] Order 11 timeout, returned to unprocessed queue.
+[22:49:36] [OrderManager] Order 18 timeout, returned to unprocessed queue.
+[22:49:36] [OrderManager] Order 75 timeout, returned to unprocessed queue.
+[22:49:36] [OrderManager] Order 45 timeout, returned to unprocessed queue.
+[22:49:36] [OrderManager] Order 54 timeout, returned to unprocessed queue.
+[22:49:36] [OrderManager] Order 4 timeout, returned to unprocessed queue.
+[22:49:36] [OrderManager] Order 21 timeout, returned to unprocessed queue.
+[22:49:36] [OrderManager] Order 66 timeout, returned to unprocessed queue.
+[22:49:36] [OrderManager] Order 99 timeout, returned to unprocessed queue.
+[22:49:36] [OrderManager] Order 42 timeout, returned to unprocessed queue.
+[22:49:36] [OrderManager] Order 71 timeout, returned to unprocessed queue.
+[22:49:36] [OrderManager] Order 72 timeout, returned to unprocessed queue.
+[22:49:36] Simulator Step 32
+[22:49:36] [OrderManager] Order 45 completed by AGV 4 at step 32.
+[22:49:36] Simulator Step 33
+[22:49:36] [OrderManager] Order 99 completed by AGV 8 at step 33.
+[22:49:36] Simulator Step 34
+[22:49:36] Simulator Step 35
+[22:49:36] Simulator Step 36
+[22:49:36] [FaultManager] AGV 5 repaired at step 37
+[22:49:36] Simulator Step 37
+[22:49:36] Simulator Step 38
+[22:49:36] Simulator Step 39
+[22:49:36] Simulator Step 40
+[22:49:36] [OrderManager] Order 39 completed by AGV 7 at step 40.
+[22:49:36] Simulator Step 41
+[22:49:36] [OrderManager] Order 42 completed by AGV 9 at step 41.
+[22:49:36] [FaultManager] AGV 8 failed at step 42
+[22:49:36] Simulator Step 42
+[22:49:36] Simulator Step 43
+[22:49:36] Simulator Step 44
+[22:49:36] [OrderManager] Order 71 completed by AGV 9 at step 44.
+[22:49:36] Simulator Step 45
+[22:49:36] Simulator Step 46
+[22:49:36] [OrderManager] Order 72 completed by AGV 9 at step 46.
+[22:49:36] Simulator Step 47
+[22:49:36] Simulator Step 48
+[22:49:36] Simulator Step 49
+[22:49:36] Simulator Step 50
+[22:49:36] Simulator Step 51
+[22:49:36] Simulator Step 52
+[22:49:36] Simulator Step 53
+[22:49:36] [OrderManager] Order 38 completed by AGV 0 at step 53.
+[22:49:36] Simulator Step 54
+[22:49:36] Simulator Step 55
+[22:49:36] Simulator Step 56
+[22:49:36] Simulator Step 57
+[22:49:36] [OrderManager] Order 52 timeout, returned to unprocessed queue.
+[22:49:36] [OrderManager] Order 64 timeout, returned to unprocessed queue.
+[22:49:36] [OrderManager] Order 4 completed by AGV 6 at step 57.
+[22:49:36] Simulator Step 58
+[22:49:36] Simulator Step 59
+[22:49:36] [OrderManager] Order 11 completed by AGV 1 at step 59.
+[22:49:36] Simulator Step 60
+[22:49:36] [OrderManager] Order 54 completed by AGV 5 at step 60.
+[22:49:36] [OrderManager] Order 52 completed by AGV 7 at step 60.
+[22:49:36] [FaultManager] AGV 8 repaired at step 61
+[22:49:36] Simulator Step 61
+[22:49:36] Simulator Step 62
+[22:49:36] Simulator Step 63
+[22:49:36] [OrderManager] Order 75 completed by AGV 3 at step 63.
+[22:49:36] Simulator Step 64
+[22:49:36] Simulator Step 65
+[22:49:36] Simulator Step 66
+[22:49:36] Simulator Step 67
+[22:49:36] Simulator Step 68
+[22:49:36] Simulator Step 69
+[22:49:36] [OrderManager] Order 18 completed by AGV 1 at step 69.
+[22:49:36] Simulator Step 70
+[22:49:36] Simulator Step 71
+[22:49:36] [FaultManager] AGV 1 failed at step 72
+[22:49:36] Simulator Step 72
+[22:49:36] Simulator Step 73
+[22:49:36] [OrderManager] Order 21 completed by AGV 6 at step 73.
+[22:49:36] Simulator Step 74
+[22:49:36] [OrderManager] Order 66 completed by AGV 6 at step 74.
+[22:49:36] Simulator Step 75
+[22:49:36] Simulator Step 76
+[22:49:36] Simulator Step 77
+[22:49:36] Simulator Step 78
+[22:49:37] Simulator Step 79
+[22:49:37] Simulator Step 80
+[22:49:37] Simulator Step 81
+[22:49:37] Simulator Step 82
+[22:49:37] Simulator Step 83
+[22:49:37] Simulator Step 84
+[22:49:37] [OrderManager] Order 30 completed by AGV 9 at step 84.
+[22:49:37] Simulator Step 85
+[22:49:37] Simulator Step 86
+[22:49:37] Simulator Step 87
+[22:49:37] Simulator Step 88
+[22:49:37] [OrderManager] Order 15 completed by AGV 2 at step 88.
+[22:49:37] Simulator Step 89
+[22:49:37] [OrderManager] Order 12 completed by AGV 4 at step 89.
+[22:49:37] [OrderManager] Order 64 completed by AGV 7 at step 89.
+[22:49:37] Simulator Step 90
+[22:49:37] Simulator Step 91
+[22:49:37] Simulator Step 92
+[22:49:37] [OrderManager] Order 5 completed by AGV 6 at step 92.
+[22:49:37] Simulator Step 93
+[22:49:37] Simulator Step 94
+[22:49:37] Simulator Step 95
+[22:49:37] Simulator Step 96
+[22:49:37] [OrderManager] Order 40 completed by AGV 3 at step 96.
+[22:49:37] [FaultManager] AGV 1 repaired at step 97
+[22:49:37] Simulator Step 97
+[22:49:37] [OrderManager] Order 46 completed by AGV 3 at step 97.
+[22:49:37] Simulator Step 98
+[22:49:37] [OrderManager] Order 26 completed by AGV 2 at step 98.
+[22:49:37] Simulator Step 99
+[22:49:37] [OrderManager] Order 56 completed by AGV 5 at step 99.
+[22:49:37] Simulator Step 100
+[22:49:37] [OrderManager] Order 35 completed by AGV 4 at step 100.
+[22:49:37] Simulator Step 101
+[22:49:37] [OrderManager] Order 97 timeout, returned to unprocessed queue.
+[22:49:37] [OrderManager] Order 32 completed by AGV 8 at step 101.
+[22:49:37] Simulator Step 102
+[22:49:37] Simulator Step 103
+[22:49:37] [OrderManager] Order 58 timeout, returned to unprocessed queue.
+[22:49:37] Simulator Step 104
+[22:49:37] Simulator Step 105
+[22:49:37] [OrderManager] Order 58 completed by AGV 2 at step 105.
+[22:49:37] [OrderManager] Order 97 completed by AGV 9 at step 105.
+[22:49:37] Simulator Step 106
+[22:49:37] Simulator Step 107
+[22:49:37] Simulator Step 108
+[22:49:37] Simulator Step 109
+[22:49:37] [OrderManager] Order 93 timeout, returned to unprocessed queue.
+[22:49:37] Simulator Step 110
+[22:49:37] [OrderManager] Order 74 timeout, returned to unprocessed queue.
+[22:49:37] Simulator Step 111
+[22:49:37] Simulator Step 112
+[22:49:37] Simulator Step 113
+[22:49:37] [OrderManager] Order 65 timeout, returned to unprocessed queue.
+[22:49:37] [OrderManager] Order 79 timeout, returned to unprocessed queue.
+[22:49:37] [OrderManager] Order 96 timeout, returned to unprocessed queue.
+[22:49:37] Simulator Step 114
+[22:49:37] Simulator Step 115
+[22:49:37] [OrderManager] Order 86 timeout, returned to unprocessed queue.
+[22:49:37] Simulator Step 116
+[22:49:37] [OrderManager] Order 67 completed by AGV 7 at step 116.
+[22:49:37] Simulator Step 117
+[22:49:37] [OrderManager] Order 74 completed by AGV 3 at step 117.
+[22:49:37] [OrderManager] Order 79 completed by AGV 6 at step 117.
+[22:49:37] Simulator Step 118
+[22:49:37] Simulator Step 119
+[22:49:37] Simulator Step 120
+[22:49:37] Simulator Step 121
+[22:49:37] [OrderManager] Order 57 completed by AGV 0 at step 121.
+[22:49:37] [OrderManager] Order 65 completed by AGV 4 at step 121.
+[22:49:37] Simulator Step 122
+[22:49:37] [OrderManager] Order 93 completed by AGV 5 at step 122.
+[22:49:37] Simulator Step 123
+[22:49:37] Simulator Step 124
+[22:49:37] [OrderManager] Order 76 timeout, returned to unprocessed queue.
+[22:49:37] Simulator Step 125
+[22:49:37] Simulator Step 126
+[22:49:37] [OrderManager] Order 86 completed by AGV 8 at step 126.
+[22:49:37] Simulator Step 127
+[22:49:37] [OrderManager] Order 68 timeout, returned to unprocessed queue.
+[22:49:37] [OrderManager] Order 78 timeout, returned to unprocessed queue.
+[22:49:37] [OrderManager] Order 91 timeout, returned to unprocessed queue.
+[22:49:37] Simulator Step 128
+[22:49:37] [OrderManager] Order 96 completed by AGV 6 at step 128.
+[22:49:37] Simulator Step 129
+[22:49:37] [OrderManager] Order 76 completed by AGV 0 at step 129.
+[22:49:37] Simulator Step 130
+[22:49:37] [FaultManager] AGV 2 failed at step 131
+[22:49:37] Simulator Step 131
+[22:49:37] Simulator Step 132
+[22:49:37] Simulator Step 133
+[22:49:37] Simulator Step 134
+[22:49:37] [OrderManager] Order 68 completed by AGV 7 at step 134.
+[22:49:37] Simulator Step 135
+[22:49:37] [OrderManager] Order 78 completed by AGV 7 at step 135.
+[22:49:37] Simulator Step 136
+[22:49:37] Simulator Step 137
+[22:49:37] Simulator Step 138
+[22:49:37] Simulator Step 139
+[22:49:37] Simulator Step 140
+[22:49:37] Simulator Step 141
+[22:49:37] Simulator Step 142
+[22:49:37] Simulator Step 143
+[22:49:37] Simulator Step 144
+[22:49:37] Simulator Step 145
+[22:49:37] Simulator Step 146
+[22:49:38] Simulator Step 147
+[22:49:38] Simulator Step 148
+[22:49:38] [OrderManager] Order 91 completed by AGV 7 at step 148.
+[22:49:38] Simulator Step 149
+[22:49:38] Simulator Step 150
+[22:49:38] Simulator Step 151
+[22:49:38] Simulator Step 152
+[22:49:38] Simulator Step 153
+[22:49:38] Simulator Step 154
+[22:49:38] Simulator Step 155
+[22:49:38] [OrderManager] Order 23 completed by AGV 4 at step 155.
+[22:49:38] Simulator Step 156
+[22:49:38] [OrderManager] Order 34 completed by AGV 8 at step 156.
+[22:49:38] Simulator Step 157
+[22:49:38] Simulator Step 158
+[22:49:38] Simulator Step 159
+[22:49:38] [OrderManager] Order 43 completed by AGV 8 at step 159.
+[22:49:38] Simulator Step 160
+[22:49:38] Simulator Step 161
+[22:49:38] Simulator Step 162
+[22:49:38] Simulator Step 163
+[22:49:38] Simulator Step 164
+[22:49:38] Simulator Step 165
+[22:49:38] Simulator Step 166
+[22:49:38] [OrderManager] Order 51 timeout, returned to unprocessed queue.
+[22:49:38] [OrderManager] Order 90 timeout, returned to unprocessed queue.
+[22:49:38] Simulator Step 167
+[22:49:38] Simulator Step 168
+[22:49:38] Simulator Step 169
+[22:49:38] Simulator Step 170
+[22:49:38] Simulator Step 171
+[22:49:38] Simulator Step 172
+[22:49:38] [OrderManager] Order 51 completed by AGV 4 at step 172.
+[22:49:38] Simulator Step 173
+[22:49:38] Simulator Step 174
+[22:49:38] [OrderManager] Order 73 timeout, returned to unprocessed queue.
+[22:49:38] [OrderManager] Order 80 timeout, returned to unprocessed queue.
+[22:49:38] Simulator Step 175
+[22:49:38] Simulator Step 176
+[22:49:38] Simulator Step 177
+[22:49:38] Simulator Step 178
+[22:49:38] [OrderManager] Order 22 completed by AGV 9 at step 178.
+[22:49:38] Simulator Step 179
+[22:49:38] Simulator Step 180
+[22:49:38] Simulator Step 181
+[22:49:38] Simulator Step 182
+[22:49:38] Simulator Step 183
+[22:49:38] Simulator Step 184
+[22:49:38] Simulator Step 185
+[22:49:38] Simulator Step 186
+[22:49:38] [OrderManager] Order 73 completed by AGV 8 at step 186.
+[22:49:38] Simulator Step 187
+[22:49:38] [OrderManager] Order 27 timeout, returned to unprocessed queue.
+[22:49:38] [OrderManager] Order 48 timeout, returned to unprocessed queue.
+[22:49:38] Simulator Step 188
+[22:49:38] Simulator Step 189
+[22:49:38] [OrderManager] Order 90 completed by AGV 4 at step 189.
+[22:49:38] Simulator Step 190
+[22:49:38] Simulator Step 191
+[22:49:38] Simulator Step 192
+[22:49:38] Simulator Step 193
+[22:49:38] Simulator Step 194
+[22:49:38] Simulator Step 195
+[22:49:38] Simulator Step 196
+[22:49:38] Simulator Step 197
+[22:49:38] Simulator Step 198
+[22:49:38] Simulator Step 199
+[22:49:38] Simulator Step 200
+[22:49:38] Simulator Step 201
+[22:49:38] Simulator Step 202
+[22:49:38] Simulator Step 203
+[22:49:38] Simulator Step 204
+[22:49:38] [OrderManager] Order 80 completed by AGV 8 at step 204.
+[22:49:38] [FaultManager] AGV 2 repaired at step 205
+[22:49:38] Simulator Step 205
+[22:49:38] Simulator Step 206
+[22:49:38] Simulator Step 207
+[22:49:38] Simulator Step 208
+[22:49:38] Simulator Step 209
+[22:49:38] Simulator Step 210
+[22:49:38] Simulator Step 211
+[22:49:38] Simulator Step 212
+[22:49:38] Simulator Step 213
+[22:49:38] Simulator Step 214
+[22:49:38] Simulator Step 215
+[22:49:38] Simulator Step 216
+[22:49:39] Simulator Step 217
+[22:49:39] Simulator Step 218
+[22:49:39] Simulator Step 219
+[22:49:39] [OrderManager] Order 27 completed by AGV 9 at step 219.
+[22:49:39] Simulator Step 220
+[22:49:39] Simulator Step 221
+[22:49:39] Simulator Step 222
+[22:49:39] [OrderManager] Order 48 completed by AGV 9 at step 222.
+[22:49:39] Simulator Step 223
+[22:49:39] Simulator Step 224
+[22:49:39] Simulator Step 225
+[22:49:39] [FaultManager] AGV 6 failed at step 226
+[22:49:39] Simulator Step 226
+[22:49:39] Simulator Step 227
+[22:49:39] Simulator Step 228
+[22:49:39] Simulator Step 229
+[22:49:39] Simulator Step 230
+[22:49:39] [OrderManager] Order 1 completed by AGV 1 at step 230.
+[22:49:39] Simulator Step 231
+[22:49:39] Simulator Step 232
+[22:49:39] Simulator Step 233
+[22:49:39] [OrderManager] Order 37 completed by AGV 7 at step 233.
+[22:49:39] Simulator Step 234
+[22:49:39] Simulator Step 235
+[22:49:39] Simulator Step 236
+[22:49:39] Simulator Step 237
+[22:49:39] Simulator Step 238
+[22:49:39] [OrderManager] Order 2 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 20 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 47 timeout, returned to unprocessed queue.
+[22:49:39] Simulator Step 239
+[22:49:39] Simulator Step 240
+[22:49:39] Simulator Step 241
+[22:49:39] Simulator Step 242
+[22:49:39] [OrderManager] Order 50 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 55 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 77 timeout, returned to unprocessed queue.
+[22:49:39] Simulator Step 243
+[22:49:39] Simulator Step 244
+[22:49:39] [OrderManager] Order 14 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 87 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 98 timeout, returned to unprocessed queue.
+[22:49:39] Simulator Step 245
+[22:49:39] Simulator Step 246
+[22:49:39] Simulator Step 247
+[22:49:39] Simulator Step 248
+[22:49:39] Simulator Step 249
+[22:49:39] [OrderManager] Order 8 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 44 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 69 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 81 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 94 timeout, returned to unprocessed queue.
+[22:49:39] Simulator Step 250
+[22:49:39] Simulator Step 251
+[22:49:39] Simulator Step 252
+[22:49:39] Simulator Step 253
+[22:49:39] [OrderManager] Order 6 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 7 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 33 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 82 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 95 timeout, returned to unprocessed queue.
+[22:49:39] Simulator Step 254
+[22:49:39] Simulator Step 255
+[22:49:39] [OrderManager] Order 25 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 28 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 36 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 41 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 83 timeout, returned to unprocessed queue.
+[22:49:39] [FaultManager] AGV 6 repaired at step 256
+[22:49:39] Simulator Step 256
+[22:49:39] Simulator Step 257
+[22:49:39] Simulator Step 258
+[22:49:39] Simulator Step 259
+[22:49:39] Simulator Step 260
+[22:49:39] [OrderManager] Order 10 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 29 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 60 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 61 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 62 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 84 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 88 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 92 timeout, returned to unprocessed queue.
+[22:49:39] Simulator Step 261
+[22:49:39] [OrderManager] Order 2 completed by AGV 3 at step 261.
+[22:49:39] Simulator Step 262
+[22:49:39] Simulator Step 263
+[22:49:39] [OrderManager] Order 6 completed by AGV 0 at step 263.
+[22:49:39] Simulator Step 264
+[22:49:39] Simulator Step 265
+[22:49:39] [OrderManager] Order 8 completed by AGV 5 at step 265.
+[22:49:39] Simulator Step 266
+[22:49:39] Simulator Step 267
+[22:49:39] [OrderManager] Order 24 completed by AGV 9 at step 267.
+[22:49:39] Simulator Step 268
+[22:49:39] [OrderManager] Order 14 completed by AGV 1 at step 268.
+[22:49:39] Simulator Step 269
+[22:49:39] [OrderManager] Order 20 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 47 timeout, returned to unprocessed queue.
+[22:49:39] Simulator Step 270
+[22:49:39] [OrderManager] Order 25 completed by AGV 6 at step 270.
+[22:49:39] [OrderManager] Order 10 completed by AGV 8 at step 270.
+[22:49:39] [FaultManager] AGV 2 failed at step 271
+[22:49:39] Simulator Step 271
+[22:49:39] [OrderManager] Order 49 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 53 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 59 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 63 timeout, returned to unprocessed queue.
+[22:49:39] Simulator Step 272
+[22:49:39] [OrderManager] Order 50 completed by AGV 7 at step 272.
+[22:49:39] Simulator Step 273
+[22:49:39] Simulator Step 274
+[22:49:39] [OrderManager] Order 55 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 77 timeout, returned to unprocessed queue.
+[22:49:39] [OrderManager] Order 7 completed by AGV 0 at step 274.
+[22:49:39] Simulator Step 275
+[22:49:39] Simulator Step 276
+[22:49:39] Simulator Step 277
+[22:49:39] [OrderManager] Order 20 completed by AGV 3 at step 277.
+[22:49:39] [OrderManager] Order 49 completed by AGV 9 at step 277.
+[22:49:39] Simulator Step 278
+[22:49:39] Simulator Step 279
+[22:49:39] Simulator Step 280
+[22:49:39] Simulator Step 281
+[22:49:39] Simulator Step 282
+[22:49:39] Simulator Step 283
+[22:49:39] Simulator Step 284
+[22:49:39] [OrderManager] Order 33 completed by AGV 0 at step 284.
+[22:49:39] Simulator Step 285
+[22:49:39] Simulator Step 286
+[22:49:40] Simulator Step 287
+[22:49:40] [OrderManager] Order 44 completed by AGV 5 at step 287.
+[22:49:40] Simulator Step 288
+[22:49:40] Simulator Step 289
+[22:49:40] [OrderManager] Order 29 completed by AGV 8 at step 289.
+[22:49:40] Simulator Step 290
+[22:49:40] [OrderManager] Order 55 completed by AGV 7 at step 290.
+[22:49:40] Simulator Step 291
+[22:49:40] Simulator Step 292
+[22:49:40] Simulator Step 293
+[22:49:40] Simulator Step 294
+[22:49:40] [OrderManager] Order 28 completed by AGV 6 at step 294.
+[22:49:40] Simulator Step 295
+[22:49:40] Simulator Step 296
+[22:49:40] Simulator Step 297
+[22:49:40] Simulator Step 298
+[22:49:40] Simulator Step 299
+[22:49:40] [OrderManager] Order 47 completed by AGV 3 at step 299.
+[22:49:40] Simulator Step 300
+[22:49:40] Simulator Step 301
+[22:49:40] [OrderManager] Order 53 completed by AGV 9 at step 301.
+[22:49:40] Simulator Step 302
+[22:49:40] [OrderManager] Order 60 completed by AGV 8 at step 302.
+[22:49:40] Simulator Step 303
+[22:49:40] Simulator Step 304
+[22:49:40] Simulator Step 305
+[22:49:40] [OrderManager] Order 82 completed by AGV 0 at step 305.
+[22:49:40] Simulator Step 306
+[22:49:40] [OrderManager] Order 69 completed by AGV 5 at step 306.
+[22:49:40] Simulator Step 307
+[22:49:40] Simulator Step 308
+[22:49:40] Simulator Step 309
+[22:49:40] Simulator Step 310
+[22:49:40] Simulator Step 311
+[22:49:40] [OrderManager] Order 77 completed by AGV 7 at step 311.
+[22:49:40] Simulator Step 312
+[22:49:40] Simulator Step 313
+[22:49:40] Simulator Step 314
+[22:49:40] [OrderManager] Order 81 completed by AGV 5 at step 314.
+[22:49:40] Simulator Step 315
+[22:49:40] [OrderManager] Order 94 completed by AGV 5 at step 315.
+[22:49:40] Simulator Step 316
+[22:49:40] Simulator Step 317
+[22:49:40] Simulator Step 318
+[22:49:40] Simulator Step 319
+[22:49:40] Simulator Step 320
+[22:49:40] Simulator Step 321
+[22:49:40] Simulator Step 322
+[22:49:40] Simulator Step 323
+[22:49:40] Simulator Step 324
+[22:49:40] Simulator Step 325
+[22:49:40] Simulator Step 326
+[22:49:40] [OrderManager] Order 59 completed by AGV 9 at step 326.
+[22:49:40] Simulator Step 327
+[22:49:40] Simulator Step 328
+[22:49:40] [OrderManager] Order 95 completed by AGV 0 at step 328.
+[22:49:40] Simulator Step 329
+[22:49:40] Simulator Step 330
+[22:49:40] Simulator Step 331
+[22:49:40] Simulator Step 332
+[22:49:40] [OrderManager] Order 36 completed by AGV 6 at step 332.
+[22:49:40] Simulator Step 333
+[22:49:40] Simulator Step 334
+[22:49:40] Simulator Step 335
+[22:49:40] Simulator Step 336
+[22:49:40] Simulator Step 337
+[22:49:40] Simulator Step 338
+[22:49:40] Simulator Step 339
+[22:49:40] Simulator Step 340
+[22:49:40] Simulator Step 341
+[22:49:40] Simulator Step 342
+[22:49:40] [FaultManager] AGV 2 repaired at step 343
+[22:49:40] Simulator Step 343
+[22:49:40] Simulator Step 344
+[22:49:40] Simulator Step 345
+[22:49:40] Simulator Step 346
+[22:49:40] [OrderManager] Order 41 completed by AGV 6 at step 346.
+[22:49:40] Simulator Step 347
+[22:49:40] [OrderManager] Order 87 completed by AGV 1 at step 347.
+[22:49:40] Simulator Step 348
+[22:49:40] [OrderManager] Order 98 timeout, returned to unprocessed queue.
+[22:49:40] Simulator Step 349
+[22:49:40] Simulator Step 350
+[22:49:40] [OrderManager] Order 63 completed by AGV 9 at step 350.
+[22:49:40] Simulator Step 351
+[22:49:40] Simulator Step 352
+[22:49:40] Simulator Step 353
+[22:49:40] Simulator Step 354
+[22:49:40] [OrderManager] Order 61 completed by AGV 8 at step 354.
+[22:49:40] Simulator Step 355
+[22:49:40] Simulator Step 356
+[22:49:41] Simulator Step 357
+[22:49:41] [OrderManager] Order 83 completed by AGV 6 at step 357.
+[22:49:41] Simulator Step 358
+[22:49:41] Simulator Step 359
+[22:49:41] Simulator Step 360
+[22:49:41] Simulator Step 361
+[22:49:41] [FaultManager] AGV 1 failed at step 362
+[22:49:41] Simulator Step 362
+[22:49:41] [OrderManager] Order 62 completed by AGV 8 at step 362.
+[22:49:41] Simulator Step 363
+[22:49:41] Simulator Step 364
+[22:49:41] Simulator Step 365
+[22:49:41] Simulator Step 366
+[22:49:41] Simulator Step 367
+[22:49:41] [OrderManager] Order 84 timeout, returned to unprocessed queue.
+[22:49:41] [OrderManager] Order 88 timeout, returned to unprocessed queue.
+[22:49:41] [OrderManager] Order 92 timeout, returned to unprocessed queue.
+[22:49:41] [OrderManager] Order 84 completed by AGV 8 at step 367.
+[22:49:41] Simulator Step 368
+[22:49:41] Simulator Step 369
+[22:49:41] Simulator Step 370
+[22:49:41] Simulator Step 371
+[22:49:41] Simulator Step 372
+[22:49:41] Simulator Step 373
+[22:49:41] Simulator Step 374
+[22:49:41] Simulator Step 375
+[22:49:41] Simulator Step 376
+[22:49:41] Simulator Step 377
+[22:49:41] Simulator Step 378
+[22:49:41] Simulator Step 379
+[22:49:41] Simulator Step 380
+[22:49:41] Simulator Step 381
+[22:49:41] Simulator Step 382
+[22:49:41] Simulator Step 383
+[22:49:41] Simulator Step 384
+[22:49:41] Simulator Step 385
+[22:49:41] Simulator Step 386
+[22:49:41] Simulator Step 387
+[22:49:41] Simulator Step 388
+[22:49:41] Simulator Step 389
+[22:49:41] [OrderManager] Order 98 timeout, returned to unprocessed queue.
+[22:49:41] Simulator Step 390
+[22:49:41] Simulator Step 391
+[22:49:41] Simulator Step 392
+[22:49:41] Simulator Step 393
+[22:49:41] Simulator Step 394
+[22:49:41] Simulator Step 395
+[22:49:41] Simulator Step 396
+[22:49:41] Simulator Step 397
+[22:49:41] Simulator Step 398
+[22:49:41] Simulator Step 399
+[22:49:41] [OrderManager] Order 88 timeout, returned to unprocessed queue.
+[22:49:41] [OrderManager] Order 92 timeout, returned to unprocessed queue.
+[22:49:41] Simulator Step 400
+[22:49:41] Simulator Step 401
+[22:49:41] Simulator Step 402
+[22:49:41] Simulator Step 403
+[22:49:41] Simulator Step 404
+[22:49:41] Simulator Step 405
+[22:49:41] Simulator Step 406
+[22:49:41] Simulator Step 407
+[22:49:41] Simulator Step 408
+[22:49:41] Simulator Step 409
+[22:49:41] Simulator Step 410
+[22:49:41] Simulator Step 411
+[22:49:41] Simulator Step 412
+[22:49:41] Simulator Step 413
+[22:49:41] [FaultManager] AGV 1 repaired at step 414
+[22:49:41] Simulator Step 414
+[22:49:41] [FaultManager] AGV 5 failed at step 415
+[22:49:41] Simulator Step 415
+[22:49:41] Simulator Step 416
+[22:49:41] Simulator Step 417
+[22:49:41] Simulator Step 418
+[22:49:41] Simulator Step 419
+[22:49:41] [OrderManager] Order 88 completed by AGV 8 at step 419.
+[22:49:41] Simulator Step 420
+[22:49:41] Simulator Step 421
+[22:49:41] Simulator Step 422
+[22:49:41] Simulator Step 423
+[22:49:41] [OrderManager] Order 92 completed by AGV 8 at step 423.
+[22:49:41] Simulator Step 424
+[22:49:41] Simulator Step 425
+[22:49:41] [OrderManager] Order 98 completed by AGV 1 at step 425.

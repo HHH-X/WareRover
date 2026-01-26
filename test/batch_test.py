@@ -97,6 +97,7 @@ def run_experiments(
     results: List[Dict] = []
 
     for i in trange(num_runs, desc="Running episodes"):
+        global_logger.add_runtime_log(f"=== Starting Run {i} with seed {base_seed + i} ===")
         seed = base_seed + i
         print(f"[Run {i}] seed={seed}")
         metrics = run_single_episode(seed)
@@ -202,6 +203,7 @@ def main():
 
     save_csv(results_with_avg, out_path)
     print(f"\nSaved detailed results to {out_path}")
+    global_logger.close()
 
 
 if __name__ == "__main__":

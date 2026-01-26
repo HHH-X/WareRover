@@ -5,6 +5,8 @@ from collections import defaultdict
 from planner.base_planner import BasePlanner
 from core.env import Env
 
+MAX_CBS_NODES = 300  # 可以根据窗口大小调
+
 class FixedWindowCBSPlanner(BasePlanner):
     def __init__(self, env_instance: Env, window_size: int = 10):
         super().__init__(env_instance)
@@ -69,7 +71,11 @@ class FixedWindowCBSPlanner(BasePlanner):
         open_list = []
         heapq.heappush(open_list, (root['cost'], 0, root))
         node_id = 1
+        expanded_nodes = 0
         while open_list:
+            expanded_nodes += 1
+            if expanded_nodes >= MAX_CBS_NODES:
+                break
             cost, _, node = heapq.heappop(open_list)
             conflict = self._detect_conflict(node['paths'], planning_agents, set(fixed_agents.keys()))
             if conflict is None:
