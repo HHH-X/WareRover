@@ -150,6 +150,10 @@ class GlobalLogger:
         scheduler = self._computation_stats["scheduler"]
         planner = self._computation_stats["planner"]
 
+        decision_total_time = (
+            scheduler["total_time"] + planner["total_time"]
+        )
+        
         return {
             # ---------- Task ----------
             "Tasks Completed": self.completed_orders,
@@ -186,6 +190,9 @@ class GlobalLogger:
                 if planner["calls"] > 0
                 else 0.0
             ),
+
+            # ---------- Joint Decision ----------
+            "Decision Total Time": decision_total_time,
 
             # ---------- Runtime ----------
             "Sim Steps": final_step,

@@ -4,6 +4,8 @@ from collections import defaultdict
 from core.env import Env
 from planner.base_planner import BasePlanner
 
+MAX_ASTAR_NODES = 800
+
 class AStarPlanner(BasePlanner):
     def __init__(self, env_instance: Env):
         self.env = env_instance
@@ -72,8 +74,11 @@ class AStarPlanner(BasePlanner):
         open_set = []
         heapq.heappush(open_set, (0 + self._heuristic(start, goal), 0, start, [start]))
         closed_set = set()
-
+        expanded_nodes = 0
         while open_set:
+            expanded_nodes += 1
+            if expanded_nodes >= MAX_ASTAR_NODES:
+                break
             f, g, current, path = heapq.heappop(open_set)
             if (current, g) in closed_set:
                 continue

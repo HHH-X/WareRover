@@ -27,19 +27,19 @@ class SimConfig:
 
     # ==================== 算法选择配置 ====================
     scheduler_type: SchedulerType = SchedulerType.TA
-    planner_type: PlannerType = PlannerType.DHC
+    planner_type: PlannerType = PlannerType.CBS_FW
     force_replan_every_step: bool = False# 是否强制每个需要决策的 AGV 每步都重新规划路径，自动联动 DHC 使用
     dhc_model_path:str = 'D:\\Project\\AGVSim\\algorithm\\DHC\\models\\36000.pth'
 
     #=================== 仿真参数配置 ====================
-    order_mode: OrderMode = OrderMode.ONESHOT  # 订单生成模式
+    order_mode: OrderMode = OrderMode.CONTINUOUS_BURST  # 订单生成模式
     total_orders_limit = 100
-    size2_ratio: float = 0.0 # size2 订单占总订单的比例，取值 0.0 ~ 1.0
+    size2_ratio: float = 0.3 # size2 订单占总订单的比例，取值 0.0 ~ 1.0
     order_processing_timeout:int = 30 # 订单处理超时时间，单位秒，超过该时间未完成的订单会被重新放回未处理队列
     order_seed: Optional[int] = None  # 订单生成随机种子，None 则不固定
 
     # 地图和仿真步长配置
-    map_file: str = "config/map_20_15_32.json"  # 默认地图路径
+    map_file: str = "config/map_20_15_hetero.json"  # 默认地图路径
     max_steps: int = 700
 
     time_step: float = 1.0  # 每个仿真步长的时间，单位秒
@@ -51,7 +51,7 @@ class SimConfig:
     panel_width: int = 300
 
     # ================= Logger =================
-    log_to_file: bool = True
+    log_to_file: bool = False
 
     log_dir: str = "logs"
     log_file_name: str = "simulation.log"
@@ -128,7 +128,7 @@ class ContinuousBurstConfig:
 
     burst_probability_per_1000_steps: int = 50   # 每1000步触发概率（千分比）
     burst_duration_steps: int = 1800            # 促销持续时间
-    burst_peak_batch_size: int = 200
+    burst_peak_batch_size: int = 50
     burst_interval_steps: int = 5               # 促销期间波次间隔（非常密集）
 
     total_orders_limit: Optional[int] = None

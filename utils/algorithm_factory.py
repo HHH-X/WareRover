@@ -19,9 +19,11 @@ def build_scheduler(ordermanager, grid_map, agv_manager):
 
 def build_planner(env):
     if SimConfig.planner_type == PlannerType.ASTAR:
+        SimConfig.force_replan_every_step = False
         return AStarPlanner(env)
 
     elif SimConfig.planner_type == PlannerType.CBS_FW:
+        SimConfig.force_replan_every_step = False
         return FixedWindowCBSPlanner(env)
 
     elif SimConfig.planner_type == PlannerType.DHC:

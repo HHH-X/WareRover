@@ -5,7 +5,7 @@ from collections import defaultdict
 from planner.base_planner import BasePlanner
 from core.env import Env
 
-MAX_CBS_NODES = 300  # 可以根据窗口大小调
+MAX_CBS_NODES = 800  # 可以根据窗口大小调
 
 class FixedWindowCBSPlanner(BasePlanner):
     def __init__(self, env_instance: Env, window_size: int = 10):

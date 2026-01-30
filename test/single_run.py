@@ -42,7 +42,6 @@ def run_single_episode(seed: int) -> Dict:
     np.random.seed(seed)
     SimConfig.order_seed = seed
     FaultConfig.fault_seed = seed
-    SimConfig.log_to_console = False
 
     # --- reset 全局状态 ---
     clock.reset()

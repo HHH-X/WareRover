@@ -16,7 +16,7 @@ class OrderGenerationStrategy(ABC):
         # self.map = map_inst
 
         # 预先从地图文件读取并按 size 分类的 box 和 receiver 数据
-        self._all_goods_by_size: Dict[int, List[dict]] = self._prepare_goods_by_size()
+        self._all_boxes_by_size: Dict[int, List[dict]] = self._prepare_boxes_by_size()
         self._all_receivers_by_size: Dict[int, List[dict]] = self._prepare_receivers_by_size()
 
     @abstractmethod
@@ -28,7 +28,7 @@ class OrderGenerationStrategy(ABC):
         pass
 
     # ==================== 数据预处理 ====================
-    def _prepare_goods_by_size(self) -> Dict[int, List[dict]]:
+    def _prepare_boxes_by_size(self) -> Dict[int, List[dict]]:
         """
         从地图 JSON 文件中读取所有 box，按 size 分类。
         返回结构: {size: [{"goods_ids": [...], ...}, ...]}
@@ -70,7 +70,7 @@ class OrderGenerationStrategy(ABC):
         生成单个订单的通用逻辑，所有策略均可复用。
         如果对应 size 没有 box 或 receiver，返回 None。
         """
-        boxes = self._all_goods_by_size.get(size, [])
+        boxes = self._all_boxes_by_size.get(size, [])
         receivers = self._all_receivers_by_size.get(size, [])
 
         if not boxes or not receivers:

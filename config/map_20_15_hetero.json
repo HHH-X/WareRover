@@ -46,8 +46,8 @@
     { "wait_zone_id": 3, "position": [7, 0] },
     { "wait_zone_id": 4, "position": [9, 0] },
     { "wait_zone_id": 5, "position": [11, 0] },
-    { "wait_zone_id": 6, "position": [13, 0] },
-    { "wait_zone_id": 7, "position": [16, 0] }
+    { "wait_zone_id": 6, "position": [13, 0] ,"size": 2 },
+    { "wait_zone_id": 7, "position": [16, 0] ,"size": 2 }
   ],
 
   "agvs": [
