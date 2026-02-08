@@ -1,4 +1,4 @@
-# 文件名: map_editor_final_auto_agv.py  ← 终极版：AGV 数量自动跟随等待区
+# 文件名: map_editor_final_auto_agv.py  ← Ultimate version: AGV count auto follows wait zones
 import pygame
 from datetime import datetime
 
@@ -9,12 +9,12 @@ SH = H * CELL + 80
 
 pygame.init()
 screen = pygame.display.set_mode((SW, SH))
-pygame.display.set_caption("仓库地图编辑器 - AGV数量自动等于等待区数量")
+pygame.display.set_caption("Warehouse Map Editor")
 clock = pygame.time.Clock()
 font = pygame.font.SysFont("microsoftyahei", 20, bold=True)
 
 grid = [[0]*W for _ in range(H)]
-mode = 1  # 1货架 2接收站 3障碍 4等待区（AGV停靠点）
+mode = 1  # 1=shelf 2=receiver 3=obstacle 4=wait zone (AGV spawn point)
 
 def export_perfect():
     boxes, recvs, waits, obsts = [], [], [], []
@@ -22,17 +22,17 @@ def export_perfect():
     for y in range(H):
         for x in range(W):
             t = grid[y][x]
-            if t == 1:   # 货架
+            if t == 1:   # shelf
                 bid = len(boxes)
                 boxes.append((bid, x, y))
-            elif t == 2: # 接收站
+            elif t == 2: # receiver
                 recvs.append((len(recvs), x, y))
-            elif t == 3: # 障碍
+            elif t == 3: # obstacle
                 obsts.append((x, y))
-            elif t == 4: # 等待区 → 决定AGV数量！
+            elif t == 4: # wait zone → determines AGV count!
                 waits.append((len(waits), x, y))
 
-    # 关键：AGV 数量 = 等待区数量
+    # Key feature: AGV count = number of wait zones
     agv_count = len(waits)
 
     filename = f"map_{datetime.now():%m%d_%H%M%S}.json"
@@ -61,7 +61,7 @@ def export_perfect():
             f.write(f'    {{ "wait_zone_id": {wid}, "position": [{x}, {y}] }}{comma}\n')
         f.write('  ],\n\n' if waits else '  ],\n\n')
 
-        # agvs → 数量自动等于等待区数量！
+        # agvs → count automatically equals wait zones count!
         f.write('  "agvs": [\n')
         for i in range(agv_count):
             comma = "," if i < agv_count-1 else ""
@@ -77,10 +77,10 @@ def export_perfect():
 
         f.write("}")
 
-    print(f"导出成功！AGV数量 = 等待区数量 = {agv_count} → {filename}")
+    print(f"Export successful! AGV count = Wait zones count = {agv_count} → {filename}")
     return filename, agv_count
 
-# 主循环
+# Main loop
 running = True
 last_msg = ""
 while running:
@@ -90,10 +90,10 @@ while running:
 
         if e.type == pygame.KEYDOWN:
             if pygame.K_1 <= e.key <= pygame.K_4:
-                mode = e.key - pygame.K_0  # K_1→1, K_2→4
+                mode = e.key - pygame.K_0
             if e.key in (pygame.K_s, pygame.K_RETURN):
                 filename, count = export_perfect()
-                last_msg = f"已导出 {filename}   AGV×{count}"
+                last_msg = f"Exported {filename}   AGV×{count}"
 
         if e.type == pygame.MOUSEBUTTONDOWN and e.pos[1] < H*CELL:
             x = e.pos[0] // CELL
@@ -101,32 +101,32 @@ while running:
             if 0 <= x < W and 0 <= y < H:
                 grid[y][x] = mode if e.button == 1 else 0
 
-    # 绘制
+    # Drawing
     screen.fill((18, 18, 35))
     for y in range(H):
         for x in range(W):
             rect = pygame.Rect(x*CELL, y*CELL, CELL, CELL)
             color = [
-                (40,40,60),      # 0 空
-                (80,160,255),    # 1 货架
-                (255,80,80),     # 2 接收站
-                (70,70,70),      # 3 障碍
-                (100,255,140)    # 4 等待区（AGV出生点）
+                (40,40,60),      # 0 empty
+                (80,160,255),    # 1 shelf
+                (255,80,80),     # 2 receiver
+                (70,70,70),      # 3 obstacle
+                (100,255,140)    # 4 wait zone (AGV spawn)
             ][grid[y][x]]
             pygame.draw.rect(screen, color, rect)
             pygame.draw.rect(screen, (140,140,180), rect, 1)
 
-    # 底部信息栏
+    # Bottom info bar
     pygame.draw.rect(screen, (30,35,65), (0, H*CELL, SW, 80))
-    mode_name = ["", "货架", "接收站", "障碍", "等待区(决定AGV数量)"][mode]
-    screen.blit(font.render(f"当前模式：{mode_name}　　(1~4切换)", True, (255,255,200)), (20, H*CELL + 15))
-    screen.blit(font.render("左键放置　右键删除　　按 S 或 Enter 导出", True, (180,255,220)), (20, H*CELL + 45))
+    mode_name = ["", "Shelf", "Receiver", "Obstacle", "Wait Zone (determines AGV count)"][mode]
+    screen.blit(font.render(f"Current mode: {mode_name}    (1~4 to switch)", True, (255,255,200)), (20, H*CELL + 15))
+    screen.blit(font.render("Left click to place    Right click to remove    Press S or Enter to export", True, (180,255,220)), (20, H*CELL + 45))
     if last_msg:
         screen.blit(font.render(last_msg, True, (0, 255, 120)), (SW//2 - 200, H*CELL + 45))
 
-    # 实时显示当前等待区数量
+    # Real-time wait zone count display
     wait_count = sum(row.count(4) for row in grid)
-    text = font.render(f"等待区数量 = {wait_count} → 将生成 {wait_count} 台 AGV", True, (255, 220, 100))
+    text = font.render(f"Wait zones: {wait_count} → Will generate {wait_count} AGVs", True, (255, 220, 100))
     screen.blit(text, (SW - text.get_width() - 20, 15))
 
     pygame.display.flip()

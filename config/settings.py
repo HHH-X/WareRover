@@ -8,117 +8,153 @@ class SchedulerType(Enum):
     RANDOM = "random"
     TA = "ta"
 
+
 class PlannerType(Enum):
     ASTAR = "astar"
     CBS_FW = "cbs_fw"
     DHC = "dhc"
 
+
 class OrderMode(Enum):
-    """所有支持的订单生成模式"""
-    ONESHOT = "oneshot"                  # 一次性生成所有订单（原有模式）
-    CONTINUOUS_CONSTANT = "continuous_constant"   # 连续平稳生成
-    CONTINUOUS_PERIODIC = "continuous_periodic"   # 周期性忙闲波次
-    CONTINUOUS_PARETO = "continuous_pareto"       # Pareto 热点SKU模式
-    CONTINUOUS_BURST = "continuous_burst"         # 随机爆发促销模式
+    """All supported order generation modes"""
+    ONESHOT = "oneshot"                          # Generate all orders at once (original mode)
+    CONTINUOUS_CONSTANT = "continuous_constant"  # Continuous steady generation
+    CONTINUOUS_PERIODIC = "continuous_periodic"  # Periodic busy-idle waves
+    CONTINUOUS_PARETO = "continuous_pareto"      # Pareto-distributed hot SKU pattern
+    CONTINUOUS_BURST = "continuous_burst"        # Random burst promotion pattern
+
 
 @dataclass
 class SimConfig:
-    """仿真配置参数"""
+    """Simulation configuration parameters"""
 
-    # ==================== 算法选择配置 ====================
+    # ==================== Algorithm selection ====================
     scheduler_type: SchedulerType = SchedulerType.TA
     planner_type: PlannerType = PlannerType.CBS_FW
-    force_replan_every_step: bool = False# 是否强制每个需要决策的 AGV 每步都重新规划路径，自动联动 DHC 使用
-    dhc_model_path:str = 'D:\\Project\\AGVSim\\algorithm\\DHC\\models\\36000.pth'
+    force_replan_every_step: bool = False
+    # Whether to force each decision-making AGV to replan its path at every step.
+    # Automatically coupled with DHC when enabled.
 
-    #=================== 仿真参数配置 ====================
-    order_mode: OrderMode = OrderMode.CONTINUOUS_BURST  # 订单生成模式
+    dhc_model_path: str = 'D:\\Project\\AGVSim\\algorithm\\DHC\\models\\36000.pth'
+
+    # ==================== Simulation parameters ====================
+    order_mode: OrderMode = OrderMode.CONTINUOUS_BURST  # Order generation mode
     total_orders_limit = 100
-    size2_ratio: float = 0.3 # size2 订单占总订单的比例，取值 0.0 ~ 1.0
-    order_processing_timeout:int = 30 # 订单处理超时时间，单位秒，超过该时间未完成的订单会被重新放回未处理队列
-    order_seed: Optional[int] = None  # 订单生成随机种子，None 则不固定
 
-    # 地图和仿真步长配置
-    map_file: str = "config/map_20_15_hetero.json"  # 默认地图路径
+    size2_ratio: float = 0.3
+    # Proportion of size-2 orders among all orders, range: 0.0 ~ 1.0
+
+    order_processing_timeout: int = 30
+    # Order processing timeout in seconds.
+    # Orders not completed within this time will be returned to the pending queue.
+
+    order_seed: Optional[int] = None
+    # Random seed for order generation; None means non-deterministic
+
+    # Map and simulation step configuration
+    map_file: str = "config/map_25_20.json"  # Default map file path
     max_steps: int = 700
 
-    time_step: float = 1.0  # 每个仿真步长的时间，单位秒
-    agv_max_speed: float = 1  # AGV 最大速度，单位格/STEP
-    agv_turn_time_90: float = 0  # AGV 转向所需时间，单位秒
+    time_step: float = 1.0        # Duration of each simulation step (seconds)
+    agv_max_speed: float = 1      # Maximum AGV speed (cells per step)
+    agv_turn_time_90: float = 0   # Time required for a 90-degree turn (seconds)
 
-    #=================== 前端显示配置 ====================
+    # ==================== Frontend visualization ====================
     cell_size: int = 40
     panel_width: int = 300
 
-    # ================= Logger =================
+    # ==================== Logging ====================
     log_to_file: bool = False
-
     log_dir: str = "logs"
     log_file_name: str = "simulation.log"
 
-    # reset时是否覆盖已有日志文件，False 则追加
+    # Whether to overwrite existing log files on reset; False means append
     log_overwrite: bool = True
     log_to_console: bool = False
 
-# ==================== 故障管理配置 dataclass ====================
+
+# ==================== Fault management configuration ====================
 @dataclass
 class FaultConfig:
     enable_faults: bool = True
-    # 每 step、每 AGV 的故障概率
-    fault_prob: float = 0.01
-    # 平均维修时间（step）
-    mean_repair_time: int = 40
-    # 是否允许多个 AGV 同时故障
-    allow_multiple_faults: bool = False
-    fault_seed: Optional[int] = 42  # 故障相关随机种子，None 则不固定
 
-# ==================== 各种模式对应的配置 dataclass ====================
+    # Fault probability per AGV per step
+    fault_prob: float = 0.01
+
+    # Mean repair time (in steps)
+    mean_repair_time: int = 40
+
+    # Whether multiple AGVs are allowed to fail simultaneously
+    allow_multiple_faults: bool = False
+
+    fault_seed: Optional[int] = 42
+    # Random seed for fault generation; None means non-deterministic
+
+
+# ==================== Mode-specific configuration dataclasses ====================
 @dataclass
 class OneShotConfig:
-    """一次性生成所有订单模式（原有模式）"""
-    # 仿真开始前一次性生成这么多订单
+    """One-shot order generation mode (original mode)"""
+    # All orders are generated once before the simulation starts
+
 
 @dataclass
 class ContinuousConstantConfig:
-    """连续平稳生成模式"""
+    """Continuous steady order generation mode"""
+
     batch_size: int = 10
-    # 每波生成的订单数量
+    # Number of orders generated per batch
 
     generation_interval_steps: int = 50
-    # 每隔多少 step 生成一批订单（例如 30 表示每 30 step 来一波）
-    # 如果你的 time_step=1.0 秒/step，则相当于每 30 秒一波
+    # Number of steps between batches
+    # For example, if time_step = 1.0 second, this corresponds to one batch every 50 seconds
+
 
 @dataclass
 class ContinuousPeriodicConfig:
-    """周期性波次模式（忙闲交替，不依赖真实钟点）"""
+    """Periodic wave-based generation mode (alternating busy and idle periods)"""
+
     base_batch_size: int = 10
-    # 平均/低谷时的每波订单数量
+    # Average / low-demand batch size
 
     generation_interval_steps: int = 20
-    # 基础波次间隔（step），实际批次大小会随周期波动
+    # Base interval between waves (in steps);
+    # actual batch size fluctuates over the cycle
 
     cycle_duration_steps: int = 80
-    # 一个完整高峰-低谷周期的长度（单位：step）
-    # 示例：如果 time_step=1.0，则 1800 step = 30 分钟一个周期
+    # Duration of a full peak-to-valley cycle (in steps)
+    # Example: if time_step = 1.0, then 1800 steps = 30 minutes per cycle
 
     peak_multiplier: float = 3.0
-    # 高峰期订单量放大倍数（例如 3.0 → 每波 60 个订单）
+    # Order volume multiplier during peak periods
+    # (e.g., 3.0 → 60 orders per wave)
 
     valley_multiplier: float = 0.3
-    # 低谷期订单量缩小倍数（例如 0.3 → 每波 6 个订单）
+    # Order volume multiplier during valley periods
+    # (e.g., 0.3 → 6 orders per wave)
 
-    wave_type: str = "sine"  # 可选: "sine"（平滑正弦波） 或 "square"（方波）
-    # "sine": 订单量平滑起伏，更真实
-    # "square": 高峰和低谷各占一半周期，波动剧烈，便于压力测试
+    wave_type: str = "sine"  # Options: "sine" (smooth sinusoidal) or "square" (square wave)
+    # "sine": smooth and realistic demand fluctuation
+    # "square": sharp alternation between peak and valley, suitable for stress testing
+
 
 @dataclass
 class ContinuousParetoConfig:
-    alpha: float = 2.0          # Pareto 分布形状参数，典型值 1.5~3.0，越小波动越大
-    scale: float = 10.0         # 缩放因子，控制平均批次大小 ≈ scale / (alpha - 1)
+    alpha: float = 2.0
+    # Shape parameter of the Pareto distribution (typical range: 1.5–3.0).
+    # Smaller values result in higher variance.
+
+    scale: float = 10.0
+    # Scaling factor controlling the average batch size ≈ scale / (alpha - 1)
+
     generation_interval_steps: int = 30
 
-    hot_sku_percentage: float = 0.2    # 热点 SKU 占比（如 20%）
-    hot_sku_multiplier: float = 5.0    # 虽然代码中用了简化实现，但保留字段便于后续精细控制
+    hot_sku_percentage: float = 0.2
+    # Proportion of hot SKUs (e.g., 20%)
+
+    hot_sku_multiplier: float = 5.0
+    # Currently used in a simplified manner,
+    # retained for future fine-grained control
 
 
 @dataclass
@@ -126,9 +162,14 @@ class ContinuousBurstConfig:
     base_batch_size: int = 10
     generation_interval_steps: int = 60
 
-    burst_probability_per_1000_steps: int = 50   # 每1000步触发概率（千分比）
-    burst_duration_steps: int = 1800            # 促销持续时间
+    burst_probability_per_1000_steps: int = 50
+    # Probability of triggering a burst per 1000 steps (per-mille)
+
+    burst_duration_steps: int = 1800
+    # Duration of a promotion burst
+
     burst_peak_batch_size: int = 50
-    burst_interval_steps: int = 5               # 促销期间波次间隔（非常密集）
+    burst_interval_steps: int = 5
+    # Interval between batches during a burst (very dense)
 
     total_orders_limit: Optional[int] = None
