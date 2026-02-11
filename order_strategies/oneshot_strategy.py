@@ -17,8 +17,6 @@ class OneShotStrategy(OrderGenerationStrategy):
 
         new_orders = []
         remaining = self.orders_to_generate
-        
-        # 计算 size 比例（你已有 size2_ratio）
         num_size2 = int(remaining * SimConfig.size2_ratio)
         num_size1 = remaining - num_size2
 

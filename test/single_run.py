@@ -1,14 +1,7 @@
 """
-批量算法测试脚本（无可视化）
-- 同一随机种子下，对同一算法组合进行多次完整仿真
-- 每一轮：生成订单 -> 运行直到结束 -> 记录最终指标
-- 最终：统计均值，并将每一轮指标保存为 CSV
-
-假设：
-- global_logger.reset() 会清空上一轮指标
-- global_logger.get_final_metrics(sim_time) 返回 dict[str, float]
-- Simulator.step() 推进一步
-- OrderManager.is_all_orders_completed() 判断结束
+Batch algorithm test script (no visualization).
+Runs multiple full simulations with the same seed and algorithm combo;
+records metrics per run and writes CSV with per-run and averaged metrics.
 """
 import os
 import argparse
@@ -30,24 +23,14 @@ from utils.simulation_clock import clock
 from tqdm import trange
 
 
-# =========================
-# 单轮仿真
-# =========================
-
 def run_single_episode(seed: int) -> Dict:
-    """运行一轮完整仿真并返回最终指标"""
-
-    # --- 固定随机性 ---
+    """Run one full simulation and return final metrics."""
     random.seed(seed)
     np.random.seed(seed)
     SimConfig.order_seed = seed
     FaultConfig.fault_seed = seed
-
-    # --- reset 全局状态 ---
     clock.reset()
     global_logger.reset()
-
-    # --- 初始化组件 ---
     grid_map = GridMap()
     ordermanager = OrderManager(grid_map)
     agv_manager = AGVManager(grid_map, ordermanager)
@@ -65,16 +48,12 @@ def run_single_episode(seed: int) -> Dict:
         scheduler,
         planner,
     )
-
-    # --- 主循环：直到结束 ---
     while (
         not ordermanager.is_all_orders_completed()
         and clock.now() < SimConfig.max_steps
     ):
         simulator.step()
         fault_manager.step()
-
-    # --- 读取最终指标 ---
     metrics = global_logger.get_final_metrics(clock.now())
     metrics["seed"] = seed
     metrics["finished"] = ordermanager.is_all_orders_completed()
@@ -83,15 +62,11 @@ def run_single_episode(seed: int) -> Dict:
     return metrics
 
 
-# =========================
-# 多轮测试
-# =========================
-
 def run_experiments(
     num_runs: int,
     base_seed: int,
 ) -> List[Dict]:
-    """多次重复实验，保证不同算法可复现"""
+    """Run num_runs episodes with seeds base_seed, base_seed+1, ...; return list of metrics."""
 
     results: List[Dict] = []
 
@@ -105,12 +80,8 @@ def run_experiments(
     return results
 
 
-# =========================
-# 统计与保存
-# =========================
-
 def summarize(results: List[Dict]) -> Dict:
-    """对所有数值指标求平均"""
+    """Average all numeric metrics across results."""
     summary = {}
 
     numeric_keys = [
@@ -146,25 +117,18 @@ def build_output_filename(
     )
 
 def append_summary_row(results: List[Dict], summary: Dict) -> List[Dict]:
-    """将平均指标作为最后一行追加到 results 中"""
-
+    """Append a summary row (averages) to results."""
     summary_row = {}
-
     for k in results[0].keys():
         if k in summary:
             summary_row[k] = summary[k]
         else:
-            # 非数值字段的占位策略
             if k == "seed":
                 summary_row[k] = "avg"
             else:
                 summary_row[k] = ""
 
     return results + [summary_row]
-
-# =========================
-# CLI 入口
-# =========================
 
 def main():
     parser = argparse.ArgumentParser()

@@ -1,8 +1,6 @@
-# 自动化全组合实验脚本
 # auto_experiment_runner.py
-# - 覆盖 2 Scheduler × 3 Planner × 5 OrderMode × 3 Scene
-# - 每个组合重复 NUM_RUNS 次
-# - 每个 Scene 输出一个 CSV（行=算法组合，列=平均指标）
+# Full grid: 2 Schedulers x 3 Planners x 5 OrderModes x 3 Scenes; each combo runs NUM_RUNS times.
+# One CSV per scene (rows=algorithm combo, columns=average metrics).
 
 import os
 import csv
@@ -17,18 +15,12 @@ from config.settings import (
     OrderMode,
 )
 
-from test.single_run import run_experiments, summarize  # 假设你把给我的脚本存成 single_run.py
+from test.single_run import run_experiments, summarize
 
-# =========================
-# 全局实验参数（你只改这里）
-# =========================
 NUM_RUNS = 100
 BASE_SEED = 42
 OUT_DIR = "batch_results"
 
-# =========================
-# 场景定义
-# =========================
 SCENES = {
     "homogeneous": {
         "map_file": "config/map_20_15_32.json",
@@ -47,17 +39,10 @@ SCENES = {
     },
 }
 
-# =========================
-# 算法空间
-# =========================
 SCHEDULERS = [SchedulerType.RANDOM, SchedulerType.TA]
 PLANNERS = [PlannerType.ASTAR, PlannerType.CBS_FW, PlannerType.DHC]
 ORDER_MODES = list(OrderMode)
 
-
-# =========================
-# 工具函数
-# =========================
 
 def apply_scene(scene_cfg: Dict):
     SimConfig.map_file = scene_cfg["map_file"]
@@ -74,10 +59,6 @@ def apply_algorithm(scheduler, planner, order_mode):
 def combo_name():
     return f"{SimConfig.scheduler_type.value}+{SimConfig.planner_type.value}+{SimConfig.order_mode.value}"
 
-
-# =========================
-# 主流程
-# =========================
 
 def run_all():
     os.makedirs(OUT_DIR, exist_ok=True)
@@ -110,7 +91,6 @@ def run_all():
             row.update(avg)
             scene_rows.append(row)
 
-        # ===== 保存 CSV =====
         out_path = os.path.join(OUT_DIR, f"{scene_name}.csv")
         with open(out_path, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=scene_rows[0].keys())

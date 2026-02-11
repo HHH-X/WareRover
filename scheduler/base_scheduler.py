@@ -31,33 +31,43 @@ class BaseScheduler(ABC):
 
     @abstractmethod
     def assign_tasks(
-        self, 
-        idle_agv_ids: Set[int], 
+        self,
+        idle_agv_ids: Set[int],
         planner: BasePlanner
     ) -> Dict[int, List[Tuple[Tuple[int, int], AGVAction, int]]]:
         """
-        为空闲AGV分配任务
-        返回：agv_id -> task列表（task是一个三元组：目标位置、动作类型、附加字段）
+        Assign tasks to idle AGVs.
+
+        Args:
+            idle_agv_ids: Set of AGV IDs that are currently idle.
+            planner: The planner instance (for context; may be used by implementations).
+
+        Returns:
+            Mapping from agv_id to a list of tasks. Each task is a 3-tuple:
+            (target_position, action_type, extra_field).
         """
         pass
 
     def assign_rest_areas(self, agv_ids: Set[int]) -> None:
         """
-        为需要分配休息区的 AGV 分配休息区
+        Assign rest/wait zone positions to AGVs that need them.
+
+        Args:
+            agv_ids: Set of AGV IDs that need a rest area assignment.
         """
         rest_assignments: Dict[int, Tuple[int, int]] = {}
         for agv_id in agv_ids:
             try:
                 rest_assignments[agv_id] = self.map.get_wait_zone_position(agv_id)
             except StopIteration:
-                # 没有可用休息区了，可以选择忽略或日志记录
                 break
 
         return rest_assignments
-    
+
     def reset(self) -> None:
         """
-        当外部调用 order_manager.reset_order() 之后，
-        一定要同步调用 scheduler.reset()，让调度器“感知”到新一批订单。
+        Reset scheduler state after a new batch of orders.
+        Must be called when order_manager.reset_order() is invoked so the
+        scheduler is aware of the new orders.
         """
         pass

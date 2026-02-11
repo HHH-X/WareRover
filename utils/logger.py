@@ -6,7 +6,7 @@ from core.order import Order
 import os
 
 class GlobalLogger:
-    """单线程仿真环境下的全局 Logger（单例）"""
+    """Global logger singleton for single-threaded simulation."""
 
     _instance = None
 
@@ -60,16 +60,11 @@ class GlobalLogger:
         timestamp = time.strftime("[%H:%M:%S]")
         line = f"{timestamp} {msg}"
 
-        # 1. 内存
         self._runtime_logs.append(line)
         if len(self._runtime_logs) > self._max_runtime_logs:
             self._runtime_logs.pop(0)
-
-        # 2. 控制台
         if self._log_to_console:
             print(line)
-
-        # 3. 文件
         if self._log_to_file and self._log_file:
             self._log_file.write(line + "\n")
             self._log_file.flush()

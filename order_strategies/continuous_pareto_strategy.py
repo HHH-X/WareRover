@@ -7,31 +7,21 @@ from order_strategies.order_generation_strategy import OrderGenerationStrategy
 
 class ContinuousParetoStrategy(OrderGenerationStrategy):
     """
-    Pareto 分布 + size-aware 热点 SKU 模式
-    - 每隔固定步数生成一批订单
-    - 每批订单数量服从 Pareto 分布（长尾）
-    - 在给定 size 约束下，SKU 选择服从带热点偏置的分布
+    Pareto-distributed batch sizes with size-aware hot-SKU bias.
+    Generates batches at fixed intervals; SKU choice is biased toward hot SKUs per size.
     """
 
     def __init__(self):
         super().__init__()
         self.config = ContinuousParetoConfig()
         self.next_generation_step = 0
-
-        # size-aware goods / hot goods
         self.all_goods_ids_by_size = self._prepare_all_goods_ids_by_size()
         self.hot_goods_ids_by_size = self._prepare_hot_goods_by_size()
-
-        # sanity check
         if not any(self.all_goods_ids_by_size.values()):
-            raise ValueError("Map 中没有找到任何 goods，无法生成订单")
-
-    # ------------------------------------------------------------------
-    # preparation
-    # ------------------------------------------------------------------
+            raise ValueError("Map has no goods; cannot generate orders.")
 
     def _prepare_all_goods_ids_by_size(self) -> Dict[int, List[int]]:
-        """按 size 收集所有可用的 goods_id"""
+        """Collect all goods_id by size."""
         goods_by_size = {}
         for size, boxes in self._all_boxes_by_size.items():
             ids = []
@@ -41,7 +31,7 @@ class ContinuousParetoStrategy(OrderGenerationStrategy):
         return goods_by_size
 
     def _prepare_hot_goods_by_size(self) -> Dict[int, List[int]]:
-        """按 size 预计算热点 SKU"""
+        """Precompute hot SKUs per size."""
         hot = {}
         for size, goods_ids in self.all_goods_ids_by_size.items():
             if not goods_ids:
@@ -56,7 +46,7 @@ class ContinuousParetoStrategy(OrderGenerationStrategy):
     # ------------------------------------------------------------------
 
     def _choose_goods_id(self, size: int) -> int:
-        """在给定 size 约束下选择 goods_id（带热点偏置）"""
+        """Choose goods_id for given size with hot-SKU bias."""
         all_goods = self.all_goods_ids_by_size.get(size, [])
         hot_goods = self.hot_goods_ids_by_size.get(size, [])
 
@@ -94,15 +84,11 @@ class ContinuousParetoStrategy(OrderGenerationStrategy):
 
             for _ in range(count):
                 goods_id = self._choose_goods_id(size)
-
-                # 只从“包含该 goods 的 box”中选
                 candidate_boxes = [
                     box for box in boxes
                     if goods_id in box.get("goods_ids", [])
                 ]
-
                 if not candidate_boxes:
-                    # 理论上不应该发生，作为防御性检查
                     continue
 
                 box = self.rng.choice(candidate_boxes)

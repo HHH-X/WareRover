@@ -3,7 +3,7 @@ from core.gridmap import GridMap
 from core.agvmanager import AGVManager
 from core.agv import StepInfo
 from core.ordermanager import OrderManager
-epsilon = 1e-4  # 精度容差，可调
+epsilon = 1e-4
 
 class Env:
     def __init__(self, agv_manager: AGVManager, map_inst: GridMap, order_manager: OrderManager):
@@ -53,17 +53,12 @@ class Env:
             dx = abs(tgt[0] - cur[0])
             dy = abs(tgt[1] - cur[1])
             if dx + dy > 1:
-                # 超出一步，强制停在原地
                 print(f"[Warning] AGV {agv_id} invalid move {cur} -> {tgt}, forced to stay.")
                 next_pos[agv_id] = cur
 
-        # 1. 分类 AGV
         in_center, not_in_center = self.classify_by_grid_center(real_pos)
-
-        # 2. 初始化顶点占用字典：格子 -> 占用该位置的 agv_id 集合
         vertex_conflict_dict: Dict[Tuple[int, int], Set[int]] = dict()
 
-        # 3. 固定不在中心的 AGV，并构建初始冲突字典
         for agv_id in not_in_center:
             cur = current_pos[agv_id]
             tgt = final_next_pos[agv_id]
@@ -80,11 +75,9 @@ class Env:
                     raise ValueError(f"Conflict in static phase for AGV {agv_id} at {pos}")
                 vertex_conflict_dict[pos].add(agv_id)
 
-        # 4. 将中心AGV初始设为原地不动
         for agv_id in in_center:
             final_next_pos[agv_id] = current_pos[agv_id]
 
-        # 5. 多轮迭代解决中心AGV冲突
         while True:
             changed = False
             cur_vertex_dict: Dict[Tuple[int, int], Set[int]] = {
@@ -92,7 +85,6 @@ class Env:
             }
             edge_conflict_set: Set[Tuple[Tuple[int, int], Tuple[int, int]]] = set()
 
-            # 初始化当前所有已决策的动作占用
             for agv_id in in_center:
                 cur = current_pos[agv_id]
                 tgt = final_next_pos[agv_id]
@@ -104,7 +96,6 @@ class Env:
                 if cur != tgt:
                     edge_conflict_set.add((cur, tgt))
 
-            # 遍历所有中心AGV
             for agv_id in in_center:
                 cur = current_pos[agv_id]
                 tgt = next_pos[agv_id]
@@ -115,14 +106,10 @@ class Env:
 
                 walkable = self.map.is_walkable(self.agv_manager.get_agv_size(agv_id), tgt, cur, carrying)
                 occ = self._get_next_occupied_positions(agv_id, cur, tgt)
-
-                # 顶点冲突判断：占用区域不能和他人重叠
                 has_vertex_conflict = any(
                     (cell in cur_vertex_dict and len(cur_vertex_dict[cell] - {agv_id}) > 0)
                     for cell in occ
                 )
-
-                # 交换冲突判断（基于左上角坐标）
                 has_edge_conflict = (tgt, cur) in edge_conflict_set
 
                 if walkable and not has_vertex_conflict and not has_edge_conflict:
@@ -150,10 +137,8 @@ class Env:
     def _get_next_occupied_positions(
         self, agv_id: int, cur: Tuple[int, int], tgt: Tuple[int, int]
     ) -> Set[Tuple[int, int]]:
-        """
-        返回 AGV 从 cur 移动到 tgt 过程中，所占用的所有格子（考虑 size）
-        """
-        size = self.agv_manager.get_agv_size(agv_id)  # 新增: 从管理器获取 AGV 的 size
+        """Return all cells occupied by this AGV during move from cur to tgt (size-aware)."""
+        size = self.agv_manager.get_agv_size(agv_id)
 
         def footprint(pos: Tuple[int, int]) -> Set[Tuple[int, int]]:
             x, y = pos
@@ -165,13 +150,10 @@ class Env:
         real_pos = self.agv_manager.get_real_position(agv_id)
         speed = self.agv_manager.get_agv_speed(agv_id)
         time_step = 1
-
         offset = speed * time_step
         x, y = real_pos
         dx = tgt[0] - cur[0]
         dy = tgt[1] - cur[1]
-
-        # 当前和目标 footprint
         cur_fp = footprint(cur)
         tgt_fp = footprint(tgt)
 
@@ -195,13 +177,7 @@ class Env:
         return occupied
 
     def classify_by_grid_center(self, real_positions: Dict[int, Tuple[float, float]]) -> Tuple[Set[int], Set[int]]:
-        """
-        根据 AGV 是否在网格中心将其划分为两个集合。
-        网格中心定义为坐标的 x 和 y 均为 **.5。
-        返回：
-            in_center: 在中心的 AGV ID 集合
-            not_in_center: 不在中心的 AGV ID 集合
-        """
+        """Split AGV IDs into in_center (x,y both *.5) and not_in_center."""
         in_center = set()
         not_in_center = set()
 

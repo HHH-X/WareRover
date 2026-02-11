@@ -12,18 +12,16 @@ class ContinuousPeriodicStrategy(OrderGenerationStrategy):
 
     def _current_multiplier(self, current_step: int) -> float:
         
-        progress = (current_step % ContinuousPeriodicConfig.cycle_duration_steps) / ContinuousPeriodicConfig.cycle_duration_steps  # 0~1
+        progress = (current_step % ContinuousPeriodicConfig.cycle_duration_steps) / ContinuousPeriodicConfig.cycle_duration_steps
 
         if ContinuousPeriodicConfig.wave_type == "sine":
-            # 从谷到峰再到谷的正弦波
             angle = progress * 2 * math.pi
-            normalized = (math.sin(angle) + 1) / 2  # 0~1
+            normalized = (math.sin(angle) + 1) / 2
         elif ContinuousPeriodicConfig.wave_type == "square":
             normalized = 1.0 if progress < 0.5 else 0.0
         else:
             normalized = 1.0
 
-        # 映射到 valley ~ peak
         return ContinuousPeriodicConfig.valley_multiplier + normalized * (ContinuousPeriodicConfig.peak_multiplier - ContinuousPeriodicConfig.valley_multiplier)
 
     def update(self, current_step: int) -> List[Order]:

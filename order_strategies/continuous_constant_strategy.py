@@ -13,7 +13,6 @@ class ContinuousConstantStrategy(OrderGenerationStrategy):
     def update(self, current_step: int) -> List[Order]:
         new_orders = []
         if current_step >= self.next_generation_step:
-            # 计算本批次 size 分布
             num_size2 = int(ContinuousConstantConfig.batch_size * SimConfig.size2_ratio)
             num_size1 = ContinuousConstantConfig.batch_size - num_size2
 
@@ -23,7 +22,6 @@ class ContinuousConstantStrategy(OrderGenerationStrategy):
                     if order:
                         new_orders.append(order)
 
-            # 安排下一波
             self.next_generation_step = current_step + ContinuousConstantConfig.generation_interval_steps
 
         return new_orders

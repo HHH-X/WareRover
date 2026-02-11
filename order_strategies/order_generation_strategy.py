@@ -5,34 +5,24 @@ from typing import List, Dict, Optional
 
 from config.settings import SimConfig
 from core.gridmap import GridMap
-from core.order import Order  # Order dataclass 所在位置
+from core.order import Order
 from config.settings import SimConfig
 
 class OrderGenerationStrategy(ABC):
-    """订单生成策略抽象接口"""
+    """Abstract order generation strategy."""
 
     def __init__(self):
         self.rng = random.Random(SimConfig.order_seed)
-        # self.map = map_inst
-
-        # 预先从地图文件读取并按 size 分类的 box 和 receiver 数据
         self._all_boxes_by_size: Dict[int, List[dict]] = self._prepare_boxes_by_size()
         self._all_receivers_by_size: Dict[int, List[dict]] = self._prepare_receivers_by_size()
 
     @abstractmethod
     def update(self, current_step: int) -> List[Order]:
-        """
-        每仿真 step 调用一次。
-        返回本 step 需要新增的订单列表（可能为空列表）。
-        """
+        """Called each simulation step; returns new orders to add (may be empty)."""
         pass
 
-    # ==================== 数据预处理 ====================
     def _prepare_boxes_by_size(self) -> Dict[int, List[dict]]:
-        """
-        从地图 JSON 文件中读取所有 box，按 size 分类。
-        返回结构: {size: [{"goods_ids": [...], ...}, ...]}
-        """
+        """Load boxes from map JSON and group by size. Returns {size: [box_dict, ...]}."""
         map_path = SimConfig.map_file
         with open(map_path, "r", encoding="utf-8") as f:
             map_data = json.load(f)
@@ -47,10 +37,7 @@ class OrderGenerationStrategy(ABC):
         return boxes_by_size
 
     def _prepare_receivers_by_size(self) -> Dict[int, List[dict]]:
-        """
-        从地图 JSON 文件中读取所有 receiver，按 size 分类。
-        返回结构: {size: [{"receiver_id": xxx, ...}, ...]}
-        """
+        """Load receivers from map JSON and group by size. Returns {size: [receiver_dict, ...]}."""
         map_path = SimConfig.map_file
         with open(map_path, "r", encoding="utf-8") as f:
             map_data = json.load(f)
@@ -64,12 +51,8 @@ class OrderGenerationStrategy(ABC):
 
         return receivers_by_size
 
-    # ==================== 通用订单生成工具 ====================
     def _generate_single_order(self, size: int) -> Optional[Order]:
-        """
-        生成单个订单的通用逻辑，所有策略均可复用。
-        如果对应 size 没有 box 或 receiver，返回 None。
-        """
+        """Generate one order for the given size; returns None if no box/receiver for that size."""
         boxes = self._all_boxes_by_size.get(size, [])
         receivers = self._all_receivers_by_size.get(size, [])
 
@@ -92,11 +75,7 @@ class OrderGenerationStrategy(ABC):
         )
 
     def _generate_batch_orders(self, batch_size: int) -> tuple[List[Order], int]:
-        """
-        根据 config.size2_ratio 生成一批订单，返回 (新订单列表, 下一个可用的 order_id)
-        """
-
-        # 计算 size1 和 size2 的数量（按比例）
+        """Generate a batch of orders by size2_ratio; returns (new_orders, next_order_id)."""
         num_size2 = int(batch_size * SimConfig.size2_ratio)
         num_size1 = batch_size - num_size2
 

@@ -33,7 +33,6 @@ class FaultManager:
             return
         for agv_id in self.agv_manager.all_agv_ids:
 
-            # 已经坏了的不再触发
             if agv_id in self.active_faults:
                 continue
 
@@ -65,32 +64,21 @@ class FaultManager:
 
 
     def handle_message(self, msg: dict):
-        """
-        处理来自前端的命令消息
-        msg 示例：
-        {
-            "cmd": "damage", "agv_id": 2
-        }
-        或
-        {
-            "cmd": "repair", "agv_id": 2
-        }
-        """
+        """Handle frontend commands, e.g. {"cmd": "damage", "agv_id": 2} or {"cmd": "repair", "agv_id": 2}."""
         cmd = msg.get("cmd")
         agv_id = msg.get("agv_id")
-        print(f"[FaultManager] 处理命令: {msg}")
+        print(f"[FaultManager] Handling command: {msg}")
         if cmd == "damage":
             self.simulate_fault(agv_id)
         elif cmd == "repair":
             self.repair_agv(agv_id)
-        print("内部处理完")
+        print("Command processed.")
         # else:
         #     print(f"[FaultManager] 未知命令: {cmd}")
 
     def simulate_fault(self, agv_id: int):
         self.agv_manager.set_agv_status(agv_id, False)
         agv_grid_pos = self.agv_manager.get_agv(agv_id).grid_pos
-        # 找到最近的边界点
         border_cell = self._find_nearest_border_free_cell(agv_grid_pos)
         path = self.plan_repair_path(agv_grid_pos, border_cell)
         self.gridmap.add_dynamic_occupancy(str(agv_id), path)
@@ -102,15 +90,11 @@ class FaultManager:
         global_logger.add_runtime_log(f"[FaultManager] AGV {agv_id} repaired at step {clock.now()}")
 
     def assign_replacement(self, faulty_agv_id: int, replacement_agv_id: int):
-        """为损坏AGV分配替代AGV"""
-        # 取出任务，重新调度
-
+        """Assign a replacement AGV for a faulty one (re-dispatch tasks)."""
+        pass
 
     def _find_nearest_border_free_cell(self, start: Tuple[int, int]) -> Optional[Tuple[int, int]]:
-        """
-        从起点出发，在 static_grid 中找到最近的可通行边界点（即 -1 位置），
-        且路径不能经过接收区
-        """
+        """Find nearest traversable border cell (-1) from start without crossing receiver zones."""
         h, w = self.static_grid.shape
         visited = set()
         queue = [start]
@@ -121,13 +105,10 @@ class FaultManager:
             if (x, y) in visited:
                 continue
             visited.add((x, y))
-
-            # 检查是否为可通行边界点
             if self.static_grid[y, x] == -1 and (x == 0 or y == 0 or x == w - 1 or y == h - 1):
                 if (x, y) not in receiver_set:
                     return (x, y)
 
-            # 四方向搜索
             for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
                 nx, ny = x + dx, y + dy
                 if (
@@ -138,14 +119,10 @@ class FaultManager:
                 ):
                     queue.append((nx, ny))
 
-        return None  # 没有找到
-
+        return None
 
     def plan_repair_path(self, start: Tuple[int, int], goal: Tuple[int, int]) -> Optional[List[Tuple[int, int]]]:
-        """
-        在 static_grid 上规划从 start 到 goal 的可通行路径
-        路径不能经过接收区
-        """
+        """Plan traversable path from start to goal on static_grid, avoiding receiver zones."""
         h, w = self.static_grid.shape
         queue = [(start, [start])]
         visited = set()

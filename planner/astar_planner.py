@@ -26,20 +26,14 @@ class AStarPlanner(BasePlanner):
 
     def plan(self, targets: Dict[int, Tuple[Tuple[int, int], Tuple[int, int]]], scheduler) -> Dict[int, List[Tuple[int, int]]]:
         """
-        对需要重规划路径的 AGV 进行集中式路径规划，返回路径列表
-        参数:
-            targets: dict {agv_id: (start_pos, target_pos)}
-        返回:
-            paths: dict {agv_id: List[path]}
+        Centralized path planning using A* with a reservation table (avoids vertex and edge conflicts).
+        Args: targets {agv_id: (start_pos, target_pos)}. Returns: {agv_id: path} (path excludes start).
         """
-        if(not targets):
+        if not targets:
             return {}
-        # 获取当前已有路径，避免冲突
         env_info = self.env.get_env_info()
         current_paths = env_info['action_queues']
         carrying_status = env_info['carrying_status']
-
-        # 构建 reservation table 时考虑不同 AGV 的大小
         reservation_table = self._build_reservation_table(current_paths)
 
         paths = {}
@@ -55,11 +49,10 @@ class AStarPlanner(BasePlanner):
                 paths[agv_id] = [start]
         return paths
 
-    # 在构建 reservation table 时展开不同 size 的格点占用
     def _build_reservation_table(
         self, current_paths: Dict[int, List[Tuple[int, int]]],
     ) -> Dict[int, Set[Tuple[int, int]]]:
-        """构造 reservation table：时间步 -> 坐标集合，考虑不同 AGV 尺寸"""
+        """Build reservation table: time step -> set of occupied cells (AGV size-aware)."""
         table = defaultdict(set)
         for agv_id, path in current_paths.items():
             for t, pos in enumerate(path):
@@ -68,13 +61,12 @@ class AStarPlanner(BasePlanner):
                     table[t].add(cell)
         return table
 
-    # 在加入新路径时考虑 size
     def _add_to_reservation_table(
         self, agv_id: int,
         table: Dict[int, Set[Tuple[int, int]]],
         path: List[Tuple[int, int]]
     ):
-        """将新路径加入 reservation table（考虑 AGV 尺寸）"""
+        """Add a new path to the reservation table (AGV size-aware)."""
         for t, pos in enumerate(path):
             occupied = self._get_occupied_cells(agv_id, pos)
             for cell in occupied:
@@ -83,7 +75,7 @@ class AStarPlanner(BasePlanner):
     def _a_star_with_reservation(self, agv_id: int, start: Tuple[int, int], goal: Tuple[int, int],
                                  carrying: bool, reservation_table: Dict[int, Set[Tuple[int, int]]]
                                  ) -> List[Tuple[int, int]]:
-        """基于 reservation_table 的 A* 算法，避免顶点冲突与交换冲突"""
+        """A* with reservation table to avoid vertex and swap conflicts."""
         open_set = []
         heapq.heappush(open_set, (0 + self._heuristic(start, goal), 0, start, [start]))
         closed_set = set()
@@ -97,7 +89,6 @@ class AStarPlanner(BasePlanner):
                 continue
             closed_set.add((current, g))
 
-            # 到达目标并可安全等待
             if current == goal and self._is_free(agv_id, current, g + 1, reservation_table) and self._is_free(agv_id, current, g + 2, reservation_table):
                 return path + [goal] * 2
 
@@ -115,13 +106,13 @@ class AStarPlanner(BasePlanner):
         return None
 
     def _heuristic(self, a: Tuple[int, int], b: Tuple[int, int]) -> int:
-        """曼哈顿距离启发函数"""
+        """Manhattan distance heuristic."""
         return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
-    def _is_free(self, agv_id: int, pos: Tuple[int, int], 
+    def _is_free(self, agv_id: int, pos: Tuple[int, int],
                  t: int, reservation_table: Dict[int, Set[Tuple[int, int]]]
                  ) -> bool:
-        """判断时间 t 下 AGV 在 pos（左上角）及其占用区域是否全部空闲且可走"""
+        """True if at time t the AGV at top-left pos and its occupied cells are all free in the table."""
         for cell in self._get_occupied_cells(agv_id, pos):
             if cell in reservation_table.get(t, set()):
                 return False
@@ -130,23 +121,15 @@ class AStarPlanner(BasePlanner):
     def _is_edge_conflict(self, agv_id: int, from_pos: Tuple[int, int], to_pos: Tuple[int, int], t: int,
                       reservation_table: Dict[int, Set[Tuple[int, int]]]
                       ) -> bool:
-        """
-        边冲突检测（扩展到多格 AGV）：
-        如果 at time t 有任一格属于 from_pos 的占用集合 与 reservation_table[t] 重合，
-        且 at time t-1 有任一格属于 to_pos 的占用集合 与 reservation_table[t-1] 重合，
-        则认为存在交换/边冲突（简化判定）。
-        """
+        """Edge/swap conflict: from_pos occupied at t and to_pos occupied at t-1 overlap with table."""
         occ_from_t = self._get_occupied_cells(agv_id, from_pos)
         occ_to_tminus1 = self._get_occupied_cells(agv_id, to_pos)
         conflict_now = any(cell in reservation_table.get(t, set()) for cell in occ_from_t)
         conflict_prev = any(cell in reservation_table.get(t - 1, set()) for cell in occ_to_tminus1)
         return conflict_now and conflict_prev
 
-    # 新增辅助函数
     def _get_occupied_cells(self, agv_id: int, top_left: Tuple[int, int]) -> set[Tuple[int, int]]:
-        """
-        根据 AGV top-left与大小计算占用格点集合
-        """
+        """Return set of grid cells occupied by this AGV given its top-left and size."""
         size = self.agv_sizes.get(agv_id, 1)
         x, y = top_left
         return {(x + dx, y + dy) for dx in range(size) for dy in range(size)}

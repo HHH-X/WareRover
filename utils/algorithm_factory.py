@@ -43,7 +43,6 @@ def build_planner(
         return FixedWindowCBSPlanner(env, agv_manager, ordermanager, grid_map, fault_manager)
 
     elif SimConfig.planner_type == PlannerType.DHC:
-        # 自动联动配置
         SimConfig.force_replan_every_step = True
 
         return DHCPlanner(

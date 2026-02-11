@@ -30,7 +30,7 @@ class SimConfig:
 
     # ==================== Algorithm selection ====================
     scheduler_type: SchedulerType = SchedulerType.TA
-    planner_type: PlannerType = PlannerType.ASTAR
+    planner_type: PlannerType = PlannerType.CBS_FW
     force_replan_every_step: bool = False
     # Whether to force each decision-making AGV to replan its path at every step.
     # Automatically coupled with DHC when enabled.
@@ -56,7 +56,7 @@ class SimConfig:
     max_steps: int = 700
 
     time_step: float = 1.0        # Duration of each simulation step (seconds)
-    agv_max_speed: float = 0.5      # Maximum AGV speed (cells per step)
+    agv_max_speed: float = 1      # Maximum AGV speed (cells per step)
     agv_turn_time_90: float = 0   # Time required for a 90-degree turn (seconds)
 
     # ==================== Frontend visualization ====================

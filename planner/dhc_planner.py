@@ -12,33 +12,28 @@ from core.fault_manager import FaultManager
 from core.agvmanager import AGVManager
 from planner.base_planner import BasePlanner
 from algorithm.DHC.dhc_converter import DHCCompatibleConverter
-from algorithm.DHC.model import Network  # 注意：这是你训练的 DHC 模型
+from algorithm.DHC.model import Network
 from algorithm.DHC.dhc_env import ACTION_DELTA
 
 class DHCPlanner(BasePlanner):
     """
-    极简 DHC 策略规划器
-    完全依赖底层 env 的冲突强制拒绝，不做任何 reservation 检查
+    DHC (learned) policy planner; relies on env for conflict rejection, no reservation checks.
     """
     def __init__(
-        self, 
+        self,
         env: Env,
         agv_manager: AGVManager,
-        order_manager: OrderManager, 
+        order_manager: OrderManager,
         map: GridMap,
         fault_manager: FaultManager,
         model_path: str,
-        forward_steps: int = 6,           # 建议 4~8，越大路径越平滑
+        forward_steps: int = 6,
         device: str = "cuda" if torch.cuda.is_available() else "cpu"
     ):
         super().__init__(env, agv_manager, order_manager, map, fault_manager)
         self.device = device
         self.forward_steps = forward_steps
-
-        # DHC 观测生成器（和训练时 100% 一致）
         self.converter = DHCCompatibleConverter(num_agvs=self.env.agv_manager.num_agvs, gridmap=self.env.map, agvmanager=self.env.agv_manager)
-
-        # 加载训练好的模型
         self.model = Network().to(self.device)
         self.model.eval()
         if not os.path.exists(model_path):
@@ -53,39 +48,28 @@ class DHCPlanner(BasePlanner):
         scheduler
     ) -> Dict[int, List[Tuple[int, int]]]:
         """
-        输入:  {agv_id: (current_pos, goal_pos)}
-        输出:  {agv_id: [next_pos1, next_pos2, ...]}   # 长度 ≤ forward_steps
+        Input: targets {agv_id: (current_pos, goal_pos)}.
+        Output: {agv_id: [next_pos1, next_pos2, ...]} with length <= forward_steps.
         """
         if not targets:
             return {}
-
-        # 1. 获取全局状态
         env_info = self.env.get_env_info()
         static_grid = env_info['static_grid']
-        current_positions = env_info['current_grid_pos']   # {agv_id: (x, y)}
-
-        # 2. 生成 DHC 标准观测（只给需要决策的 AGV）
+        current_positions = env_info['current_grid_pos']
         obs_dhc, pos_dhc = self.converter.convert(
             static_grid=static_grid,
             agv_positions_xy=current_positions,
             targets=targets
         )
-
-        # 3. 模型推理（一次性推理所有活跃 AGV）
         with torch.no_grad():
             obs_tensor = torch.from_numpy(obs_dhc).float().to(self.device)
             pos_tensor = torch.from_numpy(pos_dhc).long().to(self.device)
             actions, _, _, _ = self.model.step(obs_tensor, pos_tensor)
-            # actions 是 list[int]，长度 = len(targets)
-
-        # 4. 统一使用同一个动作向前走 forward_steps 步（或直到目标）
         paths: Dict[int, List[Tuple[int, int]]] = {}
         active_ids = list(targets.keys())
-
         for idx, agv_id in enumerate(active_ids):
-            start_x, start_y = targets[agv_id][0]   # 当前位置（左上角）
+            start_x, start_y = targets[agv_id][0]
             dx, dy = ACTION_DELTA[actions[idx]]
-
             path = []
             cur_x, cur_y = start_x, start_y
             for _ in range(self.forward_steps):
@@ -93,7 +77,5 @@ class DHCPlanner(BasePlanner):
                 next_y = cur_y + dy
                 path.append((next_x, next_y))
                 cur_x, cur_y = next_x, next_y
-
-            paths[agv_id] = path   # 即使后续被 env 拒绝也没关系，下次会重新规划
-
+            paths[agv_id] = path
         return paths
