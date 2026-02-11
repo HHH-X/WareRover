@@ -4,18 +4,35 @@ import heapq
 from collections import defaultdict
 from planner.base_planner import BasePlanner
 from core.env import Env
+from core.gridmap import GridMap
+from core.ordermanager import OrderManager
+from core.fault_manager import FaultManager
+from core.agvmanager import AGVManager
 
 MAX_CBS_NODES = 800  # 可以根据窗口大小调
 
 class FixedWindowCBSPlanner(BasePlanner):
-    def __init__(self, env_instance: Env, window_size: int = 10):
-        super().__init__(env_instance)
-        self.window_size = window_size
+    def __init__(
+        self, 
+        env: Env,
+        agv_manager: AGVManager,
+        order_manager: OrderManager, 
+        map: GridMap,
+        fault_manager: FaultManager
+    ):
+        super().__init__(env, agv_manager, order_manager, map, fault_manager)
+        self.window_size = 10
 
-    def plan(self, targets: Dict[int, Tuple[Tuple[int, int], Tuple[int, int]]]) -> Dict[int, List[Tuple[int, int]]]:
+    def plan(
+        self, 
+        targets: Dict[int, Tuple[Tuple[int, int], Tuple[int, int]]], 
+        scheduler
+    ) -> Dict[int, List[Tuple[int, int]]]:
         """
         使用固定窗口 CBS 进行集中式路径规划。
         """
+        if(not targets):
+            return {}
         env_info = self.env.get_env_info()
         carrying_status = env_info["carrying_status"]
         action_queues = env_info["action_queues"]

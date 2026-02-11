@@ -6,6 +6,8 @@ from core.agv import AGVAction
 from core.gridmap import GridMap
 from core.order import Order
 from core.ordermanager import OrderManager
+from core.env import Env
+from core.fault_manager import FaultManager
 from core.agvmanager import AGVManager
 from scheduler.base_scheduler import BaseScheduler
 from utils.logger import global_logger
@@ -19,14 +21,15 @@ class RandomScheduler(BaseScheduler):
     """
 
     def __init__(
-        self,
-        order_manager: OrderManager,
-        map_instance: GridMap,
+        self, 
+        env: Env,
         agv_manager: AGVManager,
+        order_manager: OrderManager, 
+        map: GridMap,
+        fault_manager: FaultManager
     ):
-        self.order_manager = order_manager
-        self.map = map_instance
-        self.agv_manager = agv_manager
+        super().__init__(env, agv_manager, order_manager, map, fault_manager)
+
 
     # ==================================================================
     # reset 接口（现在几乎是空的）
@@ -40,7 +43,9 @@ class RandomScheduler(BaseScheduler):
     # 核心调度接口
     # ==================================================================
     def assign_tasks(
-        self, idle_agv_ids: Set[int]
+        self, 
+        idle_agv_ids: Set[int], 
+        planner
     ) -> Dict[int, List[Tuple[Tuple[int, int], AGVAction, int]]]:
 
         if not idle_agv_ids:

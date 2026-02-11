@@ -2,18 +2,29 @@ import heapq
 from typing import Dict, Tuple, List, Set
 from collections import defaultdict
 from core.env import Env
+from core.gridmap import GridMap
+from core.ordermanager import OrderManager
+from core.fault_manager import FaultManager
+from core.agvmanager import AGVManager
 from planner.base_planner import BasePlanner
 
 MAX_ASTAR_NODES = 800
 
 class AStarPlanner(BasePlanner):
-    def __init__(self, env_instance: Env):
-        self.env = env_instance
+    def __init__(
+        self, 
+        env: Env,
+        agv_manager: AGVManager,
+        order_manager: OrderManager, 
+        map: GridMap,
+        fault_manager: FaultManager
+    ):
+        super().__init__(env, agv_manager, order_manager, map, fault_manager)
         self.max_time = 100
         env_info = self.env.get_env_info()
         self.agv_sizes = env_info['agv_sizes']
 
-    def plan(self, targets: Dict[int, Tuple[Tuple[int, int], Tuple[int, int]]]) -> Dict[int, List[Tuple[int, int]]]:
+    def plan(self, targets: Dict[int, Tuple[Tuple[int, int], Tuple[int, int]]], scheduler) -> Dict[int, List[Tuple[int, int]]]:
         """
         对需要重规划路径的 AGV 进行集中式路径规划，返回路径列表
         参数:
@@ -21,6 +32,8 @@ class AStarPlanner(BasePlanner):
         返回:
             paths: dict {agv_id: List[path]}
         """
+        if(not targets):
+            return {}
         # 获取当前已有路径，避免冲突
         env_info = self.env.get_env_info()
         current_paths = env_info['action_queues']

@@ -7,7 +7,7 @@ function initPanel() {
 
     <!-- === 基础控制按钮 === -->
     <div class="basic-controls">
-      <button id="toggleBtn">Pause</button>
+      <button id="toggleBtn">Resume</button>
       <button id="stepBtn">Step</button>
     </div>
 
@@ -23,7 +23,7 @@ function initPanel() {
 
     <!-- === 折叠模块：事故模拟 === -->
     <div class="collapsible" id="incidentSim">
-      <div class="collapsible-header">▶ Incident Simulation</div>
+      <div class="collapsible-header">▶ Failure Simulation</div>
       <div class="collapsible-content">
         <div class="form-group">
           <input type="number" id="damageAgvId" placeholder="AGV ID to damage">
@@ -57,10 +57,10 @@ function initPanel() {
   makePanelDraggable(panel);
 
   // === 运行控制按钮 ===
-  let isPaused = false;
+  let isPaused = true;
   const toggleBtn = document.getElementById('toggleBtn');
   const stepBtn = document.getElementById('stepBtn');
-
+  toggleBtn.classList.add("paused");
   toggleBtn.onclick = () => {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
 

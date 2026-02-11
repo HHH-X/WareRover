@@ -7,16 +7,23 @@ from core.order import Order
 from core.ordermanager import OrderManager
 from core.agv import AGVAction
 from core.agvmanager import AGVManager
+from core.env import Env
+from core.fault_manager import FaultManager
 from scheduler.base_scheduler import BaseScheduler
 from scipy.optimize import linear_sum_assignment
 from utils.base_utils import orders_to_tasks
 import random
 
 class TAScheduler(BaseScheduler):
-    def __init__(self, order_manager: OrderManager, map_instance: GridMap, agv_manager:AGVManager):
-        self.map = map_instance
-        self.order_manager = order_manager
-        self.agv_manager = agv_manager
+    def __init__(
+        self, 
+        env: Env,
+        agv_manager: AGVManager,
+        order_manager: OrderManager, 
+        map: GridMap,
+        fault_manager: FaultManager
+    ):
+        super().__init__(env, agv_manager, order_manager, map, fault_manager)
 
     def compute_manhattan_distance(self, pos1: Tuple[int, int], pos2: Tuple[int, int]) -> int:
         """计算曼哈顿距离"""
@@ -122,7 +129,7 @@ class TAScheduler(BaseScheduler):
         return assignment
     
     def assign_tasks(
-        self, idle_agv_ids: Set[int]
+        self, idle_agv_ids: Set[int], planner
     ) -> Dict[int, List[Tuple[Tuple[int, int], AGVAction, int]]]:
         """
         根据当前空闲 AGV，为其分配任务列表

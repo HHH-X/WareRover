@@ -24,7 +24,7 @@ from utils.algorithm_factory import build_scheduler, build_planner
 
 # 控制状态
 STATE = {
-    "paused": False,
+    "paused": True,
     "step_trigger": False,
 }
 
@@ -54,13 +54,12 @@ async def simulator_loop(websocket, message_queue):
     ordermanager = OrderManager(grid_map)
     agv_manager = AGVManager(grid_map, ordermanager)
     env = Env(agv_manager, grid_map, ordermanager)
-    scheduler = build_scheduler(ordermanager, grid_map, agv_manager)
-    planner = build_planner(env)
+    fault_manager = FaultManager(agv_manager, env, grid_map)
+
+    scheduler = build_scheduler(env, agv_manager, ordermanager, grid_map, fault_manager)
+    planner = build_planner(env, agv_manager, ordermanager, grid_map, fault_manager)
 
     simulator = Simulator(grid_map, agv_manager, ordermanager, env, scheduler, planner)
-
-    # 初始化 FaultManager
-    fault_manager = FaultManager(agv_manager, env, grid_map)
 
     # --- 初始化前端状态 ---
     init_data = generate_send_data(grid_map, agv_manager, data_type="init")
@@ -104,6 +103,7 @@ async def simulator_loop(websocket, message_queue):
         # 仿真自然结束（所有订单完成或超步数）
         if not NEED_RESET:
             print("所有订单已完成，仿真结束，等待 reset 或 stop")
+            global_logger.add_runtime_log(global_logger.get_final_metrics(clock.now()))
             print(global_logger.get_final_metrics(clock.now()))
 
         # 卡在这里等 reset 或 stop
@@ -134,6 +134,7 @@ async def ws_handler(websocket):
                     STATE["step_trigger"] = True
                 elif cmd == "stop":
                     print("收到停止命令，准备退出...")
+                    global_logger.close()  # 关闭日志文件
                     RUNNING = False
                     STATE["paused"] = True  # 停止模拟步进
                     await websocket.send(json.dumps({"status": "stopping"}))

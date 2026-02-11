@@ -1,22 +1,40 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 import random
 from typing import Dict, List, Set, Tuple
-
+from typing import TYPE_CHECKING
 from core.agv import AGVAction
 from core.gridmap import GridMap
 from core.ordermanager import OrderManager, Order
+from core.env import Env
+from core.fault_manager import FaultManager
+from core.agvmanager import AGVManager
 
+if TYPE_CHECKING:
+    from planner.base_planner import BasePlanner
 
 class BaseScheduler(ABC):
     
-    def __init__(self, order_manager: OrderManager, map_instance: GridMap):
+    def __init__(
+        self, 
+        env: Env,
+        agv_manager: AGVManager,
+        order_manager: OrderManager, 
+        map: GridMap,
+        fault_manager: FaultManager
+    ):
+        self.env = env
+        self.agv_manager = agv_manager
         self.order_manager = order_manager
-        self.map = map_instance
-        # self.orders = self.order_manager.get_all_orders()
-        # self.order_iter = iter(self.orders)
+        self.map = map
+        self.fault_manager = fault_manager
 
     @abstractmethod
-    def assign_tasks(self, idle_agv_ids: Set[int]) -> Dict[int, List[Tuple[Tuple[int, int], AGVAction, int]]]:
+    def assign_tasks(
+        self, 
+        idle_agv_ids: Set[int], 
+        planner: BasePlanner
+    ) -> Dict[int, List[Tuple[Tuple[int, int], AGVAction, int]]]:
         """
         为空闲AGV分配任务
         返回：agv_id -> task列表（task是一个三元组：目标位置、动作类型、附加字段）

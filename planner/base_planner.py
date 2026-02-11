@@ -1,15 +1,40 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Dict, Tuple, List, Set
 from collections import defaultdict
 from core.env import Env
+from core.gridmap import GridMap
+from core.ordermanager import OrderManager
+from core.fault_manager import FaultManager
+from core.agvmanager import AGVManager
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from scheduler.base_scheduler import BaseScheduler
 
 class BasePlanner(ABC):
-    def __init__(self, env_instance:Env):
-        self.env = env_instance
+    def __init__(
+        self, 
+        env: Env,
+        agv_manager: AGVManager,
+        order_manager: OrderManager, 
+        map: GridMap,
+        fault_manager: FaultManager
+    ):
+        self.env = env
+        self.agv_manager = agv_manager
+        self.order_manager = order_manager
+        self.map = map
+        self.fault_manager = fault_manager
         self.max_time = 100
 
     @abstractmethod
-    def plan(self, targets: Dict[int, Tuple[Tuple[int, int], Tuple[int, int]]]) -> Dict[int, List[Tuple[int, int]]]:
+    def plan(
+        self, 
+        targets: Dict[int, Tuple[Tuple[int, int], Tuple[int, int]]], 
+        scheduler: BaseScheduler
+    ) -> Dict[int, List[Tuple[int, int]]]:
         """
         对需要重规划路径的 AGV 进行集中式路径规划，返回路径列表
         参数:

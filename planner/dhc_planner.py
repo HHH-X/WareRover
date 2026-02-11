@@ -6,6 +6,10 @@ from collections import defaultdict
 import os
 
 from core.env import Env
+from core.gridmap import GridMap
+from core.ordermanager import OrderManager
+from core.fault_manager import FaultManager
+from core.agvmanager import AGVManager
 from planner.base_planner import BasePlanner
 from algorithm.DHC.dhc_converter import DHCCompatibleConverter
 from algorithm.DHC.model import Network  # 注意：这是你训练的 DHC 模型
@@ -17,13 +21,17 @@ class DHCPlanner(BasePlanner):
     完全依赖底层 env 的冲突强制拒绝，不做任何 reservation 检查
     """
     def __init__(
-        self,
-        env_instance: Env,
+        self, 
+        env: Env,
+        agv_manager: AGVManager,
+        order_manager: OrderManager, 
+        map: GridMap,
+        fault_manager: FaultManager,
         model_path: str,
         forward_steps: int = 6,           # 建议 4~8，越大路径越平滑
         device: str = "cuda" if torch.cuda.is_available() else "cpu"
     ):
-        self.env = env_instance
+        super().__init__(env, agv_manager, order_manager, map, fault_manager)
         self.device = device
         self.forward_steps = forward_steps
 
@@ -39,7 +47,11 @@ class DHCPlanner(BasePlanner):
         self.model.load_state_dict(state_dict)
         print(f"[DHCPlanner] Loaded weights: {model_path}")
 
-    def plan(self, targets: Dict[int, Tuple[Tuple[int, int], Tuple[int, int]]]) -> Dict[int, List[Tuple[int, int]]]:
+    def plan(
+        self, 
+        targets: Dict[int, Tuple[Tuple[int, int], Tuple[int, int]]],
+        scheduler
+    ) -> Dict[int, List[Tuple[int, int]]]:
         """
         输入:  {agv_id: (current_pos, goal_pos)}
         输出:  {agv_id: [next_pos1, next_pos2, ...]}   # 长度 ≤ forward_steps

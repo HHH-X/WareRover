@@ -36,11 +36,11 @@ class Simulator:
         self.order_manager.step()
         # 1. 获取空闲AGV并尝试分配任务
         idle_agv_set = self.agv_manager.get_idle_agv_ids()
-        if idle_agv_set:
-            with global_logger.computation_timer("scheduler"):
-                agv_tasks = self.scheduler.assign_tasks(idle_agv_set)
-            if(agv_tasks):
-                self.agv_manager.assign_tasks(agv_tasks)
+        
+        with global_logger.computation_timer("scheduler"):
+            agv_tasks = self.scheduler.assign_tasks(idle_agv_set, self.planner)
+        if(agv_tasks):
+            self.agv_manager.assign_tasks(agv_tasks)
 
         # 2. 分配休息区给任务完成的AGV
         agvs_needing_rest = self.agv_manager.get_need_rest_agv_ids()
@@ -50,10 +50,10 @@ class Simulator:
 
         # 3. 获取需要重规划的AGV的当前位置与目标
         replanning_targets = self.agv_manager.get_replan_targets()
-        if replanning_targets:
-            with global_logger.computation_timer("planner"):
-                new_paths = self.planner.plan(replanning_targets)       
-            self.agv_manager.replan_paths(new_paths)
+        
+        with global_logger.computation_timer("planner"):
+            new_paths = self.planner.plan(replanning_targets, self.scheduler)       
+        self.agv_manager.replan_paths(new_paths)
 
         # 4. 执行一步环境逻辑（含冲突检测与AGV移动）
         step_info_dict = self.env.step()
