@@ -37,8 +37,8 @@ def run_single_episode(seed: int) -> Dict:
     env = Env(agv_manager, grid_map, ordermanager)
     fault_manager = FaultManager(agv_manager, env, grid_map)
 
-    scheduler = build_scheduler(ordermanager, grid_map, agv_manager)
-    planner = build_planner(env)
+    scheduler = build_scheduler(env,agv_manager,ordermanager, grid_map, fault_manager)
+    planner = build_planner(env,agv_manager, ordermanager, grid_map, fault_manager)
 
     simulator = Simulator(
         grid_map,

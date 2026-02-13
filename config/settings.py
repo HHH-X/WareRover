@@ -30,7 +30,7 @@ class SimConfig:
 
     # ==================== Algorithm selection ====================
     scheduler_type: SchedulerType = SchedulerType.TA
-    planner_type: PlannerType = PlannerType.CBS_FW
+    planner_type: PlannerType = PlannerType.ASTAR
     force_replan_every_step: bool = False
     # Whether to force each decision-making AGV to replan its path at every step.
     # Automatically coupled with DHC when enabled.
@@ -38,7 +38,7 @@ class SimConfig:
     dhc_model_path: str = '.\\algorithm\\DHC\\models\\36000.pth'
 
     # ==================== Simulation parameters ====================
-    order_mode: OrderMode = OrderMode.ONESHOT  # Order generation mode
+    order_mode: OrderMode = OrderMode.CONTINUOUS_CONSTANT  # Order generation mode
     total_orders_limit = 100
 
     size2_ratio: float = 0.2
@@ -52,7 +52,7 @@ class SimConfig:
     # Random seed for order generation; None means non-deterministic
 
     # Map and simulation step configuration
-    map_file: str = "config/maps/template_map.json"  # Default map file path
+    map_file: str = "config/maps/map_25_20_het.json"  # Default map file path
     max_steps: int = 700
 
     time_step: float = 1.0        # Duration of each simulation step (seconds)

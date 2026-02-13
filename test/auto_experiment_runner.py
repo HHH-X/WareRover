@@ -23,17 +23,17 @@ OUT_DIR = "batch_results"
 
 SCENES = {
     "homogeneous": {
-        "map_file": "config/map_20_15_32.json",
+        "map_file": "config/maps/map_20_15_32.json",
         "size2_ratio": 0.0,
         "enable_faults": False,
     },
     "heterogeneous": {
-        "map_file": "config/map_20_15_hetero.json",
+        "map_file": "config/maps/map_20_15_hetero.json",
         "size2_ratio": 0.3,
         "enable_faults": False,
     },
     "fault": {
-        "map_file": "config/map_20_15_32.json",
+        "map_file": "config/maps/map_20_15_32.json",
         "size2_ratio": 0.0,
         "enable_faults": True,
     },
