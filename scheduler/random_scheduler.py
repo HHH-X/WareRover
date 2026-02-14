@@ -76,6 +76,7 @@ class RandomScheduler(BaseScheduler):
                 if not box_ids:
                     continue
                 box_id = random.choice(box_ids)
+                order.box_id = box_id
                 box_pos = self.map.get_box_position(box_id)
                 receiver_pos = self.map.get_receiver_position(order.receiver_id)
 
@@ -86,6 +87,6 @@ class RandomScheduler(BaseScheduler):
                 ]
 
                 agv_task_map[agv_id] = tasks
-                self.order_manager.mark_order_as_processing(order.order_id)
+                self.order_manager.mark_order_as_processing(order.order_id, agv_id)
 
         return agv_task_map

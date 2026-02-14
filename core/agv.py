@@ -57,7 +57,10 @@ class AGV:
 
         self.carried_box_id: int = None
 
-        self.is_working: bool = True 
+        self.is_working: bool = True
+
+        # Position when last task was completed (for progress calculation)
+        self.last_completed_task_pos: Tuple[int, int] = init_grid_pos 
 
     @property
     def is_idle(self) -> bool:
@@ -91,12 +94,14 @@ class AGV:
         if self.action_queue and self.grid_pos == self.action_queue[0]:
             self.action_queue.popleft()
             if self.task_queue and self.grid_pos == self.task_queue[0][0]:
-                _, action, extra = self.task_queue.popleft()
+                task_pos, action, extra = self.task_queue.popleft()
+                self.last_completed_task_pos = task_pos
                 self._execute_action(action, extra)
                 replan_required = True
                 step_info = StepInfo.FINISH
         elif not self.action_queue and self.task_queue and self.grid_pos == self.task_queue[0][0]:
-            _, action, extra = self.task_queue.popleft()
+            task_pos, action, extra = self.task_queue.popleft()
+            self.last_completed_task_pos = task_pos
             self._execute_action(action, extra)
             replan_required = True
             step_info = StepInfo.FINISH
@@ -209,6 +214,7 @@ class AGV:
         self.carried_box_id = None
         self.is_working = True
         self.direction = None
+        self.last_completed_task_pos = self.init_grid_pos
     
     def _calculate_turn_time(self, current_direction: Direction, target_direction: Optional[Direction],) -> int:
         if target_direction is None or current_direction == target_direction:

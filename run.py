@@ -55,7 +55,7 @@ async def simulator_loop(websocket, message_queue):
 
     simulator = Simulator(grid_map, agv_manager, ordermanager, env, scheduler, planner)
 
-    init_data = generate_send_data(grid_map, agv_manager, data_type="init")
+    init_data = generate_send_data(grid_map, agv_manager, ordermanager, data_type="init")
     await websocket.send(json.dumps(init_data))
 
     while RUNNING:
@@ -76,7 +76,7 @@ async def simulator_loop(websocket, message_queue):
             if not STATE["paused"] or STATE["step_trigger"]:
                 simulator.step()
                 STATE["step_trigger"] = False
-                step_data = generate_send_data(grid_map, agv_manager, data_type="update")
+                step_data = generate_send_data(grid_map, agv_manager, ordermanager, data_type="update")
                 await websocket.send(json.dumps(step_data))
 
             while not message_queue.empty():

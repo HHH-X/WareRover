@@ -1,9 +1,12 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, Tuple, TYPE_CHECKING
 import time
 from contextlib import contextmanager
 from config.settings import SimConfig
 from core.order import Order
 import os
+
+if TYPE_CHECKING:
+    from core.agvmanager import AGVManager
 
 class GlobalLogger:
     """Global logger singleton for single-threaded simulation."""
@@ -28,6 +31,12 @@ class GlobalLogger:
         self._log_to_file = SimConfig.log_to_file
 
         self.total_agv_collisions = 0
+
+        # ---------- Order Panel Logs (separate from runtime logs) ----------
+        self._order_generation_logs: List[Dict[str, Any]] = []
+        self._order_assignment_logs: List[Dict[str, Any]] = []
+        self._order_completion_logs: List[Dict[str, Any]] = []
+        self._max_order_logs = 50
 
         # ---------- Order Statistics ----------
         self.total_orders = SimConfig.total_orders_limit
@@ -71,6 +80,83 @@ class GlobalLogger:
 
     def get_runtime_logs(self, n: int = 10) -> List[str]:
         return self._runtime_logs[-n:]
+
+    # ================= Order Panel Logs (structured, for frontend) =================
+    def add_order_generation_log(self, order_id: int, receiver_id: int, goods_id: Optional[int] = None, box_id: Optional[int] = None):
+        """Record when an order is generated. box_id may be None until assignment."""
+        entry = {"order_id": order_id, "receiver_id": receiver_id, "goods_id": goods_id, "box_id": box_id}
+        self._order_generation_logs.append(entry)
+        if len(self._order_generation_logs) > self._max_order_logs:
+            self._order_generation_logs.pop(0)
+
+    def add_order_assignment_log(self, order_id: int, agv_id: int, box_id: Optional[int] = None):
+        """Record when an order is assigned to an AGV."""
+        entry = {"order_id": order_id, "agv_id": agv_id, "box_id": box_id}
+        self._order_assignment_logs.append(entry)
+        if len(self._order_assignment_logs) > self._max_order_logs:
+            self._order_assignment_logs.pop(0)
+
+    def add_order_completion_log(self, order_id: int, agv_id: int):
+        """Record when an order is completed by an AGV."""
+        entry = {"order_id": order_id, "agv_id": agv_id}
+        self._order_completion_logs.append(entry)
+        if len(self._order_completion_logs) > self._max_order_logs:
+            self._order_completion_logs.pop(0)
+
+    def get_order_logs_for_panel(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Get recent order logs for the frontend panel."""
+        return {
+            "generation": self._order_generation_logs[-self._max_order_logs:],
+            "assignment": self._order_assignment_logs[-self._max_order_logs:],
+            "completion": self._order_completion_logs[-self._max_order_logs:],
+        }
+
+    def get_agv_order_progress(self, agv_manager: "AGVManager") -> List[Dict[str, Any]]:
+        """
+        Get each AGV's current task progress for the order panel.
+        Returns list of {agv_id, task_type, order_id, progress} where progress is 0..1.
+        For PICK: order_id from first HANDOVER in queue; for HANDOVER: order_id; for PLACE: None.
+        """
+        result = []
+        for agv in agv_manager.all_agvs():
+            if not agv.task_queue:
+                result.append({
+                    "agv_id": agv.id,
+                    "task_type": None,
+                    "order_id": None,
+                    "progress": 0.0,
+                })
+                continue
+            task_pos, action, extra = agv.task_queue[0]
+            target_pos = task_pos
+            last_pos = agv.last_completed_task_pos
+            # Use grid_pos for Manhattan distance (simpler, consistent)
+            def manhattan(p1: Tuple[int, int], p2: Tuple[int, int]) -> int:
+                return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
+            total_dist = manhattan(last_pos, target_pos)
+            if total_dist <= 0:
+                progress = 1.0
+            else:
+                remain = manhattan(agv.grid_pos, target_pos)
+                progress = 1.0 - (remain / total_dist)
+                progress = max(0.0, min(1.0, progress))
+            order_id = None
+            from core.agv import AGVAction
+            if action == AGVAction.HANDOVER:
+                order_id = extra
+            elif action == AGVAction.PICK:
+                # Look for first HANDOVER in queue to get order_id
+                for t in agv.task_queue:
+                    if t[1] == AGVAction.HANDOVER:
+                        order_id = t[2]
+                        break
+            result.append({
+                "agv_id": agv.id,
+                "task_type": action.value if action else None,
+                "order_id": order_id,
+                "progress": round(progress, 3),
+            })
+        return result
     
     def record_agv_collision(self, agv_id: int):
         """

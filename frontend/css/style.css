@@ -174,3 +174,249 @@ input[type="number"] {
   border-radius: 4px;
   pointer-events: none;
 }
+
+/* ===============================
+  Order Panel (top-right)
+================================= */
+#order-panel {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 300px;
+  height: 85vh;
+  max-height: 85vh;
+  background: rgba(69, 81, 99, 0.92);
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  color: #f0f0f0;
+  font-family: "Segoe UI", Roboto, sans-serif;
+  z-index: 100;
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#order-panel.order-panel-collapsed {
+  height: auto;
+  max-height: none;
+}
+
+.order-panel-wrapper {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+.order-panel-header {
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 16px;
+  color: #aaa6fa;
+  padding: 8px 0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #555;
+  flex-shrink: 0;
+}
+
+.order-panel-content {
+  font-size: 13px;
+  color: #ddd;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding-right: 14px;
+  box-sizing: border-box;
+}
+
+.order-panel-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.order-panel-content::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.2);
+  border-radius: 3px;
+  margin: 4px 4px 4px 0;
+}
+
+.order-panel-content::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.3);
+  border-radius: 3px;
+}
+
+.order-panel-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.5);
+}
+
+/* Order counts */
+.order-counts {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.order-count-item {
+  flex: 1;
+  text-align: center;
+  padding: 8px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 8px;
+}
+
+.order-count-label {
+  display: block;
+  font-size: 11px;
+  color: #aaa;
+  margin-bottom: 4px;
+}
+
+.order-count-value {
+  font-size: 18px;
+  font-weight: bold;
+  color: #7dd3fc;
+}
+
+/* Order logs section */
+.order-logs-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 280px;
+  margin-bottom: 12px;
+}
+
+.order-log-block {
+  flex: 1;
+  min-height: 85px;
+  background: rgba(0,0,0,0.15);
+  border-radius: 6px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.order-log-title {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+.order-log-list {
+  flex: 1;
+  min-height: 60px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  font-size: 11px;
+  padding-right: 10px;
+  box-sizing: border-box;
+}
+
+.order-log-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.order-log-list::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.1);
+  border-radius: 3px;
+}
+
+.order-log-list::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.25);
+  border-radius: 3px;
+}
+
+.order-log-line {
+  padding: 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.order-log-empty {
+  color: #64748b;
+  font-style: italic;
+}
+
+/* AGV progress */
+.agv-progress-section {
+  margin-top: 8px;
+}
+
+.agv-progress-title {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+.agv-progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agv-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.agv-progress-id {
+  width: 50px;
+  flex-shrink: 0;
+}
+
+.agv-progress-bar-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.agv-progress-bar {
+  position: relative;
+  height: 8px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 4px;
+  overflow: visible;
+}
+
+.agv-progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #4ade80, #22c55e);
+  border-radius: 4px;
+  transition: width 0.15s ease;
+}
+
+.agv-progress-dot {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  background: #fbbf24;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(251, 191, 36, 0.6);
+  transition: left 0.15s ease;
+}
+
+.agv-progress-order {
+  min-width: 90px;
+  max-width: 120px;
+  text-align: right;
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

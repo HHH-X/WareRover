@@ -129,7 +129,7 @@ class TAScheduler(BaseScheduler):
 
                 agv_task_map[agv_id] = orders_to_tasks(copied_orders, self.map)
                 for original_order in orders:
-                    self.order_manager.mark_order_as_processing(original_order.order_id)
+                    self.order_manager.mark_order_as_processing(original_order.order_id, agv_id)
 
         return agv_task_map
     

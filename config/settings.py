@@ -29,7 +29,7 @@ class SimConfig:
     """Simulation configuration parameters"""
 
     # ==================== Algorithm selection ====================
-    scheduler_type: SchedulerType = SchedulerType.TA
+    scheduler_type: SchedulerType = SchedulerType.RANDOM
     planner_type: PlannerType = PlannerType.ASTAR
     force_replan_every_step: bool = False
     # Whether to force each decision-making AGV to replan its path at every step.
@@ -39,7 +39,7 @@ class SimConfig:
 
     # ==================== Simulation parameters ====================
     order_mode: OrderMode = OrderMode.CONTINUOUS_CONSTANT  # Order generation mode
-    total_orders_limit = 100
+    total_orders_limit = 150
 
     size2_ratio: float = 0.2
     # Proportion of size-2 orders among all orders, range: 0.0 ~ 1.0
@@ -53,7 +53,7 @@ class SimConfig:
 
     # Map and simulation step configuration
     map_file: str = "config/maps/map_25_20_het.json"  # Default map file path
-    max_steps: int = 700
+    max_steps: int = 1000
 
     time_step: float = 1.0        # Duration of each simulation step (seconds)
     agv_max_speed: float = 1      # Maximum AGV speed (cells per step)

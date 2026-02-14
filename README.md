@@ -4,46 +4,10 @@ WareRover is an **AGV (Automated Guided Vehicle) warehouse simulation** project.
 
 ## Features
 
-- **Multi-AGV simulation**: Heterogeneous AGVs (different sizes), wait zones, boxes, receivers, and obstacles.
-- **Schedulers**: Assign tasks to idle AGVs (e.g. random matching, cost-based Hungarian assignment).
-- **Planners**: Centralized path planning with conflict avoidance (A* with reservation table, fixed-window CBS, or learned DHC policy).
-- **Order generation**: One-shot or continuous modes (constant, periodic, Pareto, burst) with configurable size ratios.
-- **Fault handling**: Optional AGV faults and repair; dynamic occupancy for repair paths.
-- **Visualization**: Web frontend over HTTP + WebSocket for real-time view and control (pause, step, reset, stop).
+- **Closed-Loop Joint Optimization**: A unified interface coupling order scheduling with MAPF, enabling the study of scheduling strategies that explicitly account for traffic and routing costs.
+- **High-Fidelity Warehouse Modeling**: A topology-agnostic framework supporting customizable layouts, heterogeneous fleets, and realistic order streams
+- **Resilience Evaluation**: Native support for simulating stochastic failures (e.g., breakdowns, delays), allowing researchers to benchmark algorithmic robustness against execution uncertainty.
 
-## Project structure
-
-```
-WareRover/
-├── run.py                 # Entry: starts HTTP server + WebSocket + simulator loop
-├── config/
-│   ├── settings.py       # SimConfig, FaultConfig, algorithm/map/order options
-│   └── maps/             # JSON map files (grid, boxes, receivers, wait_zones, obstacles, agvs)
-├── core/
-│   ├── agv.py            # AGV model (grid/real pos, task queue, actions: PICK/PLACE/HANDOVER)
-│   ├── agvmanager.py     # AGV pool, idle/rest/replan sets, task and path assignment
-│   ├── env.py            # Step logic: conflict resolution, movement, action execution
-│   ├── gridmap.py        # Static/dynamic map, walkability, box/receiver/wait zones
-│   ├── order.py          # Order dataclass
-│   ├── ordermanager.py   # Unprocessed / processing / finished orders; timeouts
-│   ├── simulator.py      # Main loop: order step, assign tasks, assign rest, replan, env step
-│   ├── fault_manager.py  # Fault injection, repair, repair path planning
-│   └── data_generator.py # Builds frontend payload (init/update) in real coordinates
-├── scheduler/
-│   ├── base_scheduler.py   # Abstract: assign_tasks(idle_agv_ids, planner), assign_rest_areas, reset
-│   ├── random_scheduler.py # Random matching by size
-│   └── TA_scheduler.py     # Cost-based (Hungarian) assignment per size/goods group
-├── planner/
-│   ├── base_planner.py      # Abstract: plan(targets, scheduler) -> paths (exclude start)
-│   ├── astar_planner.py     # A* with reservation table (vertex/edge conflict avoidance)
-│   ├── cbs_fw_planner.py    # Fixed-window CBS
-│   └── dhc_planner.py       # DHC learned policy (requires trained model)
-├── order_strategies/        # OrderGenerationStrategy: update(step) -> new orders
-├── algorithm/DHC/           # DHC training and model (optional)
-├── frontend/                # HTML/CSS/JS + WebSocket client
-├── utils/                   # Logger, simulation clock, algorithm_factory, base_utils
-└── test/                    # single_run.py (batch runs), auto_experiment_runner.py (full grid)
-```
 
 ## Requirements
 
@@ -63,7 +27,7 @@ WareRover/
 
 3. **Batch experiments (no UI)**  
    ```bash
-   python -m test.single_run --runs 10 --seed 42 --out_dir test
+   python -m test.auto_experiment_runner
    ```  
    Or run the full grid of algorithm/scene combinations via `test/auto_experiment_runner.py` (adjust `NUM_RUNS`, `BASE_SEED`, `OUT_DIR`, and scene/algorithm lists as needed).
 

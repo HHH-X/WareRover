@@ -1,7 +1,6 @@
 import numpy as np
 from typing import Dict, Any, Tuple
 from core.gridmap import GridMap
-from core.env import Env
 from core.agvmanager import AGVManager
 from core.ordermanager import OrderManager
 from utils.logger import global_logger
@@ -20,7 +19,7 @@ def agv_to_real_center(real_pos: Tuple[float, float], size: int) -> Tuple[float,
     offset = (size - 1) / 2.0
     return (real_pos[0] + offset, real_pos[1] + offset)
 
-def generate_send_data(map: GridMap, agvmanager: AGVManager, data_type: str = "init") -> Dict[str, Any]:
+def generate_send_data(map: GridMap, agvmanager: AGVManager, ordermanager: OrderManager, data_type: str = "init") -> Dict[str, Any]:
     """Build frontend payload; all positions in real (center) coordinates."""
     data = {}
     if data_type == "init":
@@ -67,6 +66,17 @@ def generate_send_data(map: GridMap, agvmanager: AGVManager, data_type: str = "i
         
         data['obstacles'] = [to_real_position(pos) for pos in map.obstacles]
 
+        # Initial order panel data
+        data['orders'] = {
+            "counts": {
+                "unprocessed": len(ordermanager.unprocessed_orders),
+                "processing": len(ordermanager.processing_orders),
+                "completed": len(ordermanager.finished_orders),
+            },
+            "logs": {"generation": [], "assignment": [], "completion": []},
+            "agv_progress": global_logger.get_agv_order_progress(agvmanager),
+        }
+
     elif data_type == "update":
         data['type'] = 'update'
         agv_pos = {aid: agv_to_real_center(pos, agvmanager.get_agv_size(aid)) for aid, pos in agvmanager.get_all_real_positions().items()}
@@ -93,5 +103,16 @@ def generate_send_data(map: GridMap, agvmanager: AGVManager, data_type: str = "i
             safe_paths[agv_id] = [to_real_position(pos) for pos in occupied_set]
         data['safe_paths'] = safe_paths
         data['metrics'] = global_logger.get_runtime_metrics(clock.now())
+
+        # Order panel data
+        data['orders'] = {
+            "counts": {
+                "unprocessed": len(ordermanager.unprocessed_orders),
+                "processing": len(ordermanager.processing_orders),
+                "completed": len(ordermanager.finished_orders),
+            },
+            "logs": global_logger.get_order_logs_for_panel(),
+            "agv_progress": global_logger.get_agv_order_progress(agvmanager),
+        }
 
     return data

@@ -64,7 +64,14 @@ class OrderManager:
                     accepted_count += 1
                 else:
                     break
-            if( accepted_count ):
+            if accepted_count:
+                for order in new_orders[:accepted_count]:
+                    global_logger.add_order_generation_log(
+                        order_id=order.order_id,
+                        receiver_id=order.receiver_id,
+                        goods_id=order.goods_id,
+                        box_id=getattr(order, 'box_id', None),
+                    )
                 global_logger.add_runtime_log(f"[OrderManager] Step {current_step}: Accepted {accepted_count} new orders. Total orders: {len(self.all_orders)}")
         self.check_processing_timeouts()
         
@@ -74,12 +81,14 @@ class OrderManager:
     def get_unprocessed_orders(self) -> List[Order]:
         return list(self.unprocessed_orders.values())
     
-    def mark_order_as_processing(self, order_id: int) -> bool:
+    def mark_order_as_processing(self, order_id: int, agv_id: int) -> bool:
         if order_id not in self.unprocessed_orders:
             return False
         order = self.unprocessed_orders.pop(order_id)
         order.start_processing_step = clock.now()
         self.processing_orders[order_id] = order
+        box_id = getattr(order, 'box_id', None)
+        global_logger.add_order_assignment_log(order_id=order_id, agv_id=agv_id, box_id=box_id)
         return True
     
     def complete_order(self, order_id: int, agv_id: int, box_id: Optional[int], agv_pos: Tuple[int, int]) -> bool:
@@ -100,6 +109,7 @@ class OrderManager:
             order.finished_step = clock.now()
             self.finished_orders[order_id] = order_source.pop(order_id)
             global_logger.add_runtime_log(f"[OrderManager] Order {order_id} completed by AGV {agv_id} at step {clock.now()}.")
+            global_logger.add_order_completion_log(order_id=order_id, agv_id=agv_id)
             global_logger.record_order_completed(self.finished_orders[order_id])
             return True
         else:

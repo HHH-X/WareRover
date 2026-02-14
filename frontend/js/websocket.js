@@ -5,6 +5,7 @@ import { Obstacle } from './entities/obstacle.js';
 import { RestArea } from './entities/restArea.js';
 import { ReceiveArea } from './entities/receiveArea.js';
 import { updateMetrics } from './panel.js';
+import { updateOrderPanel } from './orderPanel.js';
 
 let ws = null;
 
@@ -95,6 +96,13 @@ function connectWebSocket(world) {
       if (data.metrics) {
         updateMetrics(data.metrics);
       }
+
+      if (data.orders) {
+        updateOrderPanel(data.orders);
+      }
+    }
+    if (data.type === "init" && data.orders) {
+      updateOrderPanel(data.orders);
     }
   };
 }
