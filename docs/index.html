@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WareRover - AGV Warehouse Simulation</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #333; line-height: 1.6; }
+
+    .hero {
+      position: relative;
+      min-height: 70vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #fff;
+      overflow: hidden;
+    }
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background: url("assets/images/background.jpg") center/cover no-repeat;
+      background-color: #1a1a2e;
+    }
+    .hero-bg::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.7) 100%);
+    }
+    .hero-content { position: relative; z-index: 1; padding: 2rem; max-width: 900px; }
+    .hero h1 { font-size: clamp(2rem, 5vw, 3.5rem); margin-bottom: 0.5rem; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+    .hero .tagline { font-size: clamp(1rem, 2.5vw, 1.35rem); opacity: 0.95; }
+
+    section { padding: 4rem 1.5rem; max-width: 1100px; margin: 0 auto; }
+    section h2 { font-size: 1.75rem; margin-bottom: 1rem; color: #1a1a2e; border-bottom: 2px solid #4a90d9; padding-bottom: 0.5rem; display: inline-block; }
+    section p { margin-bottom: 1rem; color: #444; }
+
+    .intro { background: #f8f9fa; }
+    .intro a { color: #2563eb; text-decoration: none; }
+    .intro a:hover { text-decoration: underline; }
+
+    .flowchart-wrap { text-align: center; margin-top: 1.5rem; }
+    .flowchart-wrap img { max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+
+    .gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-top: 1.5rem; }
+    @media (max-width: 640px) { .gallery { grid-template-columns: 1fr; } }
+    .gallery figure { margin: 0; }
+    .gallery .img-wrap {
+      height: 320px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f0f0f0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .gallery .img-wrap img {
+      max-height: 100%;
+      width: auto;
+      max-width: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .gallery figcaption { margin-top: 0.5rem; font-size: 0.95rem; color: #555; }
+
+    .video-section { background: #f0f4f8; }
+    .video-wrap { max-width: 900px; margin: 1.5rem auto 0; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.12); }
+    .video-wrap video { width: 100%; display: block; }
+
+    footer { padding: 2rem 1.5rem; text-align: center; background: #1a1a2e; color: #aaa; font-size: 0.9rem; }
+    footer a { color: #6ab0ff; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-content">
+      <h1>WareRover</h1>
+      <p class="tagline">It Takes Two to Tango: A Holistic Simulator for Joint Order Scheduling and Multi-Agent Path Finding in Robotic Warehouses</p>
+    </div>
+  </header>
+
+  <section class="intro">
+    <h2>About</h2>
+    <p>
+      WareRover is an <strong>AGV (Automated Guided Vehicle) warehouse simulation</strong> that simulates multi-AGV order picking and delivery on a grid map, with configurable schedulers, path planners, and order generation strategies.
+    </p>
+    <p>
+      It provides closed-loop joint optimization (order scheduling coupled with MAPF), high-fidelity warehouse modeling, and resilience evaluation under stochastic failures.
+    </p>
+    <p><strong>GitHub:</strong> <a href="https://github.com/your-username/WareRover" target="_blank" rel="noopener">https://github.com/your-username/WareRover</a></p>
+  </section>
+
+  <section>
+    <h2>System / Algorithm Flow</h2>
+    <div class="flowchart-wrap">
+      <img src="assets/images/flowchart.jpg" alt="System flowchart" />
+    </div>
+  </section>
+
+  <section>
+    <h2>System Overview</h2>
+    <div class="gallery">
+      <figure>
+        <div class="img-wrap"><img src="assets/images/System-Overview.jpg" alt="Overall structure" /></div>
+        <figcaption>Overall structure</figcaption>
+      </figure>
+      <figure>
+        <div class="img-wrap"><img src="assets/images/System-ControlPanel.jpg" alt="Control panel" /></div>
+        <figcaption>Control panel</figcaption>
+      </figure>
+      <figure>
+        <div class="img-wrap"><img src="assets/images/System-FaultSimulation.jpg" alt="Fault simulation" /></div>
+        <figcaption>Fault simulation</figcaption>
+      </figure>
+      <figure>
+        <div class="img-wrap"><img src="assets/images/System-EnvironmentEditor.jpg" alt="Environment editor" /></div>
+        <figcaption>Environment editor</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="video-section">
+    <h2>Introduction Video</h2>
+    <div class="video-wrap">
+      <video controls preload="metadata">
+        <source src="assets/video/intro.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+      </video>
+    </div>
+  </section>
+
+  <footer>
+    <p>WareRover</p>
+  </footer>
+</body>
+</html>
