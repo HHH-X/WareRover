@@ -6,3 +6,9 @@ __pycache__/
 .vscode/
 algorithm/DHC/models/
 logs/
+
+# 环境变量 / API 密钥（绝对不要提交）
+.env
+.env.local
+.env.*.local
+mapf_agent/api_key

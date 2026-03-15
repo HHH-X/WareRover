@@ -1,0 +1,4 @@
+openai>=1.0
+jsonschema>=4.0
+langgraph>=0.2
+pyyaml>=6.0

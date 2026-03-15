@@ -31,6 +31,16 @@ WareRover is an **AGV (Automated Guided Vehicle) warehouse simulation** project.
    ```  
    Or run the full grid of algorithm/scene combinations via `test/auto_experiment_runner.py` (adjust `NUM_RUNS`, `BASE_SEED`, `OUT_DIR`, and scene/algorithm lists as needed).
 
+## MAPF Agent（辅助算法开发）
+
+项目内提供 **MAPF Agent** 子包（`mapf_agent/`），用于从自然语言生成地图配置（阶段一）并在指定地图上选择算法、运行仿真、获取优化建议（阶段二）。使用方式与详细说明见 **[mapf_agent/README.md](mapf_agent/README.md)**。
+
+```bash
+# 示例：生成地图并运行 CBS
+python -m mapf_agent.cli generate-map "20x15, 4 agvs" -o config/maps/agent_map.json
+python -m mapf_agent.cli generate-algorithm "CBS" --map-file config/maps/agent_map.json
+```
+
 ## Configuration summary
 
 - **Scheduler**: `RANDOM` or `TA` (cost-based assignment).
