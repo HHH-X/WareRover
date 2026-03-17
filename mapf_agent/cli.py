@@ -16,21 +16,22 @@ from mapf_agent.agents.coordinator import Coordinator
 
 def cmd_generate_map(args: argparse.Namespace) -> int:
     coordinator = Coordinator(use_llm=not args.no_llm)
-    out = coordinator.run_phase1(args.nl_input, output_path=args.output)
+    # Use workflow in map_only mode
+    state = coordinator.run(args.nl_input, output_path=args.output, mode_hint="map_only")
 
-    if out.get("follow_up_question") and not out.get("ok"):
-        print(out["follow_up_question"])
+    if state.get("pending_question") and not state.get("map_json"):
+        print(state["pending_question"])
         return 1
 
-    if out.get("ok"):
+    if state.get("map_json") and not state.get("error"):
         print("Map generated successfully.")
-        if args.output:
-            print(f"Written to: {args.output}")
+        if state.get("map_path"):
+            print(f"Written to: {state['map_path']}")
         if args.print_json:
-            print(json.dumps(out["map_json"], indent=2, ensure_ascii=False))
+            print(json.dumps(state["map_json"], indent=2, ensure_ascii=False))
         return 0
 
-    print("Error:", out.get("error", "Unknown error"), file=sys.stderr)
+    print("Error:", state.get("error", "Unknown error"), file=sys.stderr)
     return 1
 
 
@@ -40,22 +41,26 @@ def cmd_generate_algorithm(args: argparse.Namespace) -> int:
         return 1
 
     coordinator = Coordinator(use_llm=not args.no_llm)
-    out = coordinator.run_phase2(
+    state = coordinator.run(
+        args.nl_input,
+        output_path=None,
         map_path=args.map_file,
-        algorithm_nl=args.nl_input,
-        seed=args.seed,
-        num_runs=args.runs,
+        mode_hint="algorithm_only",
     )
 
-    if not out.get("ok"):
-        print("Error:", out.get("error", "Unknown error"), file=sys.stderr)
+    if state.get("error"):
+        print("Error:", state.get("error", "Unknown error"), file=sys.stderr)
         return 1
 
     print("Simulation completed.")
-    if out.get("metrics"):
-        print("Metrics:", json.dumps(out["metrics"], indent=2))
-    if out.get("suggestion"):
-        print("Suggestion:", out["suggestion"])
+    if state.get("metrics"):
+        print("Metrics:", json.dumps(state["metrics"], indent=2))
+    history = state.get("optimization_history", [])
+    if history:
+        last = history[-1]
+        suggestion = last.get("suggestion", {})
+        if suggestion.get("reasoning"):
+            print("Suggestion:", suggestion["reasoning"])
     return 0
 
 
@@ -78,8 +83,12 @@ def cmd_full(args: argparse.Namespace) -> int:
         print("Map path:", out["map_path"])
     if out.get("metrics"):
         print("Metrics:", json.dumps(out["metrics"], indent=2))
-    if out.get("suggestion"):
-        print("Suggestion:", out["suggestion"])
+    history = out.get("optimization_history", [])
+    if history:
+        last = history[-1]
+        suggestion = last.get("suggestion", {})
+        if suggestion.get("reasoning"):
+            print("Suggestion:", suggestion["reasoning"])
     return 0
 
 
@@ -145,8 +154,8 @@ def _print_result(state: dict):
         if state.get("map_path"):
             print(f"  Saved to: {state['map_path']}")
 
-    if state.get("sim_config_delta"):
-        applied = {k: v for k, v in state["sim_config_delta"].items() if v is not None}
+    if state.get("sim_config_applied"):
+        applied = {k: v for k, v in state["sim_config_applied"].items() if v is not None}
         if applied:
             print(f"  SimConfig updated: {applied}")
 

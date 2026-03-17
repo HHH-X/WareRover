@@ -18,7 +18,10 @@ from langgraph.graph import StateGraph, END
 
 class MAPFState(TypedDict, total=False):
     user_input: str
-    route: str  # "map" | "algorithm" | "both"
+    # Final resolved route for this turn: "map_only" | "algorithm_only" | "both"
+    route: str
+    # Optional hint injected by caller/CLI to bias routing
+    route_hint: str
 
     # Input parsing
     map_text: str
@@ -27,6 +30,7 @@ class MAPFState(TypedDict, total=False):
 
     # Map generation
     map_config: Dict[str, Any]
+    # Per-session sim config overrides parsed from user input
     sim_config_delta: Dict[str, Any]
     map_json: Dict[str, Any]
     map_path: str
@@ -41,6 +45,11 @@ class MAPFState(TypedDict, total=False):
     optimization_history: List[Dict[str, Any]]
     iteration: int
     max_iterations: int
+
+    # Environment config (full, high-priority over defaults)
+    env_config: Dict[str, Any]
+    # Explicit optimization rounds requested by user (if any)
+    requested_iterations: int
 
     # Conversation
     pending_question: str  # Non-empty means we need user input
@@ -57,10 +66,25 @@ class MAPFState(TypedDict, total=False):
 # ---------------------------------------------------------------------------
 
 def route_input(state: MAPFState) -> Dict[str, Any]:
-    """Classify user input into map / algorithm / both."""
+    """
+    Classify user input into one of three routes:
+      - map_only       : 只生成/更新地图与环境配置
+      - algorithm_only : 只配置/优化算法（使用已有环境）
+      - both           : 同时涉及地图/环境和算法
+    """
     use_llm = state.get("use_llm", True)
     user_input = state.get("user_input", "")
 
+    # 1) If caller provided an explicit route_hint, respect it first
+    hint = (state.get("route_hint") or "").strip()
+    if hint in ("map_only", "algorithm_only", "both"):
+        if hint == "map_only":
+            return {"route": "map_only", "map_text": user_input, "algorithm_text": ""}
+        if hint == "algorithm_only":
+            return {"route": "algorithm_only", "map_text": "", "algorithm_text": user_input}
+        return {"route": "both", "map_text": user_input, "algorithm_text": user_input}
+
+    # 2) Otherwise, try LLM-based router (can also output route + separated texts)
     if use_llm:
         try:
             from mapf_agent.llm import chat_completion_json
@@ -74,14 +98,25 @@ def route_input(state: MAPFState) -> Dict[str, Any]:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_input},
             ])
+            raw_route = result.get("route", "map_only")
+            if raw_route in ("map_only", "algorithm_only", "both"):
+                route = raw_route
+            elif raw_route == "map":
+                route = "map_only"
+            elif raw_route == "algorithm":
+                route = "algorithm_only"
+            else:
+                route = "map_only"
+
             return {
-                "route": result.get("route", "map"),
-                "map_text": result.get("map_text", ""),
-                "algorithm_text": result.get("algorithm_text", ""),
+                "route": route,
+                "map_text": result.get("map_text", "") or (user_input if route != "algorithm_only" else ""),
+                "algorithm_text": result.get("algorithm_text", "") or (user_input if route != "map_only" else ""),
             }
         except Exception:
             pass
 
+    # 3) Fallback keyword heuristic
     text_lower = user_input.lower()
     has_map = any(k in text_lower for k in ("地图", "map", "x", "agv", "台", "货架", "shelf"))
     has_algo = any(k in text_lower for k in ("算法", "algorithm", "planner", "cbs", "astar", "优化"))
@@ -89,8 +124,8 @@ def route_input(state: MAPFState) -> Dict[str, Any]:
     if has_map and has_algo:
         return {"route": "both", "map_text": user_input, "algorithm_text": user_input}
     if has_algo:
-        return {"route": "algorithm", "map_text": "", "algorithm_text": user_input}
-    return {"route": "map", "map_text": user_input, "algorithm_text": ""}
+        return {"route": "algorithm_only", "map_text": "", "algorithm_text": user_input}
+    return {"route": "map_only", "map_text": user_input, "algorithm_text": ""}
 
 
 def parse_map_input(state: MAPFState) -> Dict[str, Any]:
@@ -153,37 +188,43 @@ def generate_map(state: MAPFState) -> Dict[str, Any]:
 
 
 def apply_sim_config(state: MAPFState) -> Dict[str, Any]:
-    """Apply sim_config_delta to SimConfig at runtime."""
-    delta = state.get("sim_config_delta", {})
-    if not delta:
-        return {}
+    """
+    Apply simulation configuration overrides at runtime.
 
-    from config.settings import SimConfig, OrderMode
+    Priority (high → low):
+      1. Per-session overrides from user input (sim_config_delta)
+      2. Full environment config in state.env_config (if any)
+      3. Defaults defined in config.settings.SimConfig (import time)
+    """
+    from config.settings import SimConfig
+    from mapf_agent.tools.runtime_config import load_runtime_config, merge_dataclass
 
-    field_map = {
-        "order_mode": lambda v: setattr(SimConfig, "order_mode", OrderMode(v)),
-        "total_orders_limit": lambda v: setattr(SimConfig, "total_orders_limit", int(v)),
-        "size2_ratio": lambda v: setattr(SimConfig, "size2_ratio", float(v)),
-        "order_processing_timeout": lambda v: setattr(SimConfig, "order_processing_timeout", int(v)),
-        "max_steps": lambda v: setattr(SimConfig, "max_steps", int(v)),
-        "time_step": lambda v: setattr(SimConfig, "time_step", float(v)),
-        "agv_max_speed": lambda v: setattr(SimConfig, "agv_max_speed", float(v)),
-        "agv_turn_time_90": lambda v: setattr(SimConfig, "agv_turn_time_90", float(v)),
-        "log_to_file": lambda v: setattr(SimConfig, "log_to_file", bool(v)),
-        "log_to_console": lambda v: setattr(SimConfig, "log_to_console", bool(v)),
-        "force_replan_every_step": lambda v: setattr(SimConfig, "force_replan_every_step", bool(v)),
+    # 1) Start from defaults defined in config.settings
+    base_sim = SimConfig()
+
+    # 2) Apply env_config from state (if any) as a lower-priority override layer.
+    #    Here we only look at a flat sim_config-style dict; the richer JSON
+    #    file format is handled by load_runtime_config elsewhere.
+    env_conf = state.get("env_config") or {}
+    env_sim_overrides = env_conf.get("sim_config") or {}
+    sim_after_env = merge_dataclass(base_sim, env_sim_overrides)
+
+    # 3) Apply per-session delta from current conversation (highest priority).
+    delta = state.get("sim_config_delta", {}) or {}
+    sim_final = merge_dataclass(sim_after_env, delta)
+
+    # Propagate effective values back to the SimConfig class so the rest of
+    # the simulator (which currently imports SimConfig as globals) sees them.
+    for field in sim_final.__dataclass_fields__.keys():
+        setattr(SimConfig, field, getattr(sim_final, field))
+
+    applied = {
+        k: getattr(sim_final, k)
+        for k in sim_final.__dataclass_fields__.keys()
+        if getattr(sim_final, k) != getattr(base_sim, k)
     }
 
-    applied = {}
-    for key, value in delta.items():
-        if key in field_map and value is not None:
-            try:
-                field_map[key](value)
-                applied[key] = value
-            except Exception:
-                pass
-
-    return {}
+    return {"sim_config_applied": applied}
 
 
 def select_algorithm(state: MAPFState) -> Dict[str, Any]:
@@ -288,11 +329,16 @@ def analyze_and_optimize(state: MAPFState) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 def route_after_classify(state: MAPFState) -> str:
-    route = state.get("route", "map")
-    if route == "algorithm":
+    """
+    Decide where to go after routing:
+      - map_only       → 解析地图/环境，再生成地图
+      - algorithm_only → 直接进入算法选择/仿真（依赖已有环境）
+      - both           → 先解析地图/环境，再到算法
+    """
+    route = state.get("route", "map_only")
+    if route == "algorithm_only":
         return "select_algorithm"
-    if route == "both":
-        return "parse_map_input"
+    # both/map_only 都需要先走 parse_map_input
     return "parse_map_input"
 
 
@@ -311,9 +357,17 @@ def check_map_gen(state: MAPFState) -> str:
 
 
 def after_sim_config(state: MAPFState) -> str:
-    route = state.get("route", "map")
+    """
+    Decide what to do after environment configuration has been applied.
+
+    - map_only       → 直接成功结束（只需要地图/环境）
+    - algorithm_only → 正常不会走到这里（没有 map 流程）
+    - both           → 在生成地图和应用配置后继续进行算法阶段
+    """
+    route = state.get("route", "map_only")
     if route == "both" and state.get("algorithm_text"):
         return "select_algorithm"
+    # map_only：完成后直接结束
     return "end_success"
 
 
@@ -325,7 +379,9 @@ def check_optimization(state: MAPFState) -> str:
     last = history[-1]
     suggestion = last.get("suggestion", {})
     iteration = state.get("iteration", 0)
-    max_iter = state.get("max_iterations", 3)
+    # 优化轮数上限：用户显式请求 > algo_config.max_iterations > 默认 3
+    requested = state.get("requested_iterations") or 0
+    max_iter = requested or state.get("max_iterations", 3)
     algo_config = state.get("algo_config", {})
 
     if not algo_config.get("optimize", False):

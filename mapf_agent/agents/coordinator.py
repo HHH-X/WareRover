@@ -30,6 +30,7 @@ class Coordinator:
         user_input: str,
         output_path: Optional[str] = None,
         map_path: Optional[str] = None,
+        mode_hint: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Run the full workflow from user input.
@@ -48,6 +49,8 @@ class Coordinator:
             "iteration": 0,
             "optimization_history": [],
         }
+        if mode_hint:
+            initial_state["route_hint"] = mode_hint
 
         if map_path and os.path.isfile(map_path):
             with open(map_path, "r", encoding="utf-8") as f:
@@ -117,43 +120,26 @@ class Coordinator:
     # ---- Convenience methods for backward compatibility ----
 
     def run_phase1(self, nl_input: str, output_path: Optional[str] = None, max_retries: int = 3) -> Dict[str, Any]:
-        """Phase 1: generate map from NL."""
-        from mapf_agent.agents.input_parser import InputParserAgent
-        from mapf_agent.agents.env_config_agent import EnvConfigAgent
-        from mapf_agent.tools.validate_map import validate_map
-
-        parser = InputParserAgent()
-        parsed = parser.parse(nl_input, use_llm=self.use_llm)
-
-        if not parsed.get("complete"):
+        """
+        Phase 1 wrapper: generate map from NL by driving the LangGraph workflow
+        in \"map_only\" mode. Multi-turn clarification is not handled here;
+        callers should switch to interactive mode for that.
+        """
+        state = self.run(nl_input, output_path=output_path, mode_hint="map_only")
+        ok = bool(state.get("map_json")) and not state.get("error")
+        if not ok:
             return {
                 "ok": False,
-                "error": f"Missing required: {parsed.get('missing_fields', [])}",
-                "follow_up_question": parsed.get("follow_up_question", ""),
-                "structured": parsed.get("map_config", {}),
+                "error": state.get("error", "Map generation failed"),
+                "follow_up_question": state.get("pending_question", ""),
+                "structured": state.get("map_config", {}),
             }
-
-        env_agent = EnvConfigAgent()
-        result = env_agent.generate(parsed["map_config"], use_llm=self.use_llm, max_retries=max_retries)
-
-        if not result.get("ok"):
-            return {
-                "ok": False,
-                "error": result.get("error", "Map generation failed"),
-                "structured": parsed.get("map_config", {}),
-            }
-
-        map_json = result["map_json"]
-        if output_path:
-            os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-            with open(output_path, "w", encoding="utf-8") as f:
-                json.dump(map_json, f, indent=2, ensure_ascii=False)
 
         return {
             "ok": True,
-            "map_path": output_path,
-            "map_json": map_json,
-            "structured": parsed.get("map_config", {}),
+            "map_path": state.get("map_path"),
+            "map_json": state.get("map_json"),
+            "structured": state.get("map_config", {}),
         }
 
     def run_phase2(
@@ -163,36 +149,27 @@ class Coordinator:
         seed: Optional[int] = None,
         num_runs: int = 1,
     ) -> Dict[str, Any]:
-        """Phase 2: select algorithm, run simulation, optimize."""
-        from mapf_agent.agents.algorithm_agent import AlgorithmAgent
-        from mapf_agent.agents.optimizer_agent import OptimizerAgent
-        from mapf_agent.tools.run_simulation import run_simulation
-
-        algo_agent = AlgorithmAgent()
-        algo = algo_agent.select(algorithm_nl, use_llm=self.use_llm)
-
-        run_result = run_simulation(
-            map_file=map_path,
-            planner_type=algo.get("planner_type"),
-            scheduler_type=algo.get("scheduler_type"),
-            seed=seed or agent_config.default_simulation_seed,
-            num_runs=num_runs,
+        """
+        Phase 2 wrapper: select algorithm, run simulation, and optionally
+        optimize using the LangGraph workflow in \"algorithm_only\" mode.
+        """
+        # Seed/num_runs are currently controlled inside the workflow/simulation
+        # tool; we keep the signature for backward compatibility.
+        state = self.run(
+            algorithm_nl,
+            output_path=None,
+            map_path=map_path,
+            mode_hint="algorithm_only",
         )
+        if state.get("error"):
+            return {"ok": False, "error": state["error"], "metrics": {}}
 
-        if not run_result.get("ok"):
-            return run_result
-
-        metrics = run_result.get("metrics", {})
-        optimizer = OptimizerAgent()
-        current_config = {
-            "planner_type": algo.get("planner_type", "astar"),
-            "scheduler_type": algo.get("scheduler_type", "ta"),
+        return {
+            "ok": True,
+            "metrics": state.get("metrics", {}),
+            "optimization_history": state.get("optimization_history", []),
+            "algo_config": state.get("algo_config", {}),
         }
-        opt_result = optimizer.suggest(metrics, current_config, [], use_llm=self.use_llm)
-        run_result["suggestion"] = opt_result.get("analysis", "")
-        run_result["optimization_detail"] = opt_result
-
-        return run_result
 
     def run_full(
         self,
@@ -202,19 +179,25 @@ class Coordinator:
         seed: Optional[int] = None,
         num_runs: int = 1,
     ) -> Dict[str, Any]:
-        """Run phase1 then phase2."""
-        p1 = self.run_phase1(map_nl, output_path=map_output_path)
-        if not p1.get("ok"):
-            return {"phase": 1, **p1}
+        """
+        Run both phases in one shot by driving the workflow in \"both\" mode.
+        """
+        user_input = f"{map_nl}\n\n{algorithm_nl}"
+        state = self.run(
+            user_input,
+            output_path=map_output_path,
+            map_path=None,
+            mode_hint="both",
+        )
+        if state.get("error"):
+            return {"ok": False, "error": state["error"], "phase": 0}
 
-        map_path = p1.get("map_path")
-        if not map_path:
-            import tempfile
-            fd, map_path = tempfile.mkstemp(suffix=".json")
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump(p1["map_json"], f, indent=2)
-
-        p2 = self.run_phase2(map_path, algorithm_nl, seed=seed, num_runs=num_runs)
-        p2["phase"] = 2
-        p2["map_path"] = map_path
-        return p2
+        return {
+            "ok": True,
+            "map_path": state.get("map_path"),
+            "map_json": state.get("map_json"),
+            "metrics": state.get("metrics", {}),
+            "optimization_history": state.get("optimization_history", []),
+            "algo_config": state.get("algo_config", {}),
+            "phase": 2,
+        }
