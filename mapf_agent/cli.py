@@ -15,7 +15,7 @@ from mapf_agent.agents.coordinator import Coordinator
 
 
 def cmd_generate_map(args: argparse.Namespace) -> int:
-    coordinator = Coordinator(use_llm=not args.no_llm)
+    coordinator = Coordinator()
     # Use workflow in map_only mode
     state = coordinator.run(args.nl_input, output_path=args.output, mode_hint="map_only")
 
@@ -189,8 +189,8 @@ def main() -> int:
     p1 = subparsers.add_parser("generate-map", help="Phase 1: generate map config from natural language")
     p1.add_argument("nl_input", type=str, help="Natural language description of the map")
     p1.add_argument("-o", "--output", type=str, default=None, help="Output JSON path")
-    p1.add_argument("--print-json", action="store_true", help="Print generated JSON to stdout")
-    p1.add_argument("--no-llm", action="store_true", help="Disable LLM")
+    # p1.add_argument("--print-json", action="store_true", help="Print generated JSON to stdout")
+    # p1.add_argument("--no-llm", action="store_true", help="Disable LLM")
     p1.set_defaults(func=cmd_generate_map)
 
     # generate-algorithm

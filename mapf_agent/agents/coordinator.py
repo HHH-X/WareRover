@@ -16,7 +16,7 @@ class Coordinator:
     """Run the MAPF workflow: map generation, algorithm selection, simulation, optimization."""
 
     def __init__(self, use_llm: bool = True):
-        self.use_llm = use_llm
+        self.use_llm = bool(use_llm)
         self._compiled = None
 
     def _get_compiled_graph(self):
@@ -40,21 +40,25 @@ class Coordinator:
         the caller should call resume() with the user's answer.
         """
         graph = self._get_compiled_graph()
-        initial_state = {
+        initial_state: Dict[str, Any] = {
             "user_input": user_input,
-            "use_llm": self.use_llm,
             "output_path": output_path or "",
             "map_path": map_path or "",
-            "map_gen_attempts": 0,
+            "use_llm": self.use_llm,
+            "human_response": "",
+            "pending_question": "",
+            "env_extract_attempts": 0,
+            "env_validation_attempts": 0,
+            "env_validation_max_attempts": 5,
             "iteration": 0,
             "optimization_history": [],
         }
         if mode_hint:
             initial_state["route_hint"] = mode_hint
 
-        if map_path and os.path.isfile(map_path):
-            with open(map_path, "r", encoding="utf-8") as f:
-                initial_state["map_json"] = json.load(f)
+        # if map_path and os.path.isfile(map_path):
+        #     with open(map_path, "r", encoding="utf-8") as f:
+        #         initial_state["map_json"] = json.load(f)
 
         result = graph.invoke(initial_state)
         self._last_state = dict(result)
@@ -73,49 +77,9 @@ class Coordinator:
         state["pending_question"] = ""
 
         graph = self._get_compiled_graph()
-
-        from mapf_agent.workflow.graph import parse_map_input, generate_map, apply_sim_config
-        from mapf_agent.workflow.graph import check_parse_complete, check_map_gen, after_sim_config
-
-        parse_result = parse_map_input(state)
-        state.update(parse_result)
-
-        if state.get("pending_question"):
-            self._last_state = state
-            return state
-
-        gen_result = generate_map(state)
-        state.update(gen_result)
-
-        if not state.get("map_json"):
-            self._last_state = state
-            return state
-
-        apply_sim_config(state)
-
-        route = state.get("route", "map")
-        if route == "both" and state.get("algorithm_text"):
-            from mapf_agent.workflow.graph import select_algorithm, run_simulation_node, analyze_and_optimize
-            algo_result = select_algorithm(state)
-            state.update(algo_result)
-
-            sim_result = run_simulation_node(state)
-            state.update(sim_result)
-
-            if state.get("algo_config", {}).get("optimize"):
-                max_iter = state.get("max_iterations", 3)
-                for _ in range(max_iter):
-                    opt_result = analyze_and_optimize(state)
-                    state.update(opt_result)
-                    last_hist = (state.get("optimization_history") or [{}])[-1]
-                    suggestion = last_hist.get("suggestion", {})
-                    if suggestion.get("action") == "satisfied" or state.get("iteration", 0) >= max_iter:
-                        break
-                    sim_result = run_simulation_node(state)
-                    state.update(sim_result)
-
-        self._last_state = state
-        return state
+        result = graph.invoke(state)
+        self._last_state = dict(result)
+        return result
 
     # ---- Convenience methods for backward compatibility ----
 

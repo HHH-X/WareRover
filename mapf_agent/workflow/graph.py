@@ -24,8 +24,9 @@ class MAPFState(TypedDict, total=False):
     route_hint: str
 
     # Input parsing
-    map_text: str
-    algorithm_text: str
+    env_config_desc: str
+    algo_config_desc: str
+    
     parse_result: Dict[str, Any]
 
     # Map generation
@@ -57,7 +58,6 @@ class MAPFState(TypedDict, total=False):
 
     # Control
     error: str
-    use_llm: bool
     output_path: str
 
 
@@ -72,7 +72,6 @@ def route_input(state: MAPFState) -> Dict[str, Any]:
       - algorithm_only : 只配置/优化算法（使用已有环境）
       - both           : 同时涉及地图/环境和算法
     """
-    use_llm = state.get("use_llm", True)
     user_input = state.get("user_input", "")
 
     # 1) If caller provided an explicit route_hint, respect it first
@@ -84,37 +83,35 @@ def route_input(state: MAPFState) -> Dict[str, Any]:
             return {"route": "algorithm_only", "map_text": "", "algorithm_text": user_input}
         return {"route": "both", "map_text": user_input, "algorithm_text": user_input}
 
-    # 2) Otherwise, try LLM-based router (can also output route + separated texts)
-    if use_llm:
-        try:
-            from mapf_agent.llm import chat_completion_json
-            from mapf_agent.config import agent_config
+    try:
+        from mapf_agent.llm import chat_completion_json
+        from mapf_agent.config import agent_config
 
-            prompt_path = os.path.join(agent_config.prompts_dir, "router.txt")
-            with open(prompt_path, "r", encoding="utf-8") as f:
-                system_prompt = f.read()
+        prompt_path = os.path.join(agent_config.prompts_dir, "router.txt")
+        with open(prompt_path, "r", encoding="utf-8") as f:
+            system_prompt = f.read()
 
-            result = chat_completion_json([
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_input},
-            ])
-            raw_route = result.get("route", "map_only")
-            if raw_route in ("map_only", "algorithm_only", "both"):
-                route = raw_route
-            elif raw_route == "map":
-                route = "map_only"
-            elif raw_route == "algorithm":
-                route = "algorithm_only"
-            else:
-                route = "map_only"
+        result = chat_completion_json([
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_input},
+        ])
+        raw_route = result.get("route", "map_only")
+        if raw_route in ("map_only", "algorithm_only", "both"):
+            route = raw_route
+        elif raw_route == "map":
+            route = "map_only"
+        elif raw_route == "algorithm":
+            route = "algorithm_only"
+        else:
+            route = "map_only"
 
-            return {
-                "route": route,
-                "map_text": result.get("map_text", "") or (user_input if route != "algorithm_only" else ""),
-                "algorithm_text": result.get("algorithm_text", "") or (user_input if route != "map_only" else ""),
-            }
-        except Exception:
-            pass
+        return {
+            "route": route,
+            "map_text": result.get("map_text", "") or (user_input if route != "algorithm_only" else ""),
+            "algorithm_text": result.get("algorithm_text", "") or (user_input if route != "map_only" else ""),
+        }
+    except Exception:
+        pass
 
     # 3) Fallback keyword heuristic
     text_lower = user_input.lower()
@@ -447,3 +444,15 @@ def build_graph() -> StateGraph:
     })
 
     return graph
+
+
+# ---------------------------------------------------------------------------
+# Compatibility re-export
+# ---------------------------------------------------------------------------
+#
+# The refactored workflow lives in `graph_refactored.py`.
+# Importing it here overrides the legacy `MAPFState` and `build_graph`
+# names in this module, while keeping external imports stable:
+# `from mapf_agent.workflow.graph import build_graph`.
+from mapf_agent.workflow.graph_refactored import MAPFState as MAPFState  # noqa: E402,F401
+from mapf_agent.workflow.graph_refactored import build_graph as build_graph  # noqa: E402,F401
