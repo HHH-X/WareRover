@@ -5,11 +5,11 @@ Handles multi-turn conversation for missing information.
 """
 from __future__ import annotations
 
-import json
-import os
+import uuid
 from typing import Any, Dict, Optional
 
-from mapf_agent.config import agent_config
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.types import Command
 
 
 class Coordinator:
@@ -18,11 +18,14 @@ class Coordinator:
     def __init__(self, use_llm: bool = True):
         self.use_llm = bool(use_llm)
         self._compiled = None
+        self._checkpointer = MemorySaver()
+        # A stable ID for the whole conversation; enables interrupt/resume.
+        self._thread_id = str(uuid.uuid4())
 
     def _get_compiled_graph(self):
         if self._compiled is None:
-            from mapf_agent.workflow.graph import build_graph
-            self._compiled = build_graph().compile()
+            from mapf_agent.workflow.graph_refactored import build_graph
+            self._compiled = build_graph().compile(checkpointer=self._checkpointer)
         return self._compiled
 
     def run(
@@ -45,41 +48,79 @@ class Coordinator:
             "output_path": output_path or "",
             "map_path": map_path or "",
             "use_llm": self.use_llm,
-            "human_response": "",
+            "route_hint": mode_hint or "",
+            "conversation_history": [],
+            "map_text": "",
+            "algorithm_text": "",
+            "route": "",
             "pending_question": "",
-            "env_extract_attempts": 0,
+            "pending_type": "",
+            "need_user_input": False,
             "env_validation_attempts": 0,
             "env_validation_max_attempts": 5,
-            "iteration": 0,
+            "map_gen_attempts": 0,
+            "map_gen_max_attempts": 3,
+            "metrics": {},
+            "metrics_ran": False,
             "optimization_history": [],
+            "iteration": 0,
+            "algo_config": {},
+            "algo_ready": False,
+            "algo_route": "",
+            "algo_attempts": 0,
+            "algo_history": [],
+            "terminate": False,
+            "max_iterations": 3,
         }
-        if mode_hint:
-            initial_state["route_hint"] = mode_hint
 
-        # if map_path and os.path.isfile(map_path):
-        #     with open(map_path, "r", encoding="utf-8") as f:
-        #         initial_state["map_json"] = json.load(f)
-
-        result = graph.invoke(initial_state)
-        self._last_state = dict(result)
-        return result
+        config = {"configurable": {"thread_id": self._thread_id}}
+        result = graph.invoke(initial_state, config=config)
+        return self._normalize_result(result)
 
     def resume(self, human_response: str) -> Dict[str, Any]:
         """
         Resume workflow after human provides missing information.
         Call this when run() returned a state with non-empty pending_question.
         """
-        if not hasattr(self, "_last_state"):
-            raise RuntimeError("No workflow to resume. Call run() first.")
-
-        state = dict(self._last_state)
-        state["human_response"] = human_response
-        state["pending_question"] = ""
-
         graph = self._get_compiled_graph()
-        result = graph.invoke(state)
-        self._last_state = dict(result)
-        return result
+        config = {"configurable": {"thread_id": self._thread_id}}
+        result = graph.invoke(Command(resume=human_response), config=config)
+        return self._normalize_result(result)
+
+    def _normalize_result(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Normalize LangGraph interrupt payload into the fields expected by existing CLI:
+        - `pending_question`
+        - `pending_type`
+        - `metrics` (for result decisions)
+        """
+        # `__interrupt__` is added when the graph hits `langgraph.types.interrupt()`.
+        interrupts = result.get("__interrupt__")
+        if interrupts:
+            # Usually it's a list/tuple with one Interrupt.
+            intr0 = interrupts[0] if isinstance(interrupts, (list, tuple)) else interrupts
+            value = getattr(intr0, "value", None) if not isinstance(intr0, dict) else intr0
+            if isinstance(intr0, dict):
+                value = intr0
+
+            if isinstance(value, dict):
+                question = value.get("question") or value.get("message") or ""
+                pending_type = value.get("pending_type") or value.get("type") or ""
+                if value.get("metrics") is not None:
+                    # Make sure CLI sees metrics even if checkpoint state differs.
+                    result.setdefault("metrics", value.get("metrics") or {})
+                    result.setdefault("metrics_ran", True)
+            else:
+                question = str(value or "")
+                pending_type = "user_question"
+
+            if question:
+                result["pending_question"] = question
+            if pending_type:
+                result["pending_type"] = pending_type
+            result["need_user_input"] = True
+
+        return dict(result)
 
     # ---- Convenience methods for backward compatibility ----
 
@@ -89,7 +130,10 @@ class Coordinator:
         in \"map_only\" mode. Multi-turn clarification is not handled here;
         callers should switch to interactive mode for that.
         """
-        state = self.run(nl_input, output_path=output_path, mode_hint="map_only")
+        state = self.run(nl_input, output_path=output_path, mode_hint="env_only")
+        # Non-interactive wrapper: auto-close the "result decision" interrupt.
+        if state.get("pending_question") and state.get("pending_type") == "result_decision":
+            state = self.resume("结束")
         ok = bool(state.get("map_json")) and not state.get("error")
         if not ok:
             return {
@@ -119,12 +163,17 @@ class Coordinator:
         """
         # Seed/num_runs are currently controlled inside the workflow/simulation
         # tool; we keep the signature for backward compatibility.
-        state = self.run(
-            algorithm_nl,
-            output_path=None,
-            map_path=map_path,
-            mode_hint="algorithm_only",
-        )
+        state = self.run(algorithm_nl, output_path=None, map_path=map_path, mode_hint="algorithm_only")
+        if state.get("pending_question") and state.get("pending_type") == "result_decision":
+            state = self.resume("结束")
+        if state.get("pending_question"):
+            return {
+                "ok": False,
+                "error": state.get("error") or "Workflow paused for additional input",
+                "follow_up_question": state.get("pending_question", ""),
+                "pending_type": state.get("pending_type", ""),
+                "metrics": {},
+            }
         if state.get("error"):
             return {"ok": False, "error": state["error"], "metrics": {}}
 
@@ -147,12 +196,17 @@ class Coordinator:
         Run both phases in one shot by driving the workflow in \"both\" mode.
         """
         user_input = f"{map_nl}\n\n{algorithm_nl}"
-        state = self.run(
-            user_input,
-            output_path=map_output_path,
-            map_path=None,
-            mode_hint="both",
-        )
+        state = self.run(user_input, output_path=map_output_path, map_path=None, mode_hint="both")
+        if state.get("pending_question") and state.get("pending_type") == "result_decision":
+            state = self.resume("结束")
+        if state.get("pending_question"):
+            return {
+                "ok": False,
+                "error": state.get("error") or "Workflow paused for additional input",
+                "follow_up_question": state.get("pending_question", ""),
+                "pending_type": state.get("pending_type", ""),
+                "phase": 0,
+            }
         if state.get("error"):
             return {"ok": False, "error": state["error"], "phase": 0}
 

@@ -23,7 +23,7 @@ from utils.simulation_clock import clock
 from tqdm import trange
 
 
-def run_single_episode(seed: int) -> Dict:
+def run_single_episode(seed: int = 42) -> Dict:
     """Run one full simulation and return final metrics."""
     random.seed(seed)
     np.random.seed(seed)

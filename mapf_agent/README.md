@@ -138,38 +138,26 @@ python -m mapf_agent.cli full "20x15, 4 agvs, 2 large 2 small" "CBS" --runs 3 --
 
 ---
 
-### 3.4 交互模式（interactive）
+### 3.4 交互式输入（interrupt/resume）
 
-多轮对话模式，支持 Agent 自动追问缺失信息、智能路由（自动判断用户意图是生成地图、运行算法还是两者兼有）。
+多轮输入模式：当工作流需要你补全缺失信息或做决策时，会在终端中显示 `Agent:` 并等待你回复；回复 `结束` 可退出当前会话。
 
 ```bash
-python -m mapf_agent.cli interactive
+python -m mapf_agent.cli
 
-# 指定默认输出路径
-python -m mapf_agent.cli interactive -o config/maps/interactive_out.json
+# 指定输出路径（生成地图时生效）
+python -m mapf_agent.cli -o config/envs/maps/interactive_out.json
 
 # 不使用 LLM
-python -m mapf_agent.cli interactive --no-llm
+python -m mapf_agent.cli --no-llm
 ```
 
-交互示例：
+交互示例（示意）：
 
 ```
-============================================================
-MAPF Agent Interactive Mode
-============================================================
-Describe your warehouse map and/or algorithm requirements.
-Type 'quit' or 'exit' to leave.
-
 You: 帮我生成一个 20x15 的地图，4 台 AGV
-Agent: Map generated successfully!
-  Size: 20x15, AGVs: 4, Shelves: 12
-
-You: 在这张地图上用 CBS 跑一下仿真
-Agent: Simulation results:
-  Task Success Rate: 0.85
-  ...
-Agent: Algorithm choice: CBS-FW selected for better conflict resolution.
+Agent: 环境/地图已就绪。是否要继续运行算法？（提供算法需求/结束）
+You: 结束
 ```
 
 ---
@@ -220,16 +208,26 @@ out3 = coord.run_full(
 ```python
 from mapf_agent.workflow.graph import build_graph
 
-graph = build_graph().compile()
-result = graph.invoke({
-    "user_input": "20x15 地图，4 台 AGV，用 CBS 跑仿真",
-    "use_llm": True,
-    "output_path": "",
-    "map_path": "",
-    "map_gen_attempts": 0,
-    "iteration": 0,
-    "optimization_history": [],
-})
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.types import Command
+
+graph = build_graph().compile(checkpointer=MemorySaver())
+config = {"configurable": {"thread_id": "demo"}}
+
+result = graph.invoke(
+    {
+        "user_input": "20x15 地图，4 台 AGV，用 CBS 跑仿真",
+        "use_llm": True,
+        "output_path": "",
+        "map_path": "",
+    },
+    config=config,
+)
+
+# 如果触发 interrupt，LangGraph 会在 `__interrupt__` 里返回一个可恢复的中断信息
+if result.get("__interrupt__"):
+    # 这里给出一个示例 resume；实际可把 value["question"]/value["message"] 展示给用户
+    result = graph.invoke(Command(resume="结束"), config=config)
 ```
 
 工作流会自动完成：输入路由 → 解析 → 地图生成 → 校验 → 算法选择 → 仿真 → 优化分析。
@@ -304,7 +302,7 @@ mapf_agent/
 ├── __init__.py                # 包入口
 ├── config.py                  # AgentConfig：LLM 模型、路径、默认参数；API key 从 api_key 文件读取
 ├── llm.py                     # LLM 服务层：OpenAI 兼容 API 封装，含重试与 JSON mode
-├── cli.py                     # 命令行入口（generate-map / generate-algorithm / full / interactive）
+├── cli.py                     # 命令行入口（单一入口：输入文本 -> interrupt/resume）
 ├── agents/                    # 各 Agent
 │   ├── input_parser.py        # 输入解析 Agent（NL → 结构化 map_config + sim_config）
 │   ├── env_config_agent.py    # 环境配置 Agent（map_config → 地图 JSON，含 LLM 生成 + 校验重试）

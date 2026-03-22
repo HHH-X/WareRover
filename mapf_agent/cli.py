@@ -1,6 +1,8 @@
 """
-CLI entry for MAPF Agent: generate-map, generate-algorithm, full, interactive.
-Run from project root: python -m mapf_agent.cli <subcommand> ...
+CLI entry for MAPF Agent.
+Single entry: input text -> the LangGraph workflow routes/suspends/resumes as needed.
+Run: python -m mapf_agent.cli "<your request>"
+Or:  python -m mapf_agent.cli
 """
 import argparse
 import json
@@ -12,6 +14,55 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 from mapf_agent.agents.coordinator import Coordinator
+
+
+def cmd_run(args: argparse.Namespace) -> int:
+    """Single entry: user types one text; the graph may interrupt and ask follow-ups."""
+    coordinator = Coordinator(use_llm=not args.no_llm)
+
+    output_path = args.output or ""
+    map_path = args.map_file or ""
+
+    def _read_first_text() -> str:
+        if args.text is not None:
+            return str(args.text).strip()
+        try:
+            return input("You: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            return "exit"
+
+    first_text = _read_first_text()
+    if not first_text or first_text.lower() in ("exit", "quit", "q"):
+        print("Bye!")
+        return 0
+
+    state = coordinator.run(first_text, output_path=output_path, map_path=map_path)
+    while state.get("pending_question"):
+        q = state.get("pending_question", "")
+        pending_type = state.get("pending_type", "")
+
+        print(f"\nAgent: {q}")
+        if pending_type == "result_decision" and state.get("metrics"):
+            metrics = state.get("metrics", {})
+            # Print a few common metric keys.
+            for key in ("Task Success Rate", "completed_orders", "sim_steps", "finished"):
+                if key in metrics:
+                    print(f"  {key}: {metrics[key]}")
+
+        try:
+            follow_up = input("You: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nBye!")
+            return 0
+
+        if follow_up.lower() in ("exit", "quit", "q"):
+            print("Bye!")
+            return 0
+
+        state = coordinator.resume(follow_up)
+
+    _print_result(state)
+    return 0 if not state.get("error") else 1
 
 
 def cmd_generate_map(args: argparse.Namespace) -> int:
@@ -153,11 +204,8 @@ def _print_result(state: dict):
         print(f"  Size: {w}x{h}, AGVs: {n_agvs}, Shelves: {n_boxes}")
         if state.get("map_path"):
             print(f"  Saved to: {state['map_path']}")
-
-    if state.get("sim_config_applied"):
-        applied = {k: v for k, v in state["sim_config_applied"].items() if v is not None}
-        if applied:
-            print(f"  SimConfig updated: {applied}")
+        if state.get("env_config_path"):
+            print(f"  Env config: {state['env_config_path']}")
 
     if state.get("metrics"):
         print(f"\nAgent: Simulation results:")
@@ -173,6 +221,8 @@ def _print_result(state: dict):
         suggestion = last.get("suggestion", {})
         if suggestion.get("reasoning"):
             print(f"  Final suggestion: {suggestion['reasoning']}")
+        elif suggestion.get("analysis"):
+            print(f"  Final suggestion: {suggestion['analysis']}")
 
     if state.get("algo_config"):
         algo = state["algo_config"]
@@ -181,45 +231,13 @@ def _print_result(state: dict):
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="MAPF Agent: generate map config and/or run algorithm.")
+    parser = argparse.ArgumentParser(description="MAPF Agent: input text -> route/interrupt/resume/run.")
     parser.add_argument("--no-llm", action="store_true", help="Disable LLM, use regex/rule fallback only")
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    # generate-map
-    p1 = subparsers.add_parser("generate-map", help="Phase 1: generate map config from natural language")
-    p1.add_argument("nl_input", type=str, help="Natural language description of the map")
-    p1.add_argument("-o", "--output", type=str, default=None, help="Output JSON path")
-    # p1.add_argument("--print-json", action="store_true", help="Print generated JSON to stdout")
-    # p1.add_argument("--no-llm", action="store_true", help="Disable LLM")
-    p1.set_defaults(func=cmd_generate_map)
-
-    # generate-algorithm
-    p2 = subparsers.add_parser("generate-algorithm", help="Phase 2: run algorithm on existing map")
-    p2.add_argument("nl_input", type=str, help="Algorithm description")
-    p2.add_argument("--map-file", type=str, required=True, help="Path to map JSON file")
-    p2.add_argument("--seed", type=int, default=None, help="Random seed")
-    p2.add_argument("--runs", type=int, default=1, help="Number of simulation runs")
-    p2.add_argument("--no-llm", action="store_true", help="Disable LLM")
-    p2.set_defaults(func=cmd_generate_algorithm)
-
-    # full
-    p3 = subparsers.add_parser("full", help="Run both phases")
-    p3.add_argument("map_nl", type=str, help="Natural language for map")
-    p3.add_argument("algorithm_nl", type=str, help="Natural language for algorithm")
-    p3.add_argument("-o", "--output", type=str, default=None, help="Output path for generated map JSON")
-    p3.add_argument("--seed", type=int, default=None)
-    p3.add_argument("--runs", type=int, default=1)
-    p3.add_argument("--no-llm", action="store_true", help="Disable LLM")
-    p3.set_defaults(func=cmd_full)
-
-    # interactive
-    p4 = subparsers.add_parser("interactive", help="Interactive multi-turn conversation mode")
-    p4.add_argument("-o", "--output", type=str, default=None, help="Default output path for generated maps")
-    p4.add_argument("--no-llm", action="store_true", help="Disable LLM")
-    p4.set_defaults(func=cmd_interactive)
-
+    parser.add_argument("text", nargs="?", type=str, default=None, help="Your natural language request (map/algorithm/both).")
+    parser.add_argument("-o", "--output", type=str, default=None, help="Output JSON path for generated maps (optional).")
+    parser.add_argument("--map-file", type=str, default=None, help="Existing map JSON path for algorithm-only usage (optional).")
     args = parser.parse_args()
-    return args.func(args)
+    return cmd_run(args)
 
 
 if __name__ == "__main__":
