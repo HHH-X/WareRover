@@ -35,7 +35,7 @@ def _load_prompt() -> str:
         return f.read()
 
 
-class InputParserAgent:
+class MapConfigParser:
     """Parse natural language into structured map/sim config via LLM with fallback to regex."""
 
     def __init__(self):
@@ -45,23 +45,11 @@ class InputParserAgent:
     def reset_conversation(self):
         self._conversation = []
 
-    def parse(self, nl_text: str, use_llm: bool = True) -> Dict[str, Any]:
-        """
-        Parse user input. Returns dict with keys:
-        complete, missing_fields, follow_up_question, map_config, sim_config.
-        """
-        if use_llm:
-            try:
-                return self._parse_llm(nl_text)
-            except Exception as e:
-                print("[ERROR] LLM parsing failed:", e)
-        return self._parse_regex(nl_text)
-
     def continue_parse(self, follow_up_text: str) -> Dict[str, Any]:
         """Continue multi-turn conversation with user's follow-up answer."""
-        return self._parse_llm(follow_up_text)
+        return self.parse(follow_up_text)
 
-    def _parse_llm(self, nl_text: str) -> Dict[str, Any]:
+    def parse(self, nl_text: str) -> Dict[str, Any]:
         from mapf_agent.llm import chat_completion_json
 
         if not self._conversation:

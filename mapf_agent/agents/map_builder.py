@@ -24,7 +24,7 @@ def _load_template() -> str:
         return f.read()
 
 
-class EnvConfigAgent:
+class MapBuilder:
     """Generate map JSON from structured map_config via LLM with fallback."""
 
     def __init__(self):

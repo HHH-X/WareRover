@@ -12,8 +12,8 @@ import tempfile
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from mapf_agent.tools.validate_map import validate_map, validate_schema, validate_semantic
-from mapf_agent.agents.input_parser import InputParserAgent
-from mapf_agent.agents.env_config_agent import EnvConfigAgent
+from mapf_agent.agents.map_config_parser import InputParserAgent
+from mapf_agent.agents.map_builder import MapBuilder
 from mapf_agent.agents.algorithm_agent import AlgorithmAgent
 from mapf_agent.agents.optimizer_agent import OptimizerAgent
 from mapf_agent.agents.coordinator import Coordinator
@@ -256,7 +256,7 @@ def test_input_parser_output_structure():
 # =========================================================================
 
 def test_env_config_generate_basic():
-    agent = EnvConfigAgent()
+    agent = MapBuilder()
     map_config = {
         "width": 8, "height": 6,
         "agvs": {"count": 2, "sizes": [1, 1]},
@@ -276,7 +276,7 @@ def test_env_config_generate_basic():
 
 
 def test_env_config_generate_validates():
-    agent = EnvConfigAgent()
+    agent = MapBuilder()
     map_config = {
         "width": 15, "height": 15,
         "agvs": {"count": 3, "sizes": [1, 1, 2]},
@@ -291,7 +291,7 @@ def test_env_config_generate_validates():
 
 
 def test_env_config_agv_wait_zone_match():
-    agent = EnvConfigAgent()
+    agent = MapBuilder()
     map_config = {
         "width": 20, "height": 20,
         "agvs": {"count": 2, "sizes": [1, 2]},
@@ -308,7 +308,7 @@ def test_env_config_agv_wait_zone_match():
 
 
 def test_env_config_boxes_have_goods():
-    agent = EnvConfigAgent()
+    agent = MapBuilder()
     map_config = {
         "width": 10, "height": 10,
         "agvs": {"count": 1, "sizes": [1]},
@@ -323,7 +323,7 @@ def test_env_config_boxes_have_goods():
 
 
 def test_env_config_sequential_box_ids():
-    agent = EnvConfigAgent()
+    agent = MapBuilder()
     map_config = {
         "width": 10, "height": 10,
         "agvs": {"count": 1, "sizes": [1]},
@@ -529,7 +529,7 @@ def test_integration_parse_then_generate():
     parsed = parser.parse("20x15, 4 agvs, 2 large 2 small", use_llm=False)
     assert parsed["complete"] is True
 
-    env = EnvConfigAgent()
+    env = MapBuilder()
     gen = env.generate(parsed["map_config"], use_llm=False)
     assert gen["ok"] is True
 
@@ -549,7 +549,7 @@ def test_integration_parse_with_shelves():
     assert parsed["map_config"]["shelves"]["count"] == 8
     assert parsed["map_config"]["receivers"]["count"] == 3
 
-    env = EnvConfigAgent()
+    env = MapBuilder()
     gen = env.generate(parsed["map_config"], use_llm=False)
     assert gen["ok"] is True
     assert len(gen["map_json"]["boxes"]) == 8

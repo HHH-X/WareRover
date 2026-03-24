@@ -36,6 +36,8 @@ class AgentConfig:
     knowledge_dir: str = ""
     prompts_dir: str = ""
     generated_planners_dir: str = ""
+    map_path: str = os.path.join(PACKAGE_DIR, "generated", "envs", "generated_map.json")
+    sim_config_path: str = os.path.join(PACKAGE_DIR, "generated", "envs", "generated_sim_config.json")
 
     # Validation
     validate_map_trial_steps: int = 0
