@@ -2,26 +2,27 @@ from dataclasses import dataclass
 from typing import Optional
 import json
 from enum import Enum
+from dataclasses import dataclass, field
+from typing import Any
+
+# class SchedulerType(Enum):
+#     RANDOM = "random"
+#     TA = "ta"
 
 
-class SchedulerType(Enum):
-    RANDOM = "random"
-    TA = "ta"
+# class PlannerType(Enum):
+#     ASTAR = "astar"
+#     CBS_FW = "cbs_fw"
+#     DHC = "dhc"
 
 
-class PlannerType(Enum):
-    ASTAR = "astar"
-    CBS_FW = "cbs_fw"
-    DHC = "dhc"
-
-
-class OrderMode(Enum):
-    """All supported order generation modes"""
-    ONESHOT = "oneshot"                          # Generate all orders at once (original mode)
-    CONTINUOUS_CONSTANT = "continuous_constant"  # Continuous steady generation
-    CONTINUOUS_PERIODIC = "continuous_periodic"  # Periodic busy-idle waves
-    CONTINUOUS_PARETO = "continuous_pareto"      # Pareto-distributed hot SKU pattern
-    CONTINUOUS_BURST = "continuous_burst"        # Random burst promotion pattern
+# class OrderMode(Enum):
+#     """All supported order generation modes"""
+#     ONESHOT = "oneshot"                          # Generate all orders at once (original mode)
+#     CONTINUOUS_CONSTANT = "continuous_constant"  # Continuous steady generation
+#     CONTINUOUS_PERIODIC = "continuous_periodic"  # Periodic busy-idle waves
+#     CONTINUOUS_PARETO = "continuous_pareto"      # Pareto-distributed hot SKU pattern
+#     CONTINUOUS_BURST = "continuous_burst"        # Random burst promotion pattern
 
 
 @dataclass
@@ -29,8 +30,8 @@ class SimConfig:
     """Simulation configuration parameters"""
 
     # ==================== Algorithm selection ====================
-    scheduler_type: SchedulerType = SchedulerType.RANDOM
-    planner_type: PlannerType = PlannerType.ASTAR
+    scheduler_type: str = "random"
+    planner_type: str = "astar"
     force_replan_every_step: bool = False
     # Whether to force each decision-making AGV to replan its path at every step.
     # Automatically coupled with DHC when enabled.
@@ -38,7 +39,7 @@ class SimConfig:
     dhc_model_path: str = '.\\algorithm\\DHC\\models\\36000.pth'
 
     # ==================== Simulation parameters ====================
-    order_mode: OrderMode = OrderMode.CONTINUOUS_CONSTANT  # Order generation mode
+    order_mode: str = "oneshot"  # Order generation mode
     total_orders_limit = 150
 
     size2_ratio: float = 0.2
@@ -173,3 +174,16 @@ class ContinuousBurstConfig:
     # Interval between batches during a burst (very dense)
 
     total_orders_limit: Optional[int] = None
+
+
+# ================= System =================
+@dataclass
+class SystemConfig:
+    sim_config: SimConfig = field(default_factory=SimConfig)
+    fault_config: FaultConfig = field(default_factory=FaultConfig)
+
+    one_shot_config: OneShotConfig = field(default_factory=OneShotConfig)
+    continuous_constant_config: ContinuousConstantConfig = field(default_factory=ContinuousConstantConfig)
+    continuous_periodic_config: ContinuousPeriodicConfig = field(default_factory=ContinuousPeriodicConfig)
+    continuous_pareto_config: ContinuousParetoConfig = field(default_factory=ContinuousParetoConfig)
+    continuous_burst_config: ContinuousBurstConfig = field(default_factory=ContinuousBurstConfig)

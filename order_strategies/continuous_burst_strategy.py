@@ -14,7 +14,7 @@ class ContinuousBurstStrategy(OrderGenerationStrategy):
 
     def __init__(self):
         super().__init__()
-        self.config = ContinuousBurstConfig()
+        self.config = self.system_config.continuous_burst_config
         self.base_batch_size = self.config.base_batch_size
         self.base_interval = self.config.generation_interval_steps
         self.burst_batch_size = self.config.burst_peak_batch_size

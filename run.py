@@ -9,7 +9,7 @@ from socketserver import TCPServer
 import random
 import numpy as np
 
-from config.settings import SimConfig
+from config.settings import SystemConfig
 from core.agvmanager import AGVManager
 from core.gridmap import GridMap
 from core.ordermanager import OrderManager
@@ -17,10 +17,11 @@ from core.env import Env
 from core.simulator import Simulator
 from core.data_generator import generate_send_data
 from core.fault_manager import FaultManager
-from utils.logger import global_logger
+from utils.logger import global_logger,init_global_logger
 import websockets
 from utils.simulation_clock import clock
 from utils.algorithm_factory import build_scheduler, build_planner
+from utils.algorithm_registry import init_default_registries, PlannerRegistry, SchedulerRegistry
 
 STATE = {
     "paused": True,
@@ -43,19 +44,27 @@ async def simulator_loop(websocket, message_queue):
     global NEED_RESET
     print("Simulation begin")
 
-
-    grid_map = GridMap()
-    ordermanager = OrderManager(grid_map)
-    agv_manager = AGVManager(grid_map, ordermanager)
+    system_config = SystemConfig()
+    init_default_registries()
+    grid_map = GridMap(system_config.sim_config)
+    ordermanager = OrderManager(system_config.sim_config, grid_map)
+    agv_manager = AGVManager(system_config.sim_config, grid_map, ordermanager)
     env = Env(agv_manager, grid_map, ordermanager)
-    fault_manager = FaultManager(agv_manager, env, grid_map)
+    fault_manager = FaultManager(system_config.fault_config, agv_manager, env, grid_map)
 
-    scheduler = build_scheduler(env, agv_manager, ordermanager, grid_map, fault_manager)
-    planner = build_planner(env, agv_manager, ordermanager, grid_map, fault_manager)
+    # scheduler = build_scheduler(system_config, env, agv_manager, ordermanager, grid_map, fault_manager)
+    # planner = build_planner(system_config, env, agv_manager, ordermanager, grid_map, fault_manager)
 
-    simulator = Simulator(grid_map, agv_manager, ordermanager, env, scheduler, planner)
+    scheduler_cls = SchedulerRegistry.get(system_config.sim_config.scheduler_type)
+    scheduler = scheduler_cls(env, agv_manager, ordermanager, grid_map, fault_manager)
+
+    planner_cls = PlannerRegistry.get(system_config.sim_config.planner_type)
+    planner = planner_cls(env, agv_manager, ordermanager, grid_map, fault_manager)
+
+    simulator = Simulator(system_config, grid_map, agv_manager, ordermanager, env, scheduler, planner)
 
     init_data = generate_send_data(grid_map, agv_manager, ordermanager, data_type="init")
+    init_global_logger(system_config.sim_config)
     await websocket.send(json.dumps(init_data))
 
     while RUNNING:
@@ -71,7 +80,7 @@ async def simulator_loop(websocket, message_queue):
         while (RUNNING
                and not NEED_RESET
                and not ordermanager.is_all_orders_completed()
-               and clock.now() < SimConfig.max_steps):
+               and clock.now() < system_config.sim_config.max_steps):
 
             if not STATE["paused"] or STATE["step_trigger"]:
                 simulator.step()

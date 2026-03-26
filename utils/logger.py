@@ -13,13 +13,14 @@ class GlobalLogger:
 
     _instance = None
 
-    def __new__(cls):
+    def __new__(cls, config: Optional[SimConfig] = None):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._init()
+            cls._instance._init(config)
         return cls._instance
 
-    def _init(self):
+    def _init(self, config: Optional[SimConfig] = None):
+        self.config = config
         self.reset()
 
     # ================= Reset =================
@@ -27,8 +28,8 @@ class GlobalLogger:
         # ---------- Runtime Logs ----------
         self._runtime_logs: List[str] = []
         self._max_runtime_logs = 200
-        self._log_to_console = SimConfig.log_to_console
-        self._log_to_file = SimConfig.log_to_file
+        self._log_to_console = self.config.log_to_console
+        self._log_to_file = self.config.log_to_file
 
         self.total_agv_collisions = 0
 
@@ -39,7 +40,7 @@ class GlobalLogger:
         self._max_order_logs = 50
 
         # ---------- Order Statistics ----------
-        self.total_orders = SimConfig.total_orders_limit
+        self.total_orders = self.config.total_orders_limit
         self.completed_orders = 0
         self.completed_task_time = 0.0  # sum(finished - created)
 
@@ -54,13 +55,13 @@ class GlobalLogger:
         # ---------- File Logger ----------
         self._log_file = None
         if self._log_to_file:
-            os.makedirs(SimConfig.log_dir, exist_ok=True)
+            os.makedirs(self.config.log_dir, exist_ok=True)
             self._log_file_path = os.path.join(
-                SimConfig.log_dir,
-                SimConfig.log_file_name
+                self.config.log_dir,
+                self.config.log_file_name
             )
 
-            mode = "w" if SimConfig.log_overwrite else "a"
+            mode = "w" if self.config.log_overwrite else "a"
             self._log_file = open(self._log_file_path, mode, encoding="utf-8")
 
 
@@ -286,4 +287,9 @@ class GlobalLogger:
 
 
 # Global instance
-global_logger = GlobalLogger()
+global_logger: Optional[GlobalLogger] = None
+
+def init_global_logger(config: SimConfig) -> GlobalLogger:
+    global global_logger
+    global_logger = GlobalLogger(config)
+    return global_logger

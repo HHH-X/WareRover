@@ -5,9 +5,9 @@ import json
 from utils.logger import global_logger
 
 class GridMap:
-    def __init__(self):
+    def __init__(self, sim_config: SimConfig):
         
-        with open(SimConfig.map_file, "r") as f:
+        with open(sim_config.map_file, "r") as f:
             map_data = json.load(f)
             
         self.width = map_data["map"]["width"]

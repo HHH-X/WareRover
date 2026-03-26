@@ -9,7 +9,8 @@ from utils.logger import global_logger
 from utils.simulation_clock import clock
 
 class FaultManager:
-    def __init__(self, agv_manager: AGVManager, env: Env, gridmap: GridMap):
+    def __init__(self,fault_config: FaultConfig, agv_manager: AGVManager, env: Env, gridmap: GridMap):
+        self.fault_config = fault_config
         self.agv_manager = agv_manager
         self.gridmap = gridmap
         self.env = env
@@ -150,12 +151,12 @@ class FaultManager:
         return None
 
     def reset(self):
-        self.rng = random.Random(FaultConfig.fault_seed)
+        self.rng = random.Random(self.fault_config.fault_seed)
         # ---------- Sync from FaultConfig ----------
-        self.enable_faults = FaultConfig.enable_faults
-        self.fault_prob = FaultConfig.fault_prob
-        self.mean_repair_time = FaultConfig.mean_repair_time
-        self.allow_multiple_faults = FaultConfig.allow_multiple_faults
+        self.enable_faults = self.fault_config.enable_faults
+        self.fault_prob = self.fault_config.fault_prob
+        self.mean_repair_time = self.fault_config.mean_repair_time
+        self.allow_multiple_faults = self.fault_config.allow_multiple_faults
 
         # ---------- Runtime State ----------
         self.active_faults: Dict[int, int] = {}

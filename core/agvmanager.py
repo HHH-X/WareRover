@@ -8,8 +8,9 @@ from utils.logger import global_logger
 
 
 class AGVManager:
-    def __init__(self, map_inst: GridMap, order_manager:OrderManager):
-        with open(SimConfig.map_file, "r") as f:
+    def __init__(self, sim_config: SimConfig, map_inst: GridMap, order_manager:OrderManager):
+        self.sim_config = sim_config
+        with open(sim_config.map_file, "r") as f:
             data = json.load(f)
 
         agv_data = data.get("agvs", [])
@@ -147,7 +148,7 @@ class AGVManager:
 
     def get_replan_targets(self) -> Dict[int, Tuple[Tuple[int, int], Tuple[int, int]]]:
         result = {}
-        if SimConfig.force_replan_every_step:
+        if self.sim_config.force_replan_every_step:
             replan_agvs = self.all_agv_ids
         else:
             replan_agvs = set(self.need_replan_agvs)

@@ -13,8 +13,8 @@ class ContinuousConstantStrategy(OrderGenerationStrategy):
     def update(self, current_step: int) -> List[Order]:
         new_orders = []
         if current_step >= self.next_generation_step:
-            num_size2 = int(ContinuousConstantConfig.batch_size * SimConfig.size2_ratio)
-            num_size1 = ContinuousConstantConfig.batch_size - num_size2
+            num_size2 = int(self.system_config.continuous_constant_config.batch_size * self.system_config.sim_config.size2_ratio)
+            num_size1 = self.system_config.continuous_constant_config.batch_size - num_size2
 
             for size, count in [(1, num_size1), (2, num_size2)]:
                 for _ in range(count):
@@ -22,6 +22,6 @@ class ContinuousConstantStrategy(OrderGenerationStrategy):
                     if order:
                         new_orders.append(order)
 
-            self.next_generation_step = current_step + ContinuousConstantConfig.generation_interval_steps
+            self.next_generation_step = current_step + self.system_config.continuous_constant_config.generation_interval_steps
 
         return new_orders

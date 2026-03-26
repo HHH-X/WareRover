@@ -272,3 +272,16 @@ def sim_parse_validate_build(state: MAPFState) -> Dict[str, Any]:
         "need_user_input": False,
     }
 
+
+# -----------------------------------------------------------------------------
+# Redirect to the new finalized workflow implementation.
+# -----------------------------------------------------------------------------
+from mapf_agent.workflow.graph_final import (  # noqa: E402
+    MAPFState as MAPFState,  # type: ignore[misc]
+    build_graph as _final_build_graph,
+)
+
+
+def build_graph():
+    return _final_build_graph()
+

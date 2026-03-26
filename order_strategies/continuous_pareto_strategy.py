@@ -13,7 +13,7 @@ class ContinuousParetoStrategy(OrderGenerationStrategy):
 
     def __init__(self):
         super().__init__()
-        self.config = ContinuousParetoConfig()
+        self.config = self.system_config.continuous_pareto_config
         self.next_generation_step = 0
         self.all_goods_ids_by_size = self._prepare_all_goods_ids_by_size()
         self.hot_goods_ids_by_size = self._prepare_hot_goods_by_size()

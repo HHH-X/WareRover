@@ -7,13 +7,15 @@ from core.env import Env
 from core.ordermanager import OrderManager
 from scheduler.base_scheduler import BaseScheduler
 from planner.base_planner import BasePlanner
+from config.settings import SystemConfig
 from utils.simulation_clock import clock
 from utils.logger import global_logger
 
 class Simulator:
-    def __init__(self, map_inst: GridMap,
+    def __init__(self, system_config: SystemConfig, map_inst: GridMap,
                  agv_manager: AGVManager, order_manager: OrderManager, env: Env,
                  scheduler: BaseScheduler, planner: BasePlanner):
+        self.system_config = system_config
         self.map = map_inst
         self.agv_manager = agv_manager
         self.order_manager = order_manager
@@ -26,8 +28,8 @@ class Simulator:
         One simulation step: order manager step, assign tasks to idle AGVs,
         assign rest areas, replan paths for AGVs that need it, then run env step (conflict detection and movement).
         """
-        if SimConfig.log_to_console and clock.now() % 30 == 0:
-            print(f"\n--- Simulator Step {clock.now()} ---")
+        if clock.now() % 30 == 0:
+            # print(f"\n--- Simulator Step {clock.now()} ---")
             global_logger.add_runtime_log(f"Simulator Step {clock.now()}")
         self.order_manager.step()
         idle_agv_set = self.agv_manager.get_idle_agv_ids()

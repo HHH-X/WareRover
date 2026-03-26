@@ -30,6 +30,7 @@ class StepInfo(Enum):
 class AGV:
     def __init__(
         self,
+        sim_config: SimConfig,
         agv_id: int,
         size:int,
         init_grid_pos: Tuple[int, int],
@@ -47,10 +48,10 @@ class AGV:
         self.rest_target: Optional[Tuple[int, int]] = None
         self.action_queue: Deque[Tuple[int, int]] = deque()
         self.speed: float = 0.0
-        self.max_speed: float = SimConfig.agv_max_speed
-        self.time_step: float = SimConfig.time_step
+        self.max_speed: float = sim_config.agv_max_speed
+        self.time_step: float = sim_config.time_step
         self.direction: Optional[Direction] = Direction.LEFT
-        turning_time_90: float = SimConfig.agv_turn_time_90
+        turning_time_90: float = sim_config.agv_turn_time_90
         self.turning_steps_90: int = int(round(turning_time_90 / self.time_step))
         self.turning_timer: int = 0
         self.target_direction: Optional[Direction] = None

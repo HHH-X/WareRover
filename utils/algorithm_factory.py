@@ -1,60 +1,48 @@
-from config.settings import SimConfig, SchedulerType, PlannerType
-
-from scheduler.random_scheduler import RandomScheduler
-from scheduler.TA_scheduler import TAScheduler
-
-from planner.astar_planner import AStarPlanner
-from planner.cbs_fw_planner import FixedWindowCBSPlanner
-from planner.dhc_planner import DHCPlanner
+from config.settings import SystemConfig
 from core.env import Env
 from core.ordermanager import OrderManager
 from core.gridmap import GridMap
 from core.agvmanager import AGVManager
 from core.fault_manager import FaultManager
+from utils.algorithm_registry import PlannerRegistry, SchedulerRegistry
 
 def build_scheduler(
+    system_config: SystemConfig,
     env: Env,
     agv_manager: AGVManager,
     ordermanager: OrderManager,
     grid_map: GridMap,
     fault_manager: FaultManager
 ):
-    if SimConfig.scheduler_type == SchedulerType.RANDOM:
-        return RandomScheduler(env, agv_manager, ordermanager, grid_map, fault_manager)
-    elif SimConfig.scheduler_type == SchedulerType.TA:
-        return TAScheduler(env, agv_manager, ordermanager, grid_map, fault_manager)
-    else:
-        raise ValueError(f"Unknown scheduler: {SimConfig.scheduler_type}")
+    scheduler_name = system_config.sim_config.scheduler_type
+    scheduler_cls = SchedulerRegistry.get(scheduler_name)
+    return scheduler_cls(env, agv_manager, ordermanager, grid_map, fault_manager)
 
 
 def build_planner(
+    system_config: SystemConfig,
     env: Env,
     agv_manager: AGVManager,
     ordermanager: OrderManager,
     grid_map: GridMap,
     fault_manager: FaultManager
 ):
-    if SimConfig.planner_type == PlannerType.ASTAR:
-        SimConfig.force_replan_every_step = False
-        return AStarPlanner(env, agv_manager, ordermanager, grid_map, fault_manager)
+    sim_cfg = system_config.sim_config
+    planner_name = sim_cfg.planner_type
+    planner_cls = PlannerRegistry.get(planner_name)
 
-    elif SimConfig.planner_type == PlannerType.CBS_FW:
-        SimConfig.force_replan_every_step = False
-        return FixedWindowCBSPlanner(env, agv_manager, ordermanager, grid_map, fault_manager)
-
-    elif SimConfig.planner_type == PlannerType.DHC:
-        SimConfig.force_replan_every_step = True
-
-        return DHCPlanner(
+    if planner_name == "dhc":
+        sim_cfg.force_replan_every_step = True
+        return planner_cls(
             env,
             agv_manager=agv_manager,
             order_manager=ordermanager,
             map=grid_map,
             fault_manager=fault_manager,
-            model_path=SimConfig.dhc_model_path,
+            model_path=sim_cfg.dhc_model_path,
             forward_steps=1,
             device="cuda"
         )
 
-    else:
-        raise ValueError(f"Unknown planner: {SimConfig.planner_type}")
+    sim_cfg.force_replan_every_step = False
+    return planner_cls(env, agv_manager, ordermanager, grid_map, fault_manager)

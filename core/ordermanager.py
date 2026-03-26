@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Tuple, Optional, Generator
 import random
 import json
-from config.settings import SimConfig,OrderMode, OneShotConfig, ContinuousConstantConfig, ContinuousPeriodicConfig
+from config.settings import SimConfig, OneShotConfig, ContinuousConstantConfig, ContinuousPeriodicConfig
 from core.gridmap import GridMap
 from order_strategies import (
     OrderGenerationStrategy,
@@ -17,9 +17,10 @@ from core.order import Order
 from utils.simulation_clock import clock
 
 class OrderManager:
-    def __init__(self, map_inst: GridMap):
+    def __init__(self, sim_config: SimConfig, map_inst: GridMap):
+        self.sim_config = sim_config
         self.map = map_inst
-        self.total_orders_limit = SimConfig.total_orders_limit
+        self.total_orders_limit = self.sim_config.total_orders_limit
 
         self.all_orders: List[Order] = []
         self.unprocessed_orders: Dict[int, Order] = {}
@@ -31,16 +32,16 @@ class OrderManager:
         self.strategy = self._create_strategy()
 
     def _create_strategy(self) -> OrderGenerationStrategy:
-        mode = SimConfig.order_mode
-        if mode == OrderMode.ONESHOT:
-            return OneShotStrategy() 
-        elif mode == OrderMode.CONTINUOUS_CONSTANT:
+        mode = self.sim_config.order_mode
+        if mode == "oneshot":
+            return OneShotStrategy()
+        elif mode == "continuous_constant":
             return ContinuousConstantStrategy()
-        elif mode == OrderMode.CONTINUOUS_PERIODIC:
+        elif mode == "continuous_periodic":
             return ContinuousPeriodicStrategy()
-        elif mode == OrderMode.CONTINUOUS_PARETO:
+        elif mode == "continuous_pareto":
             return ContinuousParetoStrategy()
-        elif mode == OrderMode.CONTINUOUS_BURST:
+        elif mode == "continuous_burst":
             return ContinuousBurstStrategy()
         else:
             raise ValueError(f"Unknown order_mode: {mode}")

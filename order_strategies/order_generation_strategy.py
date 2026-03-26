@@ -3,7 +3,7 @@ import random
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional
 
-from config.settings import SimConfig
+from config.settings import SystemConfig
 from core.gridmap import GridMap
 from core.order import Order
 from config.settings import SimConfig
@@ -11,8 +11,9 @@ from config.settings import SimConfig
 class OrderGenerationStrategy(ABC):
     """Abstract order generation strategy."""
 
-    def __init__(self):
-        self.rng = random.Random(SimConfig.order_seed)
+    def __init__(self, system_config: SystemConfig):
+        self.system_config = system_config
+        self.rng = random.Random(self.system_config.sim_config.order_seed)
         self._all_boxes_by_size: Dict[int, List[dict]] = self._prepare_boxes_by_size()
         self._all_receivers_by_size: Dict[int, List[dict]] = self._prepare_receivers_by_size()
 
@@ -23,7 +24,7 @@ class OrderGenerationStrategy(ABC):
 
     def _prepare_boxes_by_size(self) -> Dict[int, List[dict]]:
         """Load boxes from map JSON and group by size. Returns {size: [box_dict, ...]}."""
-        map_path = SimConfig.map_file
+        map_path = self.system_config.sim_config.map_file
         with open(map_path, "r", encoding="utf-8") as f:
             map_data = json.load(f)
 
@@ -38,7 +39,7 @@ class OrderGenerationStrategy(ABC):
 
     def _prepare_receivers_by_size(self) -> Dict[int, List[dict]]:
         """Load receivers from map JSON and group by size. Returns {size: [receiver_dict, ...]}."""
-        map_path = SimConfig.map_file
+        map_path = self.system_config.sim_config.map_file
         with open(map_path, "r", encoding="utf-8") as f:
             map_data = json.load(f)
 
@@ -76,7 +77,7 @@ class OrderGenerationStrategy(ABC):
 
     def _generate_batch_orders(self, batch_size: int) -> tuple[List[Order], int]:
         """Generate a batch of orders by size2_ratio; returns (new_orders, next_order_id)."""
-        num_size2 = int(batch_size * SimConfig.size2_ratio)
+        num_size2 = int(batch_size * self.system_config.sim_config.size2_ratio)
         num_size1 = batch_size - num_size2
 
         new_orders: List[Order] = []

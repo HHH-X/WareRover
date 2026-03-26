@@ -1,13 +1,13 @@
 from order_strategies.order_generation_strategy import OrderGenerationStrategy
-from config.settings import SimConfig, OneShotConfig
+from config.settings import SystemConfig, OneShotConfig
 from core.gridmap import GridMap
 from core.order import Order
 from typing import List
 
 class OneShotStrategy(OrderGenerationStrategy):
-    def __init__(self):
-        super().__init__()
-        self.orders_to_generate = SimConfig.total_orders_limit
+    def __init__(self, system_config: SystemConfig):
+        super().__init__(system_config)
+        self.orders_to_generate = self.system_config.sim_config.total_orders_limit
         self.next_order_id = 0
         self.generated_in_first_step = False
 
@@ -17,7 +17,7 @@ class OneShotStrategy(OrderGenerationStrategy):
 
         new_orders = []
         remaining = self.orders_to_generate
-        num_size2 = int(remaining * SimConfig.size2_ratio)
+        num_size2 = int(remaining * self.system_config.sim_config.size2_ratio)
         num_size1 = remaining - num_size2
 
         for size, count in [(1, num_size1), (2, num_size2)]:
