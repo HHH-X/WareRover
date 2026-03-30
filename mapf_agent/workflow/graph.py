@@ -324,7 +324,7 @@ def config_update_node(state: MAPFState) -> Dict[str, Any]:
         err_preview = "；".join(patch_errors[:3])
         return request_user_input(f"配置 patch 校验失败：{err_preview}。请按合法字段重新输入。", "config")
 
-    system_config = SimConfig()
+    system_config = SystemConfig()
     try:
         apply_patch(system_config, patch)
     except Exception as e:
