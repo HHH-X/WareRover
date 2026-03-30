@@ -24,7 +24,7 @@ class Coordinator:
 
     def _get_compiled_graph(self):
         if self._compiled is None:
-            from mapf_agent.workflow.graph_refactored import build_graph
+            from mapf_agent.workflow.graph import build_graph
             self._compiled = build_graph().compile(checkpointer=self._checkpointer)
         return self._compiled
 

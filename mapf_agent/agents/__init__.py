@@ -1,4 +1,4 @@
-from mapf_agent.agents.map_config_parser import InputParserAgent
+from mapf_agent.agents.map_config_parser import MapConfigParser
 from mapf_agent.agents.map_builder import MapBuilder
 from mapf_agent.agents.algorithm_agent import AlgorithmAgent
 from mapf_agent.agents.optimizer_agent import OptimizerAgent

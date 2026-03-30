@@ -116,8 +116,11 @@ def apply_patch(config: SystemConfig, patch: Dict[str, Any]) -> List[str]:
     Returns runtime errors (NOT schema errors).
     """
     runtime_errors: List[str] = []
-    updates = patch.get("updates", [])
-    for key, value in updates:
+
+    for upd in patch.get("updates", []):
+        key = upd.get("key")
+        value = upd.get("value")
+
         try:
             set_by_path(config, key, value)
         except Exception as e:

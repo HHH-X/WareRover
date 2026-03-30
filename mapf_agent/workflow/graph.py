@@ -31,11 +31,6 @@ class MAPFState(TypedDict, total=False):
     conversation_history: List[Dict[str, Any]]
 
     # ===== 意图 =====
-    # intent_generate_map: bool
-    # intent_modify_config: bool
-    # intent_generate_algo: bool
-    # intent_optimize_algo: bool
-
     intent_run_simulation: bool
 
     map_intent_flag: bool
@@ -129,11 +124,11 @@ def intent_parse_node(state: MAPFState) -> Dict[str, Any]:
     
     # Compute readiness from existing artifacts
     map_intent_flag = False
-    sim_intent_flag = False
+    config_intent_flag = False
     algo_generate_flag = False
     algo_optimize_flag = False
     map_intent_content = ""
-    sim_intent_content = ""
+    config_intent_content = ""
     algo_generate_content = ""
     algo_optimize_content = ""
     
@@ -155,8 +150,8 @@ def intent_parse_node(state: MAPFState) -> Dict[str, Any]:
 
     map_intent_flag = _as_bool(gmap.get("flag"))
     map_intent_content = _pick_content(gmap.get("content"))
-    sim_intent_flag = _as_bool(msim.get("flag"))
-    sim_intent_content = _pick_content(msim.get("content"))
+    config_intent_flag = _as_bool(msim.get("flag"))
+    config_intent_content = _pick_content(msim.get("content"))
     algo_generate_flag = _as_bool(galgo.get("flag"))
     algo_generate_content = _pick_content(galgo.get("content"))
     algo_optimize_flag = _as_bool(opt.get("flag"))
@@ -166,8 +161,8 @@ def intent_parse_node(state: MAPFState) -> Dict[str, Any]:
     return {
         "map_intent_flag": map_intent_flag,
         "map_intent_content": map_intent_content,
-        "sim_intent_flag": sim_intent_flag,
-        "sim_intent_content": sim_intent_content,
+        "config_intent_flag": config_intent_flag,
+        "config_intent_content": config_intent_content,
         "algo_generate_flag": algo_generate_flag,
         "algo_generate_content": algo_generate_content,
         "algo_optimize_flag": algo_optimize_flag,
@@ -177,11 +172,6 @@ def intent_parse_node(state: MAPFState) -> Dict[str, Any]:
         "pending_type": "",
         "need_user_input": False,
     }
-
-
-def router_node(state: MAPFState) -> Dict[str, Any]:
-    # Router is a pass-through node; routing decisions are done by route_decision().
-    return {}
 
 
 def route_decision(state: MAPFState) -> str:
@@ -260,11 +250,7 @@ def map_generate_node(state: MAPFState) -> Dict[str, Any]:
         user_text = f"{user_text}\n{state['user_response']}"
 
     parser = MapConfigParser()
-    try:
-        parsed = parser.parse(user_text)
-    except Exception:
-        # Best-effort regex fallback (private API, but stable within this repo)
-        parsed = parser._parse_regex(user_text)  # type: ignore[attr-defined]
+    parsed = parser.parse(user_text)
 
     complete = bool(parsed.get("complete"))
     if not complete:
@@ -272,14 +258,14 @@ def map_generate_node(state: MAPFState) -> Dict[str, Any]:
 
     map_config = parsed.get("map_config", {}) or {}
 
-    existing_path = (state.get("map_file_path") or "").strip()
-    if existing_path and os.path.isfile(existing_path):
-        return {
-            "map_config": map_config,
-            "map_ready": True,
-            "blocking_stage": "",
-            "user_response": "",
-        }
+    # existing_path = (state.get("map_file_path") or "").strip()
+    # if existing_path and os.path.isfile(existing_path):
+    #     return {
+    #         "map_config": map_config,
+    #         "map_ready": True,
+    #         "blocking_stage": "",
+    #         "user_response": "",
+    #     }
     
     result = MapBuilder().generate(map_config)
     if not result.get("ok", False):
@@ -550,7 +536,7 @@ def build_graph() -> StateGraph:
     # 节点注册
     # ======================
     graph.add_node("intent_parse", intent_parse_node)
-    graph.add_node("router", router_node)
+    graph.add_node("router", route_decision)
 
     graph.add_node("map_generate", map_generate_node)
     graph.add_node("config_update", config_update_node)

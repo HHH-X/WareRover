@@ -29,17 +29,19 @@ DEFAULT_MAP_CONFIG = {
 REQUIRED_FIELDS = ["map_config.width", "map_config.height", "map_config.agvs.count"]
 
 
-def _load_prompt() -> str:
-    path = os.path.join(agent_config.prompts_dir, "input_parser.txt")
-    with open(path, "r", encoding="utf-8") as f:
-        return f.read()
+# def _load_prompt() -> str:
+#     path = os.path.join(agent_config.prompts_dir, "input_parser.txt")
+#     with open(path, "r", encoding="utf-8") as f:
+#         return f.read()
 
 
 class MapConfigParser:
     """Parse natural language into structured map/sim config via LLM with fallback to regex."""
 
     def __init__(self):
-        self._prompt = _load_prompt()
+        path = os.path.join(agent_config.prompts_dir, "input_parser.txt")
+        with open(path, "r", encoding="utf-8") as f:
+            self._prompt = f.read()
         self._conversation: List[Dict[str, str]] = []
 
     def reset_conversation(self):
@@ -97,62 +99,3 @@ class MapConfigParser:
         obstacles.setdefault("placement", "random")
 
         mc.setdefault("layout_hints", [])
-
-    # ---- Regex fallback (legacy) ----
-
-    def _parse_regex(self, nl_text: str) -> Dict[str, Any]:
-        text = (nl_text or "").strip().lower()
-        mc: Dict[str, Any] = json.loads(json.dumps(DEFAULT_MAP_CONFIG))
-
-        size_match = re.search(r"(\d+)\s*[x*×]\s*(\d+)", text, re.IGNORECASE)
-        if size_match:
-            mc["width"] = int(size_match.group(1))
-            mc["height"] = int(size_match.group(2))
-        for m in re.finditer(r"width\s*[=:]?\s*(\d+)", text):
-            mc["width"] = int(m.group(1))
-        for m in re.finditer(r"height\s*[=:]?\s*(\d+)", text):
-            mc["height"] = int(m.group(1))
-
-        agv_match = re.search(r"(\d+)\s*(?:agvs?|台|辆车)", text)
-        if agv_match:
-            mc["agvs"]["count"] = max(1, int(agv_match.group(1)))
-
-        sizes = []
-        large_m = re.findall(r"(\d+)\s*(?:large|大)", text)
-        small_m = re.findall(r"(\d+)\s*(?:small|小)", text)
-        for n in large_m:
-            sizes.extend([2] * int(n))
-        for n in small_m:
-            sizes.extend([1] * int(n))
-        if sizes:
-            mc["agvs"]["sizes"] = sizes
-            mc["agvs"]["count"] = len(sizes)
-
-        if not mc["agvs"]["sizes"] and mc["agvs"]["count"] > 0:
-            mc["agvs"]["sizes"] = [1] * mc["agvs"]["count"]
-
-        for key, pattern in [
-            ("shelves", r"(?:box|shelf|shelves|货架|箱子)\s*(?:数)?\s*(\d+)"),
-            ("receivers", r"(?:receiver|station|站台|接收)\s*(?:数)?\s*(\d+)"),
-            ("obstacles", r"(?:obstacle|障碍)\s*(?:数)?\s*(\d+)"),
-        ]:
-            m = re.search(pattern, text)
-            if m:
-                mc[key]["count"] = max(0, int(m.group(1)))
-
-        if not mc["shelves"]["count"] and mc["agvs"]["count"] > 0:
-            mc["shelves"]["count"] = mc["agvs"]["count"] * 3
-
-        missing = []
-        if mc["width"] < 1 or mc["height"] < 1:
-            missing.append("map dimensions (width, height)")
-        if mc["agvs"]["count"] < 1:
-            missing.append("AGV count")
-
-        return {
-            "complete": len(missing) == 0,
-            "missing_fields": missing,
-            "follow_up_question": f"请补充以下信息：{', '.join(missing)}" if missing else "",
-            "map_config": mc,
-            "sim_config": {},
-        }
