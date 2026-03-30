@@ -10,7 +10,6 @@ from core.env import Env
 from core.simulator import Simulator
 from core.data_generator import generate_send_data
 from core.fault_manager import FaultManager
-from utils.logger import global_logger
 from scheduler.random_scheduler import RandomScheduler
 from scheduler.TA_scheduler import TAScheduler
 from planner.astar_planner import AStarPlanner

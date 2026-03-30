@@ -73,7 +73,7 @@ async def simulator_loop(websocket, message_queue):
             clock.reset()
             env.reset()
             scheduler.reset()
-            global_logger.reset()
+            logger.global_logger.reset()
             NEED_RESET = False
             print("Reset complete.")
             continue
@@ -97,8 +97,8 @@ async def simulator_loop(websocket, message_queue):
 
         if not NEED_RESET:
             print("All orders completed or max steps reached; waiting for reset or stop.")
-            global_logger.add_runtime_log(global_logger.get_final_metrics(clock.now()))
-            print(global_logger.get_final_metrics(clock.now()))
+            logger.global_logger.add_runtime_log(logger.global_logger.get_final_metrics(clock.now()))
+            print(logger.global_logger.get_final_metrics(clock.now()))
 
         while RUNNING and not NEED_RESET:
             await asyncio.sleep(0.1)
@@ -125,7 +125,7 @@ async def ws_handler(websocket):
                     STATE["step_trigger"] = True
                 elif cmd == "stop":
                     print("Stop command received, exiting...")
-                    global_logger.close()
+                    logger.global_logger.close()
                     RUNNING = False
                     STATE["paused"] = True
                     await websocket.send(json.dumps({"status": "stopping"}))

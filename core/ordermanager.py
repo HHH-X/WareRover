@@ -12,9 +12,9 @@ from order_strategies import (
     ContinuousParetoStrategy,
     ContinuousBurstStrategy,
 )
-from utils.logger import global_logger
 from core.order import Order
 from utils.simulation_clock import clock
+import utils.logger as logger
 
 class OrderManager:
     def __init__(self, system_config: SystemConfig, map_inst: GridMap):
@@ -67,13 +67,13 @@ class OrderManager:
                     break
             if accepted_count:
                 for order in new_orders[:accepted_count]:
-                    global_logger.add_order_generation_log(
+                    logger.global_logger.add_order_generation_log(
                         order_id=order.order_id,
                         receiver_id=order.receiver_id,
                         goods_id=order.goods_id,
                         box_id=getattr(order, 'box_id', None),
                     )
-                global_logger.add_runtime_log(f"[OrderManager] Step {current_step}: Accepted {accepted_count} new orders. Total orders: {len(self.all_orders)}")
+                logger.global_logger.add_runtime_log(f"[OrderManager] Step {current_step}: Accepted {accepted_count} new orders. Total orders: {len(self.all_orders)}")
         self.check_processing_timeouts()
         
     def get_all_orders(self) -> List[Order]:
@@ -89,7 +89,7 @@ class OrderManager:
         order.start_processing_step = clock.now()
         self.processing_orders[order_id] = order
         box_id = getattr(order, 'box_id', None)
-        global_logger.add_order_assignment_log(order_id=order_id, agv_id=agv_id, box_id=box_id)
+        logger.global_logger.add_order_assignment_log(order_id=order_id, agv_id=agv_id, box_id=box_id)
         return True
     
     def complete_order(self, order_id: int, agv_id: int, box_id: Optional[int], agv_pos: Tuple[int, int]) -> bool:
@@ -99,7 +99,7 @@ class OrderManager:
         elif order_id in self.unprocessed_orders:
             order_source = self.unprocessed_orders
         else:
-            global_logger.add_runtime_log(f"[ERROR] Order {order_id} not found in processing or unprocessed orders.")
+            logger.global_logger.add_runtime_log(f"[ERROR] Order {order_id} not found in processing or unprocessed orders.")
             return False
 
         order = order_source[order_id]
@@ -109,12 +109,12 @@ class OrderManager:
         if order.goods_id in goods_list and agv_pos == receiver_pos:
             order.finished_step = clock.now()
             self.finished_orders[order_id] = order_source.pop(order_id)
-            global_logger.add_runtime_log(f"[OrderManager] Order {order_id} completed by AGV {agv_id} at step {clock.now()}.")
-            global_logger.add_order_completion_log(order_id=order_id, agv_id=agv_id)
-            global_logger.record_order_completed(self.finished_orders[order_id])
+            logger.global_logger.add_runtime_log(f"[OrderManager] Order {order_id} completed by AGV {agv_id} at step {clock.now()}.")
+            logger.global_logger.add_order_completion_log(order_id=order_id, agv_id=agv_id)
+            logger.global_logger.record_order_completed(self.finished_orders[order_id])
             return True
         else:
-            global_logger.add_runtime_log(
+            logger.global_logger.add_runtime_log(
                 f"[FAIL] Order {order_id} not fulfilled by AGV {agv_id}. "
                 f"Expected goods {order.goods_id} at receiver {receiver_pos}, "
                 f"but got goods {goods_list} at {agv_pos} with box_id={box_id}."
@@ -140,7 +140,7 @@ class OrderManager:
             order.start_processing_step = None
             self.unprocessed_orders[order_id] = order
 
-            global_logger.add_runtime_log(
+            logger.global_logger.add_runtime_log(
                 f"[OrderManager] Order {order_id} timeout, returned to unprocessed queue."
             )
 
@@ -151,4 +151,4 @@ class OrderManager:
         self.finished_orders.clear()
         self.next_order_id = 0
         self.strategy = self._create_strategy()
-        global_logger.add_runtime_log("[OrderManager] Orders have been reset.")
+        logger.global_logger.add_runtime_log("[OrderManager] Orders have been reset.")

@@ -2,7 +2,7 @@ from typing import Dict, List, Tuple, Optional, Set
 import numpy as np
 from config.settings import SimConfig
 import json
-from utils.logger import global_logger
+import utils.logger as logger
 
 class GridMap:
     def __init__(self, sim_config: SimConfig):
@@ -242,5 +242,5 @@ class GridMap:
         for box_id in self.box_status:
             self.box_status[box_id] = True
         self.dynamic_occupied.clear()
-        global_logger.add_runtime_log("[GridMap] Map has been reset.")
+        logger.global_logger.add_runtime_log("[GridMap] Map has been reset.")
 

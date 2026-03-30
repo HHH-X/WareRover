@@ -4,8 +4,7 @@ from core.gridmap import GridMap
 from core.ordermanager import OrderManager
 from config.settings import SimConfig
 import json
-from utils.logger import global_logger
-
+import utils.logger as logger
 
 class AGVManager:
     def __init__(self, sim_config: SimConfig, map_inst: GridMap, order_manager:OrderManager):
@@ -110,7 +109,7 @@ class AGVManager:
         agv = self._agvs[agv_id]
         if agv.rest_target is None or agv.grid_pos != agv.rest_target:
             self.block_counts[agv_id] += 1
-            global_logger.record_agv_collision(agv_id)
+            logger.global_logger.record_agv_collision(agv_id)
 
     def reset_block_count(self, agv_id: int):
         self.block_counts[agv_id] = 0
@@ -182,5 +181,5 @@ class AGVManager:
         self.need_rest_agvs = all_agv_ids.copy()
         self.need_replan_agvs = all_agv_ids.copy()
         self.block_counts = {agv_id: 0 for agv_id in all_agv_ids}
-        global_logger.add_runtime_log("[AGVManager] All AGVs have been reset to initial states.")
+        logger.global_logger.add_runtime_log("[AGVManager] All AGVs have been reset to initial states.")
 

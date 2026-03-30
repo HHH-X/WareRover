@@ -102,7 +102,7 @@ def generate_send_data(map: GridMap, agvmanager: AGVManager, ordermanager: Order
         for agv_id, occupied_set in map.dynamic_occupied.items():
             safe_paths[agv_id] = [to_real_position(pos) for pos in occupied_set]
         data['safe_paths'] = safe_paths
-        data['metrics'] = global_logger.get_runtime_metrics(clock.now())
+        data['metrics'] = logger.global_logger.get_runtime_metrics(clock.now())
 
         # Order panel data
         data['orders'] = {
@@ -111,8 +111,8 @@ def generate_send_data(map: GridMap, agvmanager: AGVManager, ordermanager: Order
                 "processing": len(ordermanager.processing_orders),
                 "completed": len(ordermanager.finished_orders),
             },
-            "logs": global_logger.get_order_logs_for_panel(),
-            "agv_progress": global_logger.get_agv_order_progress(agvmanager),
+            "logs": logger.global_logger.get_order_logs_for_panel(),
+            "agv_progress": logger.global_logger.get_agv_order_progress(agvmanager),
         }
 
     return data

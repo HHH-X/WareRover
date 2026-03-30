@@ -18,7 +18,7 @@ from core.env import Env
 from core.simulator import Simulator
 from utils.algorithm_factory import build_scheduler, build_planner
 from core.fault_manager import FaultManager
-from utils.logger import global_logger
+import utils.logger as logger
 from utils.simulation_clock import clock
 from tqdm import trange
 
@@ -30,7 +30,7 @@ def run_single_episode(seed: int = 42) -> Dict:
     SimConfig.order_seed = seed
     FaultConfig.fault_seed = seed
     clock.reset()
-    global_logger.reset()
+    logger.global_logger.reset()
     grid_map = GridMap()
     ordermanager = OrderManager(grid_map)
     agv_manager = AGVManager(grid_map, ordermanager)
@@ -54,7 +54,7 @@ def run_single_episode(seed: int = 42) -> Dict:
     ):
         simulator.step()
         fault_manager.step()
-    metrics = global_logger.get_final_metrics(clock.now())
+    metrics = logger.global_logger.get_final_metrics(clock.now())
     metrics["seed"] = seed
     metrics["finished"] = ordermanager.is_all_orders_completed()
     metrics["sim_steps"] = clock.now()
@@ -71,7 +71,7 @@ def run_experiments(
     results: List[Dict] = []
 
     for i in trange(num_runs, desc="Running episodes"):
-        global_logger.add_runtime_log(f"=== Starting Run {i} with seed {base_seed + i} ===")
+        logger.global_logger.add_runtime_log(f"=== Starting Run {i} with seed {base_seed + i} ===")
         seed = base_seed + i
         print(f"[Run {i}] seed={seed}")
         metrics = run_single_episode(seed)
@@ -166,7 +166,7 @@ def main():
 
     save_csv(results_with_avg, out_path)
     print(f"\nSaved detailed results to {out_path}")
-    global_logger.close()
+    logger.global_logger.close()
 
 
 if __name__ == "__main__":

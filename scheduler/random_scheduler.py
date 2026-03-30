@@ -10,8 +10,7 @@ from core.env import Env
 from core.fault_manager import FaultManager
 from core.agvmanager import AGVManager
 from scheduler.base_scheduler import BaseScheduler
-from utils.logger import global_logger
-
+import utils.logger as logger
 
 class RandomScheduler(BaseScheduler):
     """
@@ -30,7 +29,7 @@ class RandomScheduler(BaseScheduler):
         super().__init__(env, agv_manager, order_manager, map, fault_manager)
 
     def reset(self) -> None:
-        global_logger.add_runtime_log(
+        logger.global_logger.add_runtime_log(
             "[RandomScheduler] Reset called (stateless scheduler, nothing to clear)."
         )
 

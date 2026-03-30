@@ -40,7 +40,7 @@ class SimConfig:
 
     # ==================== Simulation parameters ====================
     order_mode: str = "oneshot"  # Order generation mode
-    total_orders_limit = 150
+    total_orders_limit: int = 150
 
     size2_ratio: float = 0.2
     # Proportion of size-2 orders among all orders, range: 0.0 ~ 1.0

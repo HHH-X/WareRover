@@ -5,8 +5,8 @@ from core.agvmanager import AGVManager
 from core.env import Env
 from core.gridmap import GridMap
 from config.settings import FaultConfig
-from utils.logger import global_logger
 from utils.simulation_clock import clock
+import utils.logger as logger
 
 class FaultManager:
     def __init__(self,fault_config: FaultConfig, agv_manager: AGVManager, env: Env, gridmap: GridMap):
@@ -83,12 +83,12 @@ class FaultManager:
         border_cell = self._find_nearest_border_free_cell(agv_grid_pos)
         path = self.plan_repair_path(agv_grid_pos, border_cell)
         self.gridmap.add_dynamic_occupancy(str(agv_id), path)
-        global_logger.add_runtime_log(f"[FaultManager] AGV {agv_id} failed at step {clock.now()}")
+        logger.global_logger.add_runtime_log(f"[FaultManager] AGV {agv_id} failed at step {clock.now()}")
 
     def repair_agv(self, agv_id: int):
         self.agv_manager.set_agv_status(agv_id, True)
         self.gridmap.remove_dynamic_occupancy(str(agv_id))
-        global_logger.add_runtime_log(f"[FaultManager] AGV {agv_id} repaired at step {clock.now()}")
+        logger.global_logger.add_runtime_log(f"[FaultManager] AGV {agv_id} repaired at step {clock.now()}")
 
     def assign_replacement(self, faulty_agv_id: int, replacement_agv_id: int):
         """Assign a replacement AGV for a faulty one (re-dispatch tasks)."""

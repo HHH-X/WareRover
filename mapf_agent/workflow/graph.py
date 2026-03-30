@@ -1,26 +1,48 @@
-import os
+from __future__ import annotations
+
 import json
-from langgraph.types import interrupt
-from typing import Any, Dict, List, Optional, TypedDict
-from langgraph.graph import END, StateGraph
-from mapf_agent.config import agent_config
-from mapf_agent.llm import chat_completion_json
-from mapf_agent.config import PROJECT_ROOT, PACKAGE_DIR
+import os
 import time
-from mapf_agent.tools.env_runtime_config_io import (
-    apply_runtime_meta_to_sim_classes,
-    build_runtime_meta_payload,
-    save_env_runtime_meta_json,
-)
+from typing import Any, Dict, List, Optional, TypedDict
+
+from langgraph.graph import END, StateGraph
+from langgraph.types import interrupt
+
+from config.settings import SystemConfig
+
+from mapf_agent.agents.algorithm_agent import AlgorithmAgent
+from mapf_agent.agents.map_builder import MapBuilder
+from mapf_agent.agents.map_config_parser import MapConfigParser
+from mapf_agent.agents.optimizer_agent import OptimizerAgent
+from mapf_agent.agents.sim_config_patch_parser import SimConfigPatchParserAgent
+from mapf_agent.config import PACKAGE_DIR, PROJECT_ROOT
+from mapf_agent.llm import chat_completion_json
+from mapf_agent.tools.config_update_utils import *
+
+from mapf_agent.tools.run_simulation import run_simulation
+from mapf_agent.tools.sim_config_validator import validate_sim_config_delta
+from mapf_agent.config import agent_config
+
 
 class MAPFState(TypedDict, total=False):
+    # ===== 输入 =====
     user_input: str
+    user_response: str
+    conversation_history: List[Dict[str, Any]]
+
+    # ===== 意图 =====
+    # intent_generate_map: bool
+    # intent_modify_config: bool
+    # intent_generate_algo: bool
+    # intent_optimize_algo: bool
+
+    intent_run_simulation: bool
 
     map_intent_flag: bool
     map_intent_content: str
 
-    sim_intent_flag: bool
-    sim_intent_content: str
+    config_intent_flag: bool
+    config_intent_content: str
 
     algorithm_text: str
 
@@ -29,61 +51,49 @@ class MAPFState(TypedDict, total=False):
 
     algo_optimize_flag: bool
     algo_optimize_content: str
-    # --- Global turn inputs ---
-    user_input: str
-    last_user_response: str
-    conversation_history: List[Dict[str, Any]]
+    # ===== 地图 =====
+    map_config: dict
+    map_file_path: str
 
-    # --- Routing (this turn) ---
-    route: str  # "env_only" | "algorithm_only" | "both"
-    map_text: str
-    algorithm_text: str
+    # ===== 配置 =====
+    system_config: SystemConfig
+    system_config_patch_path: str
 
-    # --- Environment parsing/validation ---
-    map_config: Dict[str, Any]
-    sim_config_delta: Dict[str, Any]
-    map_valid: bool
-    env_ready: bool
-
-    # --- Environment persistence ---
-    map_output_path: str
-    
-    map_path: str
-    map_json: Dict[str, Any]
-    env_config_path: str
-
-    # --- Algorithm routing/config ---
-    algo_route: str  # "select" | "generate" | "optimize"
-    algo_config: Dict[str, Any]
-    algo_ready: bool
-
-    # --- Simulation / optimization ---
-    metrics: Dict[str, Any]
-    pending_question: str
-    pending_type: str  # "env_missing" | "sim_error" | "optimize_missing" | ...
-    need_user_input: bool
+    # ===== 算法 =====
+    algo_spec: str
     algo_code: str
-    algo_attempts: int
-    algo_history: List[Dict[str, Any]]
-    optimization_history: List[Dict[str, Any]]
-    iteration: int
 
-    # --- Output / control ---
-    output_path: str
-    sim_config_path: str
-    use_llm: bool
+    # ===== 仿真结果 =====
+    metrics: dict
     error: str
 
-    # --- Retry limits ---
-    env_validation_attempts: int
-    env_validation_max_attempts: int
-    map_gen_attempts: int
-    map_gen_max_attempts: int
-    max_iterations: int
-    metrics_ran: bool
+    # ===== 人机交互 =====
+    need_user_input: bool
+    pending_question: str
+    blocking_stage: str
 
-    # --- Termination ---
-    terminate: bool
+    # ===== pipeline状态（推荐）=====
+    map_ready: bool
+    config_ready: bool
+    algo_ready: bool
+
+
+def _as_bool(v: Any) -> bool:
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return bool(v)
+    if isinstance(v, str):
+        s = v.strip().lower()
+        return s in ("true", "t", "yes", "y", "1")
+    return False
+
+def _pick_content(obj: Any) -> str:
+    if isinstance(obj, str):
+        return obj.strip()
+    if obj is None:
+        return ""
+    return str(obj).strip()
 
 def _append_history(state: MAPFState, role: str, content: str) -> List[Dict[str, Any]]:
     history = list(state.get("conversation_history") or [])
@@ -91,41 +101,33 @@ def _append_history(state: MAPFState, role: str, content: str) -> List[Dict[str,
         history.append({"role": role, "content": content})
     return history
 
-def _abs_path(path: str) -> str:
-    path = (path or "").strip()
-    if not path:
-        return ""
-    if os.path.isabs(path):
-        return path
-    from mapf_agent.config import PROJECT_ROOT
-
-    return os.path.normpath(os.path.join(PROJECT_ROOT, path))
+def _term_intent(text: str) -> bool:
+    t = (text or "").strip().lower()
+    return t in ("quit", "exit", "q", "stop", "end", "结束", "退出")
 
 
-def route_input(state: MAPFState) -> Dict[str, Any]:
-    """检测用户输入的意图"""
+def request_user_input(question: str, stage_key: str) -> Dict[str, Any]:
+    return {
+        "need_user_input": True,
+        "pending_question": question or "",
+        "blocking_stage": stage_key,
+    }
+
+
+def check_need_input(state: MAPFState) -> str:
+    if state.get("need_user_input"):
+        return "ask_user"
+    return "continue"
+
+
+
+def intent_parse_node(state: MAPFState) -> Dict[str, Any]:
     user_input = (state.get("user_input") or "").strip()
 
     if user_input.lower() in ("quit", "exit", "q", "stop", "end", "结束", "退出"):
         return {"terminate": True}
     
-    def _as_bool(v: Any) -> bool:
-        if isinstance(v, bool):
-            return v
-        if isinstance(v, (int, float)):
-            return bool(v)
-        if isinstance(v, str):
-            s = v.strip().lower()
-            return s in ("true", "t", "yes", "y", "1")
-        return False
-
-    def _pick_content(obj: Any) -> str:
-        if isinstance(obj, str):
-            return obj.strip()
-        if obj is None:
-            return ""
-        return str(obj).strip()
-    
+    # Compute readiness from existing artifacts
     map_intent_flag = False
     sim_intent_flag = False
     algo_generate_flag = False
@@ -177,111 +179,456 @@ def route_input(state: MAPFState) -> Dict[str, Any]:
     }
 
 
-def generate_map(state: MAPFState) -> Dict[str, Any]:
-    """根据 map_config 生成 map_json 并落地到 map_path（可失败循环）。"""
-    from mapf_agent.agents.map_builder import MapBuilder
-    from mapf_agent.agents.map_config_parser import MapConfigParser
-    from config.settings import SimConfig
-    map_path = agent_config.map_path
+def router_node(state: MAPFState) -> Dict[str, Any]:
+    # Router is a pass-through node; routing decisions are done by route_decision().
+    return {}
 
-    if state.get("map_intent_flag") and state.get("map_intent_content"):
-        attempts = int(state.get("map_gen_attempts", 0)) + 1
-        max_attempts = int(state.get("map_gen_max_attempts", 3))
-        if attempts > max_attempts:
-            return {
-                "terminate": True,
-                "error": "地图生成/校验失败次数超出上限。",
-            }
-        parser = MapConfigParser()
-        parsed = parser.parse(state.get("map_intent_content"))
-        if not parsed.get("complete", False):
-            return {
-                "need_user_input": True,
-                "pending_type": "map_missing",
-                "pending_question": parsed.get("follow_up_question", "请补充地图信息。"),
-            }
-        map_config = parsed.get("map_config", {}) or {}
-        agent = MapBuilder()
-        result = agent.generate(map_config)
-        if not result.get("ok", False):
-            return {"error": result.get("error", "Map generation failed"), "terminate": True}
-        map_json = result["map_json"]
 
-        map_output_path = (state.get("map_output_path") or "").strip()
-        if map_output_path:
-            map_path_out = _abs_path(map_output_path)
-        else:
-            map_dir = os.path.join(PACKAGE_DIR, "generated", "envs")
-            os.makedirs(map_dir, exist_ok=True)
-            ts = time.strftime("%Y%m%d_%H%M%S")
-            map_path_out = os.path.join(map_dir, f"map_generated_{ts}_{attempts}.json")
+def route_decision(state: MAPFState) -> str:
+    if _term_intent(state.get("user_input") or ""):
+        return "end"
 
-        os.makedirs(os.path.dirname(map_path_out) or ".", exist_ok=True)
-        with open(map_path_out, "w", encoding="utf-8") as f:
-            json.dump(map_json, f, indent=2, ensure_ascii=False)
+    # Resume priority
+    if state.get("blocking_stage"):
+        return state["blocking_stage"]
 
+    intent_run = bool(state.get("intent_run_simulation"))
+    intent_map = bool(state.get("intent_generate_map"))
+    intent_cfg = bool(state.get("intent_modify_config"))
+    intent_algo = bool(state.get("intent_generate_algo"))
+    intent_opt = bool(state.get("intent_optimize_algo"))
+
+    map_ready = bool(state.get("map_ready"))
+    config_ready = bool(state.get("config_ready"))
+    algo_ready = bool(state.get("algo_ready"))
+
+    # Automatic completion chain (run)
+    if intent_run:
+        if not map_ready:
+            return "map"
+        if not config_ready:
+            return "config"
+        if not algo_ready:
+            return "algo_gen"
+        return "run"
+
+    # Normal intents: still ensure prerequisites for algo/opt
+    if intent_map and not map_ready:
+        return "map"
+    if intent_cfg and not config_ready:
+        return "config"
+
+    if intent_algo or intent_opt:
+        if not map_ready:
+            return "map"
+        if not config_ready:
+            return "config"
+        if not algo_ready:
+            return "algo_gen"
+        if intent_opt:
+            return "algo_opt"
+        return "run"
+
+    return "end"
+
+
+def _load_json_if_map(path: str) -> Optional[Dict[str, Any]]:
+    path = (path or "").strip()
+    if not path or not os.path.isfile(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _default_algo_code() -> str:
+    # Store a JSON string in algo_code to match the "algo_code: str" contract.
+    default = {
+        "planner_type": getattr(SimConfig.planner_type, "value", SimConfig.planner_type),
+        "scheduler_type": getattr(SimConfig.scheduler_type, "value", SimConfig.scheduler_type),
+    }
+    return json.dumps(default, ensure_ascii=False)
+
+
+def map_generate_node(state: MAPFState) -> Dict[str, Any]:
+
+    # Consume human supplement
+    user_text = state.get("map_intent_content") or ""
+    if state.get("blocking_stage") == "map" and state.get("user_response"):
+        user_text = f"{user_text}\n{state['user_response']}"
+
+    parser = MapConfigParser()
+    try:
+        parsed = parser.parse(user_text)
+    except Exception:
+        # Best-effort regex fallback (private API, but stable within this repo)
+        parsed = parser._parse_regex(user_text)  # type: ignore[attr-defined]
+
+    complete = bool(parsed.get("complete"))
+    if not complete:
+        return request_user_input(parsed.get("follow_up_question", "请补充地图信息。"), "map")
+
+    map_config = parsed.get("map_config", {}) or {}
+
+    existing_path = (state.get("map_file_path") or "").strip()
+    if existing_path and os.path.isfile(existing_path):
         return {
-            "map_gen_attempts": attempts,
             "map_config": map_config,
-            "map_json": map_json,
-            "map_path": map_path_out,
-        }
-
-    # Default map: use current SimConfig.map_file.
-    default_map = getattr(SimConfig, "map_file", "")
-    default_path = _abs_path(str(default_map))
-    if not default_path or not os.path.isfile(default_path):
-        return {"terminate": True, "error": f"默认地图不存在：{default_path}"}
-
-    with open(default_path, "r", encoding="utf-8") as f:
-        map_json = json.load(f)
-
-    return {"map_json": map_json, "map_path": default_path}
-
-
-def sim_parse_validate_build(state: MAPFState) -> Dict[str, Any]:
-    """将自然语言环境描述 -> map_config + sim_config_delta。"""
-    from mapf_agent.agents.sim_config_delta_parser import SimConfigDeltaParserAgent
-    from mapf_agent.tools.sim_config_validator import validate_sim_config_delta
-
-    sim_config_delta: Dict[str, Any] = {}
-    if state.get("sim_intent_flag"):
-        parser = SimConfigDeltaParserAgent()
-        sim_text = state.get("sim_intent_content") or ""
-        sim_config_delta = parser.parse(sim_text) or {}
-    validation = validate_sim_config_delta(sim_config_delta)
-    if not validation.get("ok", False):
-        return {
-            "need_user_input": True,
-            "pending_type": "sim_error",
-            "pending_question": validation.get("pending_question", "仿真配置有误，请按提示修正。"),
+            "map_ready": True,
+            "blocking_stage": "",
+            "user_response": "",
         }
     
-    sim_output_dir = os.path.join(PACKAGE_DIR, "generated", "envs")
-    os.makedirs(sim_output_dir, exist_ok=True)
-    ts = time.strftime("%Y%m%d_%H%M%S")
-    sim_config_path = os.path.join(sim_output_dir, f"sim_config_{ts}.json")
+    result = MapBuilder().generate(map_config)
+    if not result.get("ok", False):
+        return request_user_input(f"地图生成失败：{result.get('error','')}。请补充/修正地图信息。", "map")
 
-    cleaned_delta = validation.get("cleaned_delta", {}) or {}
-    payload = build_runtime_meta_payload(map_file=state.get("map_path"), sim_overrides=cleaned_delta)
-    env_config_path = save_env_runtime_meta_json(payload)
-    apply_runtime_meta_to_sim_classes(env_config_path)
+    map_json = result["map_json"]
+
+    map_dir = os.path.join(PACKAGE_DIR, "generated", "maps")
+    os.makedirs(map_dir, exist_ok=True)
+    ts = time.strftime("%Y%m%d_%H%M%S")
+    map_file_path = os.path.join(map_dir, f"map_user_{ts}.json")
+    os.makedirs(os.path.dirname(map_file_path) or ".", exist_ok=True)
+    with open(map_file_path, "w", encoding="utf-8") as f:
+        json.dump(map_json, f, indent=2, ensure_ascii=False)
+
     return {
-        "sim_config_delta": cleaned_delta,
-        "env_config_path": env_config_path,
-        "need_user_input": False,
+        "map_config": map_config,
+        "map_file_path": map_file_path,
+        "map_ready": True,
+        "blocking_stage": "",
+        "user_response": "",
+        "error": "",
     }
 
 
-# -----------------------------------------------------------------------------
-# Redirect to the new finalized workflow implementation.
-# -----------------------------------------------------------------------------
-from mapf_agent.workflow.graph_final import (  # noqa: E402
-    MAPFState as MAPFState,  # type: ignore[misc]
-    build_graph as _final_build_graph,
-)
+def config_update_node(state: MAPFState) -> Dict[str, Any]:
+
+    # Consume human supplement
+    user_text = state.get("config_intent_content") or ""
+    if state.get("blocking_stage") == "config" and state.get("user_response"):
+        user_text = f"{user_text}\n{state['user_response']}"
+
+    config_patch_parser = SimConfigPatchParserAgent()
+    parsed = config_patch_parser.parse(user_text)
+
+    patch = normalize_to_patch(parsed)
+    if not patch.get("updates"):
+        return request_user_input("未识别到有效配置更新，请按“字段=值”或明确配置语句重试。", "config")
+
+    patch_errors = validate_patch(patch)
+    if patch_errors:
+        err_preview = "；".join(patch_errors[:3])
+        return request_user_input(f"配置 patch 校验失败：{err_preview}。请按合法字段重新输入。", "config")
+
+    system_config = SimConfig()
+    try:
+        apply_patch(system_config, patch)
+    except Exception as e:
+        return request_user_input(f"配置应用失败：{str(e)}。请修正后重试。", "config")
+
+    runtime_dir = os.path.join(PACKAGE_DIR, "generated", "config")
+    os.makedirs(runtime_dir, exist_ok=True)
+    ts = time.strftime("%Y%m%d_%H%M%S")
+    patch_path = os.path.join(runtime_dir, f"sim_patch_{ts}.json")
+    # system_config_path = os.path.join(runtime_dir, f"system_config_{ts}.json")
+    # save_system_config(system_config, system_config_path)
+
+    # serialized_system = serialize(system_config)
+    return {
+        "system_config": system_config,
+        "system_config_patch_path": patch_path,
+        "config_ready": True,
+        "blocking_stage": "",
+        "user_response": "",
+        "error": "",
+    }
 
 
-def build_graph():
-    return _final_build_graph()
+def algo_generate_node(state: MAPFState) -> Dict[str, Any]:
+    use_llm = bool(state.get("use_llm", True))
+
+    user_text = state.get("user_input") or ""
+    if state.get("blocking_stage") == "algo_gen" and state.get("user_response"):
+        user_text = f"{user_text}\n{state['user_response']}"
+
+    map_json = _load_json_if_map(state.get("map_file_path") or "")
+    agent = AlgorithmAgent()
+    algo_cfg = agent.select(user_text, map_info=(map_json.get("map") if map_json else None), use_llm=use_llm) or {}
+
+    # Contract: algo_code is a string. Store the selected config as JSON.
+    algo_code = json.dumps(
+        {
+            "planner_type": algo_cfg.get("planner_type"),
+            "scheduler_type": algo_cfg.get("scheduler_type"),
+            "optimize": algo_cfg.get("optimize", False),
+            "optimize_target": algo_cfg.get("optimize_target", ""),
+            "max_iterations": algo_cfg.get("max_iterations", 3),
+        },
+        ensure_ascii=False,
+    )
+
+    return {
+        "algo_spec": user_text,
+        "algo_code": algo_code,
+        "algo_ready": True,
+        "blocking_stage": "",
+        "user_response": "",
+        "error": "",
+    }
+
+
+def _extract_optimize_target(text: str) -> str:
+    t = (text or "").lower()
+    if any(k in t for k in ("success", "成功率", "task success", "task success rate", "成功")):
+        return "success_rate"
+    if any(k in t for k in ("总步", "总步数", "步数", "sim_steps", "makespan", "总耗时")):
+        return "total_steps"
+    if any(k in t for k in ("冲突", "collision", "冲突次数", "conflict", "conflicts")):
+        return "conflicts"
+    return ""
+
+
+def algo_optimize_node(state: MAPFState) -> Dict[str, Any]:
+    use_llm = bool(state.get("use_llm", True))
+
+    user_text = state.get("user_input") or ""
+    if state.get("blocking_stage") == "algo_opt" and state.get("user_response"):
+        user_text = f"{user_text}\n{state['user_response']}"
+
+    algo_code_raw = state.get("algo_code") or ""
+    algo_cfg: Dict[str, Any] = {}
+    try:
+        algo_cfg = json.loads(algo_code_raw) if algo_code_raw else {}
+    except Exception:
+        algo_cfg = {}
+
+    optimize_target = str(algo_cfg.get("optimize_target") or "").strip() or _extract_optimize_target(user_text)
+    if not optimize_target:
+        return request_user_input("你想优化哪项指标？（例如：成功率、总步数、冲突次数……）", "algo_opt")
+
+    # If metrics not available yet, keep current config and let simulation run.
+    metrics = state.get("metrics") or {}
+    if not metrics:
+        return {"algo_spec": user_text, "blocking_stage": "", "user_response": "", "algo_ready": True}
+
+    current_config = {
+        "planner_type": algo_cfg.get("planner_type", getattr(SimConfig.planner_type, "value", SimConfig.planner_type)),
+        "scheduler_type": algo_cfg.get("scheduler_type", getattr(SimConfig.scheduler_type, "value", SimConfig.scheduler_type)),
+        "optimize_target": optimize_target,
+    }
+    suggestion = OptimizerAgent().suggest(metrics=metrics, current_config=current_config, history=None, use_llm=use_llm) or {}
+    sugg = suggestion.get("suggestion") or {}
+
+    action = sugg.get("action")
+    sim_updates: Dict[str, Any] = {}
+    new_planner = sugg.get("new_planner_type")
+    new_scheduler = sugg.get("new_scheduler_type")
+
+    if action == "change_algorithm":
+        if new_planner:
+            algo_cfg["planner_type"] = new_planner
+        if new_scheduler:
+            algo_cfg["scheduler_type"] = new_scheduler
+    elif action == "adjust_params":
+        sim_updates = sugg.get("param_changes", {}) or {}
+
+    # Apply sim param updates (sim_config is a validated subset dict)
+    next_sim_config = dict(state.get("sim_config") or {})
+    if sim_updates:
+        # Validate as delta updates (best-effort)
+        validation = validate_sim_config_delta(sim_updates)
+        if validation.get("ok", False):
+            next_sim_config.update(validation.get("cleaned_delta", {}) or {})
+
+    next_algo_code = json.dumps(
+        {
+            "planner_type": algo_cfg.get("planner_type"),
+            "scheduler_type": algo_cfg.get("scheduler_type"),
+            "optimize": True,
+            "optimize_target": optimize_target,
+            "max_iterations": algo_cfg.get("max_iterations", 3),
+        },
+        ensure_ascii=False,
+    )
+
+    return {
+        "sim_config": next_sim_config,
+        "algo_code": next_algo_code,
+        "config_ready": True,
+        "algo_ready": True,
+        "blocking_stage": "",
+        "user_response": "",
+        "error": "",
+    }
+
+
+def simulation_node(state: MAPFState) -> Dict[str, Any]:
+    map_file_path = (state.get("map_file_path") or "").strip()
+    if not map_file_path or not os.path.isfile(map_file_path):
+        return {"metrics": {}, "error": "缺少地图文件或地图路径无效。", "algo_ready": False}
+
+    # Resolve algo config from algo_code (fallback to default)
+    algo_cfg: Dict[str, Any] = {}
+    algo_code_raw = (state.get("algo_code") or "").strip()
+    if algo_code_raw:
+        try:
+            algo_cfg = json.loads(algo_code_raw) or {}
+        except Exception:
+            algo_cfg = {}
+
+    if not algo_cfg.get("planner_type") or not algo_cfg.get("scheduler_type"):
+        if state.get("algo_spec"):
+            map_json = _load_json_if_map(map_file_path) or {}
+            algo_cfg = AlgorithmAgent().select(
+                state.get("algo_spec") or "",
+                map_info=(map_json.get("map") if map_json else None),
+                use_llm=bool(state.get("use_llm", True)),
+            )
+        else:
+            algo_cfg = json.loads(_default_algo_code())
+
+    # Resolve sim overrides
+    sim_delta = state.get("sim_config") or {}
+    validation = validate_sim_config_delta(sim_delta if isinstance(sim_delta, dict) else {})
+    cleaned = validation.get("cleaned_delta", {}) if validation.get("ok", False) else (sim_delta if isinstance(sim_delta, dict) else {})
+
+    sim_overrides = dict(cleaned or {})
+    sim_overrides["planner_type"] = algo_cfg.get("planner_type")
+    sim_overrides["scheduler_type"] = algo_cfg.get("scheduler_type")
+
+    payload = build_runtime_meta_payload(map_file=map_file_path, sim_overrides=sim_overrides)
+    env_config_path = save_env_runtime_meta_json(payload)
+    apply_runtime_meta_to_sim_classes(env_config_path)
+
+    out = run_simulation(num_runs=1)
+    if out.get("ok"):
+        return {"metrics": out.get("metrics", {}) or {}, "error": ""}
+    return {"metrics": {}, "error": out.get("error", "Simulation failed")}
+
+
+def result_node(state: MAPFState) -> Dict[str, Any]:
+    metrics = state.get("metrics") or {}
+    error = state.get("error") or ""
+
+    if error:
+        msg = f"仿真失败：{error}\n你想如何处理？（修改地图/换算法/继续优化/结束）"
+    else:
+        msg = f"仿真结果：{metrics}\n你想继续优化或修改吗？（继续优化/换算法/换地图/结束）"
+
+    payload = {
+        "question": msg,
+        "pending_type": "result_decision",
+        "metrics": metrics,
+        "type": "result_decision",
+    }
+    decision = interrupt(payload)
+    decision_str = str(decision).strip()
+
+    return {
+        "user_input": decision_str,
+        "user_response": decision_str,
+        "need_user_input": False,
+        "pending_question": "",
+        "blocking_stage": "",
+        # Clear intents to avoid污染；下一轮 intent_parse_node 重新解析 decision_str
+        "intent_generate_map": False,
+        "intent_modify_config": False,
+        "intent_generate_algo": False,
+        "intent_optimize_algo": False,
+        "intent_run_simulation": False,
+    }
+
+
+def build_graph() -> StateGraph:
+    graph = StateGraph(MAPFState)
+
+    # ======================
+    # 节点注册
+    # ======================
+    graph.add_node("intent_parse", intent_parse_node)
+    graph.add_node("router", router_node)
+
+    graph.add_node("map_generate", map_generate_node)
+    graph.add_node("config_update", config_update_node)
+
+    graph.add_node("algo_generate", algo_generate_node)
+    graph.add_node("algo_optimize", algo_optimize_node)
+
+    graph.add_node("simulation", simulation_node)
+    graph.add_node("result", result_node)
+
+    graph.add_node("ask_user", _ask_user_node)
+
+    # ======================
+    # 主入口
+    # ======================
+    graph.set_entry_point("intent_parse")
+    graph.add_edge("intent_parse", "router")
+
+    # ======================
+    # Router 分发
+    # ======================
+    graph.add_conditional_edges(
+        "router",
+        route_decision,
+        {
+            "map": "map_generate",
+            "config": "config_update",
+            "algo_gen": "algo_generate",
+            "algo_opt": "algo_optimize",
+            "run": "simulation",
+            "end": END,
+        },
+    )
+
+    # ======================
+    # 每个阶段后插入“中断检测”
+    # ======================
+    def add_stage_flow(node_name: str, next_node: str) -> None:
+        graph.add_conditional_edges(
+            node_name,
+            check_need_input,
+            {
+                "ask_user": "ask_user",
+                "continue": next_node,
+            },
+        )
+
+    add_stage_flow("map_generate", "config_update")
+    add_stage_flow("config_update", "router")
+    add_stage_flow("algo_generate", "simulation")
+    add_stage_flow("algo_optimize", "simulation")
+
+    # ======================
+    # ask_user → 回 router
+    # ======================
+    graph.add_edge("ask_user", "router")
+
+    # ======================
+    # 仿真 → 结果
+    # ======================
+    graph.add_edge("simulation", "result")
+
+    # ======================
+    # 结果 → 下一轮
+    # ======================
+    graph.add_edge("result", "intent_parse")
+
+    return graph
+
+
+def _ask_user_node(state: MAPFState) -> Dict[str, Any]:
+    question = state.get("pending_question") or ""
+    stage_key = state.get("blocking_stage") or ""
+    payload = {"question": question, "pending_type": stage_key, "type": "user_question"}
+    answer = interrupt(payload)
+    answer_str = str(answer).strip()
+    return {
+        "user_response": answer_str,
+        "need_user_input": False,
+    }
 

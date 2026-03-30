@@ -1,5 +1,5 @@
 # simulation_clock.py
-from utils.logger import global_logger
+import utils.logger as logger
 
 class SimulationClock:
     def __init__(self):
@@ -13,7 +13,7 @@ class SimulationClock:
 
     def reset(self):
         self._step = 0
-        global_logger.add_runtime_log("[SimClock] Clock has been reset.")
+        logger.global_logger.add_runtime_log("[SimClock] Clock has been reset.")
 
 
 clock = SimulationClock()
