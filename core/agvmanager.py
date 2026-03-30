@@ -21,7 +21,7 @@ class AGVManager:
             wait_id = agv_id
             agv_size = agv_entry.get("size", 1)
             init_grid = wait_zones[wait_id]
-            agv = AGV(agv_id=agv_id, size=agv_size, init_grid_pos=init_grid, map_inst=map_inst, order_manager=order_manager)
+            agv = AGV(sim_config=sim_config, agv_id=agv_id, size=agv_size, init_grid_pos=init_grid, map_inst=map_inst, order_manager=order_manager)
             agv_list.append(agv)
         self._agvs: Dict[int, AGV] = {agv.id: agv for agv in agv_list}
         self.idle_agvs: Set[int] = {agv.id for agv in agv_list}

@@ -1,7 +1,7 @@
 from typing import List, Dict
 
 from core.order import Order
-from config.settings import SimConfig, ContinuousParetoConfig
+from config.settings import SystemConfig, ContinuousParetoConfig
 from order_strategies.order_generation_strategy import OrderGenerationStrategy
 
 
@@ -11,8 +11,8 @@ class ContinuousParetoStrategy(OrderGenerationStrategy):
     Generates batches at fixed intervals; SKU choice is biased toward hot SKUs per size.
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, system_config: SystemConfig):
+        super().__init__(system_config)
         self.config = self.system_config.continuous_pareto_config
         self.next_generation_step = 0
         self.all_goods_ids_by_size = self._prepare_all_goods_ids_by_size()

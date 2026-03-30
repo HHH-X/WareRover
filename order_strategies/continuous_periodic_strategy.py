@@ -1,13 +1,13 @@
 import math
 from order_strategies.order_generation_strategy import OrderGenerationStrategy
-from config.settings import SimConfig, ContinuousPeriodicConfig
+from config.settings import SystemConfig, ContinuousPeriodicConfig
 from core.gridmap import GridMap
 from core.order import Order
 from typing import List
 
 class ContinuousPeriodicStrategy(OrderGenerationStrategy):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, system_config: SystemConfig):
+        super().__init__(system_config)
         self.next_generation_step = 0
 
     def _current_multiplier(self, current_step: int) -> float:

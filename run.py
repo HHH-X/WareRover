@@ -17,7 +17,7 @@ from core.env import Env
 from core.simulator import Simulator
 from core.data_generator import generate_send_data
 from core.fault_manager import FaultManager
-from utils.logger import global_logger,init_global_logger
+import utils.logger as logger
 import websockets
 from utils.simulation_clock import clock
 from utils.algorithm_factory import build_scheduler, build_planner
@@ -45,9 +45,10 @@ async def simulator_loop(websocket, message_queue):
     print("Simulation begin")
 
     system_config = SystemConfig()
+    logger.init_global_logger(system_config.sim_config)
     init_default_registries()
     grid_map = GridMap(system_config.sim_config)
-    ordermanager = OrderManager(system_config.sim_config, grid_map)
+    ordermanager = OrderManager(system_config, grid_map)
     agv_manager = AGVManager(system_config.sim_config, grid_map, ordermanager)
     env = Env(agv_manager, grid_map, ordermanager)
     fault_manager = FaultManager(system_config.fault_config, agv_manager, env, grid_map)
@@ -64,7 +65,6 @@ async def simulator_loop(websocket, message_queue):
     simulator = Simulator(system_config, grid_map, agv_manager, ordermanager, env, scheduler, planner)
 
     init_data = generate_send_data(grid_map, agv_manager, ordermanager, data_type="init")
-    init_global_logger(system_config.sim_config)
     await websocket.send(json.dumps(init_data))
 
     while RUNNING:

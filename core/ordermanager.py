@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Tuple, Optional, Generator
 import random
 import json
-from config.settings import SimConfig, OneShotConfig, ContinuousConstantConfig, ContinuousPeriodicConfig
+from config.settings import SystemConfig, OneShotConfig, ContinuousConstantConfig, ContinuousPeriodicConfig
 from core.gridmap import GridMap
 from order_strategies import (
     OrderGenerationStrategy,
@@ -17,10 +17,10 @@ from core.order import Order
 from utils.simulation_clock import clock
 
 class OrderManager:
-    def __init__(self, sim_config: SimConfig, map_inst: GridMap):
-        self.sim_config = sim_config
+    def __init__(self, system_config: SystemConfig, map_inst: GridMap):
+        self.system_config = system_config
         self.map = map_inst
-        self.total_orders_limit = self.sim_config.total_orders_limit
+        self.total_orders_limit = self.system_config.sim_config.total_orders_limit
 
         self.all_orders: List[Order] = []
         self.unprocessed_orders: Dict[int, Order] = {}
@@ -32,17 +32,17 @@ class OrderManager:
         self.strategy = self._create_strategy()
 
     def _create_strategy(self) -> OrderGenerationStrategy:
-        mode = self.sim_config.order_mode
+        mode = self.system_config.sim_config.order_mode
         if mode == "oneshot":
-            return OneShotStrategy()
+            return OneShotStrategy(self.system_config)
         elif mode == "continuous_constant":
-            return ContinuousConstantStrategy()
+            return ContinuousConstantStrategy(self.system_config)
         elif mode == "continuous_periodic":
-            return ContinuousPeriodicStrategy()
+            return ContinuousPeriodicStrategy(self.system_config)
         elif mode == "continuous_pareto":
-            return ContinuousParetoStrategy()
+            return ContinuousParetoStrategy(self.system_config)
         elif mode == "continuous_burst":
-            return ContinuousBurstStrategy()
+            return ContinuousBurstStrategy(self.system_config)
         else:
             raise ValueError(f"Unknown order_mode: {mode}")
         
@@ -132,7 +132,7 @@ class OrderManager:
         for order_id, order in self.processing_orders.items():
             if order.start_processing_step is None:
                 continue
-            if current_step - order.start_processing_step > SimConfig.order_processing_timeout:
+            if current_step - order.start_processing_step > self.system_config.sim_config.order_processing_timeout:
                 timeout_orders.append(order_id)
 
         for order_id in timeout_orders:

@@ -3,7 +3,7 @@ from typing import Dict, Any, Tuple
 from core.gridmap import GridMap
 from core.agvmanager import AGVManager
 from core.ordermanager import OrderManager
-from utils.logger import global_logger
+import utils.logger as logger
 from utils.simulation_clock import clock
 
 def to_real_position(pos: Tuple[int, int], size: int = 1) -> Tuple[float, float]:
@@ -74,7 +74,7 @@ def generate_send_data(map: GridMap, agvmanager: AGVManager, ordermanager: Order
                 "completed": len(ordermanager.finished_orders),
             },
             "logs": {"generation": [], "assignment": [], "completion": []},
-            "agv_progress": global_logger.get_agv_order_progress(agvmanager),
+            "agv_progress": logger.global_logger.get_agv_order_progress(agvmanager),
         }
 
     elif data_type == "update":

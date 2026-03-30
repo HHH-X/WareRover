@@ -2,12 +2,12 @@ from typing import List, Dict, Optional, Tuple
 import random
 from core.gridmap import GridMap
 from core.order import Order
-from config.settings import SimConfig, ContinuousConstantConfig
+from config.settings import SystemConfig, ContinuousConstantConfig
 from order_strategies.order_generation_strategy import OrderGenerationStrategy
 
 class ContinuousConstantStrategy(OrderGenerationStrategy):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, system_config: SystemConfig):
+        super().__init__(system_config)
         self.next_generation_step = 0
 
     def update(self, current_step: int) -> List[Order]:
