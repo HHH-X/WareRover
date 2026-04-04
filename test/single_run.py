@@ -10,13 +10,13 @@ import random
 import numpy as np
 from typing import List, Dict
 
-from config.settings import SimConfig,FaultConfig
+from config.settings import SystemConfig
 from core.gridmap import GridMap
 from core.ordermanager import OrderManager
 from core.agvmanager import AGVManager
 from core.env import Env
 from core.simulator import Simulator
-from utils.algorithm_factory import build_scheduler, build_planner
+from utils.algorithm_registry import init_default_registries, PlannerRegistry, SchedulerRegistry
 from core.fault_manager import FaultManager
 import utils.logger as logger
 from utils.simulation_clock import clock
@@ -27,20 +27,27 @@ def run_single_episode(seed: int = 42) -> Dict:
     """Run one full simulation and return final metrics."""
     random.seed(seed)
     np.random.seed(seed)
-    SimConfig.order_seed = seed
-    FaultConfig.fault_seed = seed
+    system_config = SystemConfig()
+    system_config.sim_config.order_seed = seed
+    system_config.fault_config.fault_seed = seed
+    logger.init_global_logger(system_config.sim_config)
+    init_default_registries()
     clock.reset()
     logger.global_logger.reset()
-    grid_map = GridMap()
-    ordermanager = OrderManager(grid_map)
-    agv_manager = AGVManager(grid_map, ordermanager)
+    grid_map = GridMap(system_config.sim_config)
+    ordermanager = OrderManager(system_config, grid_map)
+    agv_manager = AGVManager(system_config.sim_config, grid_map, ordermanager)
     env = Env(agv_manager, grid_map, ordermanager)
-    fault_manager = FaultManager(agv_manager, env, grid_map)
+    fault_manager = FaultManager(system_config.fault_config, agv_manager, env, grid_map)
 
-    scheduler = build_scheduler(env,agv_manager,ordermanager, grid_map, fault_manager)
-    planner = build_planner(env,agv_manager, ordermanager, grid_map, fault_manager)
+    scheduler_cls = SchedulerRegistry.get(system_config.sim_config.scheduler_type)
+    scheduler = scheduler_cls(env, agv_manager, ordermanager, grid_map, fault_manager)
+
+    planner_cls = PlannerRegistry.get(system_config.sim_config.planner_type)
+    planner = planner_cls(env, agv_manager, ordermanager, grid_map, fault_manager)
 
     simulator = Simulator(
+        system_config,
         grid_map,
         agv_manager,
         ordermanager,
@@ -50,7 +57,7 @@ def run_single_episode(seed: int = 42) -> Dict:
     )
     while (
         not ordermanager.is_all_orders_completed()
-        and clock.now() < SimConfig.max_steps
+        and clock.now() < system_config.sim_config.max_steps
     ):
         simulator.step()
         fault_manager.step()
