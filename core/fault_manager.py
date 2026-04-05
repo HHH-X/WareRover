@@ -1,20 +1,28 @@
 # core/fault_manager.py
-from typing import Optional, Dict, Tuple, List
+from __future__ import annotations
+
+from typing import Optional, Dict, Tuple, List, TYPE_CHECKING
 import random
-from core.agvmanager import AGVManager
-from core.env import Env
-from core.gridmap import GridMap
-from config.settings import FaultConfig
-from utils.simulation_clock import clock
-import utils.logger as logger
+
+if TYPE_CHECKING:
+    from utils.simulation_context import SimulationContext
+
 
 class FaultManager:
-    def __init__(self,fault_config: FaultConfig, agv_manager: AGVManager, env: Env, gridmap: GridMap):
-        self.fault_config = fault_config
-        self.agv_manager = agv_manager
-        self.gridmap = gridmap
-        self.env = env
-        env_info = env.get_env_info()
+    def __init__(self, ctx: SimulationContext):
+        assert (
+            ctx.system_config is not None
+            and ctx.agv_manager is not None
+            and ctx.env is not None
+            and ctx.grid_map is not None
+        )
+        self.fault_config = ctx.system_config.fault_config
+        self.agv_manager = ctx.agv_manager
+        self.gridmap = ctx.grid_map
+        self.env = ctx.env
+        self.logger = ctx.logger
+        self.clock = ctx.clock
+        env_info = self.env.get_env_info()
         self.static_grid = env_info['static_grid']
         self.reset()
 
@@ -83,12 +91,12 @@ class FaultManager:
         border_cell = self._find_nearest_border_free_cell(agv_grid_pos)
         path = self.plan_repair_path(agv_grid_pos, border_cell)
         self.gridmap.add_dynamic_occupancy(str(agv_id), path)
-        logger.global_logger.add_runtime_log(f"[FaultManager] AGV {agv_id} failed at step {clock.now()}")
+        self.logger.add_runtime_log(f"[FaultManager] AGV {agv_id} failed at step {self.clock.now()}")
 
     def repair_agv(self, agv_id: int):
         self.agv_manager.set_agv_status(agv_id, True)
         self.gridmap.remove_dynamic_occupancy(str(agv_id))
-        logger.global_logger.add_runtime_log(f"[FaultManager] AGV {agv_id} repaired at step {clock.now()}")
+        self.logger.add_runtime_log(f"[FaultManager] AGV {agv_id} repaired at step {self.clock.now()}")
 
     def assign_replacement(self, faulty_agv_id: int, replacement_agv_id: int):
         """Assign a replacement AGV for a faulty one (re-dispatch tasks)."""

@@ -1,15 +1,24 @@
-from typing import Dict, Tuple, Set, List
-from core.gridmap import GridMap
-from core.agvmanager import AGVManager
+from __future__ import annotations
+
+from typing import Dict, Tuple, Set, List, TYPE_CHECKING
 from core.agv import StepInfo
-from core.ordermanager import OrderManager
+
+if TYPE_CHECKING:
+    from utils.simulation_context import SimulationContext
+
 epsilon = 1e-4
 
+
 class Env:
-    def __init__(self, agv_manager: AGVManager, map_inst: GridMap, order_manager: OrderManager):
-        self.agv_manager = agv_manager
-        self.map = map_inst
-        self.order_manager = order_manager
+    def __init__(self, ctx: SimulationContext):
+        assert (
+            ctx.agv_manager is not None
+            and ctx.grid_map is not None
+            and ctx.order_manager is not None
+        )
+        self.agv_manager = ctx.agv_manager
+        self.map = ctx.grid_map
+        self.order_manager = ctx.order_manager
 
     def get_env_info(self):
         static_grid = self.map.static_grid

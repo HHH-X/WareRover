@@ -1,9 +1,11 @@
 # simulation_clock.py
-import utils.logger as logger
+from typing import Optional
+from utils.simulation_context import SimulationContext
 
 class SimulationClock:
-    def __init__(self):
+    def __init__(self, ctx: SimulationContext):
         self._step = 0
+        self._logger = ctx.logger
 
     def tick(self, n: int = 1):
         self._step += n
@@ -13,7 +15,4 @@ class SimulationClock:
 
     def reset(self):
         self._step = 0
-        logger.global_logger.add_runtime_log("[SimClock] Clock has been reset.")
-
-
-clock = SimulationClock()
+        self._logger.add_runtime_log("[SimClock] Clock has been reset.")

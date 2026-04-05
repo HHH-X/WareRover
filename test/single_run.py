@@ -10,16 +10,18 @@ import random
 import numpy as np
 from typing import List, Dict
 
-from config.settings import SystemConfig
-from core.gridmap import GridMap
-from core.ordermanager import OrderManager
-from core.agvmanager import AGVManager
+from config.settings import SystemConfig, SimConfig
 from core.env import Env
-from core.simulator import Simulator
-from utils.algorithm_registry import init_default_registries, PlannerRegistry, SchedulerRegistry
 from core.fault_manager import FaultManager
-import utils.logger as logger
-from utils.simulation_clock import clock
+from core.gridmap import GridMap
+from core.agvmanager import AGVManager
+from core.ordermanager import OrderManager
+from core.simulator import Simulator
+from utils.algorithm_factory import build_planner, build_scheduler
+from utils.algorithm_registry import init_default_registries
+from utils.logger import GlobalLogger
+from utils.simulation_clock import SimulationClock
+from utils.simulation_context import SimulationContext
 from tqdm import trange
 
 
@@ -27,44 +29,33 @@ def run_single_episode(seed: int = 42) -> Dict:
     """Run one full simulation and return final metrics."""
     random.seed(seed)
     np.random.seed(seed)
-    system_config = SystemConfig()
-    system_config.sim_config.order_seed = seed
-    system_config.fault_config.fault_seed = seed
-    logger.init_global_logger(system_config.sim_config)
+    ctx = SimulationContext()
+    ctx.system_config = SystemConfig()
+    ctx.system_config.sim_config.order_seed = seed
+    ctx.system_config.fault_config.fault_seed = seed
     init_default_registries()
-    clock.reset()
-    logger.global_logger.reset()
-    grid_map = GridMap(system_config.sim_config)
-    ordermanager = OrderManager(system_config, grid_map)
-    agv_manager = AGVManager(system_config.sim_config, grid_map, ordermanager)
-    env = Env(agv_manager, grid_map, ordermanager)
-    fault_manager = FaultManager(system_config.fault_config, agv_manager, env, grid_map)
 
-    scheduler_cls = SchedulerRegistry.get(system_config.sim_config.scheduler_type)
-    scheduler = scheduler_cls(env, agv_manager, ordermanager, grid_map, fault_manager)
+    ctx.logger = GlobalLogger(ctx)
+    ctx.clock = SimulationClock(ctx)
+    ctx.grid_map = GridMap(ctx)
+    ctx.order_manager = OrderManager(ctx)
+    ctx.agv_manager = AGVManager(ctx)
+    ctx.env = Env(ctx)
+    ctx.fault_manager = FaultManager(ctx)
+    ctx.scheduler = build_scheduler(ctx)
+    ctx.planner = build_planner(ctx)
+    ctx.simulator = Simulator(ctx)
 
-    planner_cls = PlannerRegistry.get(system_config.sim_config.planner_type)
-    planner = planner_cls(env, agv_manager, ordermanager, grid_map, fault_manager)
-
-    simulator = Simulator(
-        system_config,
-        grid_map,
-        agv_manager,
-        ordermanager,
-        env,
-        scheduler,
-        planner,
-    )
     while (
-        not ordermanager.is_all_orders_completed()
-        and clock.now() < system_config.sim_config.max_steps
+        not ctx.order_manager.is_all_orders_completed()
+        and ctx.clock.now() < ctx.system_config.sim_config.max_steps
     ):
-        simulator.step()
-        fault_manager.step()
-    metrics = logger.global_logger.get_final_metrics(clock.now())
+        ctx.simulator.step()
+        ctx.fault_manager.step()
+    metrics = ctx.logger.get_final_metrics(ctx.clock.now())
     metrics["seed"] = seed
-    metrics["finished"] = ordermanager.is_all_orders_completed()
-    metrics["sim_steps"] = clock.now()
+    metrics["finished"] = ctx.order_manager.is_all_orders_completed()
+    metrics["sim_steps"] = ctx.clock.now()
 
     return metrics
 
@@ -76,6 +67,11 @@ def run_experiments(
     """Run num_runs episodes with seeds base_seed, base_seed+1, ...; return list of metrics."""
 
     results: List[Dict] = []
+    _bootstrap = SimulationContext()
+    _bootstrap.system_config = SystemConfig()
+    _bootstrap.logger = GlobalLogger(_bootstrap.system_config.sim_config)
+    _bootstrap.clock = SimulationClock(_bootstrap.logger)
+    bind_context_runtime(_bootstrap)
 
     for i in trange(num_runs, desc="Running episodes"):
         logger.global_logger.add_runtime_log(f"=== Starting Run {i} with seed {base_seed + i} ===")

@@ -9,25 +9,27 @@ from core.ordermanager import OrderManager, Order
 from core.env import Env
 from core.fault_manager import FaultManager
 from core.agvmanager import AGVManager
+from utils.simulation_context import SimulationContext
 
 if TYPE_CHECKING:
     from planner.base_planner import BasePlanner
 
 class BaseScheduler(ABC):
     
-    def __init__(
-        self, 
-        env: Env,
-        agv_manager: AGVManager,
-        order_manager: OrderManager, 
-        map: GridMap,
-        fault_manager: FaultManager
-    ):
-        self.env = env
-        self.agv_manager = agv_manager
-        self.order_manager = order_manager
-        self.map = map
-        self.fault_manager = fault_manager
+    def __init__(self, ctx: SimulationContext):
+        assert (
+            ctx.env is not None
+            and ctx.agv_manager is not None
+            and ctx.order_manager is not None
+            and ctx.grid_map is not None
+            and ctx.fault_manager is not None
+        )
+        self.ctx = ctx
+        self.env = ctx.env
+        self.agv_manager = ctx.agv_manager
+        self.order_manager = ctx.order_manager
+        self.map = ctx.grid_map
+        self.fault_manager = ctx.fault_manager
 
     @abstractmethod
     def assign_tasks(

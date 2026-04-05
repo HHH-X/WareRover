@@ -3,24 +3,13 @@ from typing import Dict, Tuple, List
 import heapq
 from collections import defaultdict
 from planner.base_planner import BasePlanner
-from core.env import Env
-from core.gridmap import GridMap
-from core.ordermanager import OrderManager
-from core.fault_manager import FaultManager
-from core.agvmanager import AGVManager
+from utils.simulation_context import SimulationContext
 
 MAX_CBS_NODES = 800
 
 class FixedWindowCBSPlanner(BasePlanner):
-    def __init__(
-        self, 
-        env: Env,
-        agv_manager: AGVManager,
-        order_manager: OrderManager, 
-        map: GridMap,
-        fault_manager: FaultManager
-    ):
-        super().__init__(env, agv_manager, order_manager, map, fault_manager)
+    def __init__(self, ctx: SimulationContext):
+        super().__init__(ctx)
         self.window_size = 10
 
     def plan(

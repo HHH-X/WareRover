@@ -10,18 +10,19 @@ import random
 import numpy as np
 
 from config.settings import SystemConfig
-from core.agvmanager import AGVManager
-from core.gridmap import GridMap
-from core.ordermanager import OrderManager
-from core.env import Env
-from core.simulator import Simulator
 from core.data_generator import generate_send_data
+from core.env import Env
 from core.fault_manager import FaultManager
-import utils.logger as logger
+from core.gridmap import GridMap
+from core.agvmanager import AGVManager
+from core.ordermanager import OrderManager
+from core.simulator import Simulator
 import websockets
-from utils.simulation_clock import clock
-from utils.algorithm_factory import build_scheduler, build_planner
-from utils.algorithm_registry import init_default_registries, PlannerRegistry, SchedulerRegistry
+from utils.algorithm_factory import build_planner, build_scheduler
+from utils.algorithm_registry import init_default_registries
+from utils.logger import GlobalLogger
+from utils.simulation_clock import SimulationClock
+from utils.simulation_context import SimulationContext
 
 STATE = {
     "paused": True,
@@ -44,61 +45,63 @@ async def simulator_loop(websocket, message_queue):
     global NEED_RESET
     print("Simulation begin")
 
-    system_config = SystemConfig()
-    logger.init_global_logger(system_config.sim_config)
+    ctx = SimulationContext()
+    ctx.system_config = SystemConfig()
     init_default_registries()
-    grid_map = GridMap(system_config.sim_config)
-    ordermanager = OrderManager(system_config, grid_map)
-    agv_manager = AGVManager(system_config.sim_config, grid_map, ordermanager)
-    env = Env(agv_manager, grid_map, ordermanager)
-    fault_manager = FaultManager(system_config.fault_config, agv_manager, env, grid_map)
 
-    # scheduler = build_scheduler(system_config, env, agv_manager, ordermanager, grid_map, fault_manager)
-    # planner = build_planner(system_config, env, agv_manager, ordermanager, grid_map, fault_manager)
+    ctx.logger = GlobalLogger(ctx)
+    ctx.clock = SimulationClock(ctx)
+    ctx.grid_map = GridMap(ctx)
+    ctx.order_manager = OrderManager(ctx)
+    ctx.agv_manager = AGVManager(ctx)
+    ctx.env = Env(ctx)
+    ctx.fault_manager = FaultManager(ctx)
+    ctx.scheduler = build_scheduler(ctx)
+    ctx.planner = build_planner(ctx)
+    ctx.simulator = Simulator(ctx)
 
-    scheduler_cls = SchedulerRegistry.get(system_config.sim_config.scheduler_type)
-    scheduler = scheduler_cls(env, agv_manager, ordermanager, grid_map, fault_manager)
-
-    planner_cls = PlannerRegistry.get(system_config.sim_config.planner_type)
-    planner = planner_cls(env, agv_manager, ordermanager, grid_map, fault_manager)
-
-    simulator = Simulator(system_config, grid_map, agv_manager, ordermanager, env, scheduler, planner)
-
-    init_data = generate_send_data(grid_map, agv_manager, ordermanager, data_type="init")
+    init_data = generate_send_data(
+        ctx,
+        data_type="init",
+    )
     await websocket.send(json.dumps(init_data))
 
     while RUNNING:
         if NEED_RESET:
             print("Resetting simulation...")
-            clock.reset()
-            env.reset()
-            scheduler.reset()
-            logger.global_logger.reset()
+            ctx.clock.reset()
+            ctx.env.reset()
+            ctx.scheduler.reset()
+            ctx.logger.reset()
             NEED_RESET = False
             print("Reset complete.")
             continue
         while (RUNNING
                and not NEED_RESET
-               and not ordermanager.is_all_orders_completed()
-               and clock.now() < system_config.sim_config.max_steps):
+               and not ctx.order_manager.is_all_orders_completed()
+               and ctx.clock.now() < ctx.system_config.sim_config.max_steps):
 
             if not STATE["paused"] or STATE["step_trigger"]:
-                simulator.step()
+                ctx.simulator.step()
                 STATE["step_trigger"] = False
-                step_data = generate_send_data(grid_map, agv_manager, ordermanager, data_type="update")
+                step_data = generate_send_data(
+                    ctx,
+                    data_type="update",
+                )
                 await websocket.send(json.dumps(step_data))
 
             while not message_queue.empty():
                 msg = await message_queue.get()
-                fault_manager.handle_message(msg)
+                ctx.fault_manager.handle_message(msg)
                 print("Message processed.")
 
             await asyncio.sleep(0.1)
 
         if not NEED_RESET:
             print("All orders completed or max steps reached; waiting for reset or stop.")
-            logger.global_logger.add_runtime_log(logger.global_logger.get_final_metrics(clock.now()))
-            print(logger.global_logger.get_final_metrics(clock.now()))
+            final = ctx.logger.get_final_metrics(ctx.clock.now())
+            ctx.logger.add_runtime_log(str(final))
+            print(final)
 
         while RUNNING and not NEED_RESET:
             await asyncio.sleep(0.1)
@@ -125,7 +128,6 @@ async def ws_handler(websocket):
                     STATE["step_trigger"] = True
                 elif cmd == "stop":
                     print("Stop command received, exiting...")
-                    logger.global_logger.close()
                     RUNNING = False
                     STATE["paused"] = True
                     await websocket.send(json.dumps({"status": "stopping"}))

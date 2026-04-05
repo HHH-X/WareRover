@@ -1,15 +1,26 @@
-from typing import Deque, List, Tuple, Optional, Dict, Set, Generator
+from __future__ import annotations
+
+from typing import Deque, List, Tuple, Optional, Dict, Set, Generator, TYPE_CHECKING
 from core.agv import AGV,AGVAction, StepInfo
-from core.gridmap import GridMap
-from core.ordermanager import OrderManager
-from config.settings import SimConfig
 import json
-import utils.logger as logger
+
+if TYPE_CHECKING:
+    from utils.simulation_context import SimulationContext
+
 
 class AGVManager:
-    def __init__(self, sim_config: SimConfig, map_inst: GridMap, order_manager:OrderManager):
-        self.sim_config = sim_config
-        with open(sim_config.map_file, "r") as f:
+    def __init__(self, ctx: SimulationContext):
+        assert (
+            ctx.system_config is not None
+            and ctx.grid_map is not None
+            and ctx.order_manager is not None
+            and ctx.logger is not None
+        )
+        self.sim_config = ctx.system_config.sim_config
+        self.logger = ctx.logger
+        map_inst = ctx.grid_map
+        order_manager = ctx.order_manager
+        with open(self.sim_config.map_file, "r") as f:
             data = json.load(f)
 
         agv_data = data.get("agvs", [])
@@ -20,7 +31,7 @@ class AGVManager:
             wait_id = agv_id
             agv_size = agv_entry.get("size", 1)
             init_grid = wait_zones[wait_id]
-            agv = AGV(sim_config=sim_config, agv_id=agv_id, size=agv_size, init_grid_pos=init_grid, map_inst=map_inst, order_manager=order_manager)
+            agv = AGV(sim_config=self.sim_config, agv_id=agv_id, size=agv_size, init_grid_pos=init_grid, map_inst=map_inst, order_manager=order_manager)
             agv_list.append(agv)
         self._agvs: Dict[int, AGV] = {agv.id: agv for agv in agv_list}
         self.idle_agvs: Set[int] = {agv.id for agv in agv_list}
@@ -109,7 +120,7 @@ class AGVManager:
         agv = self._agvs[agv_id]
         if agv.rest_target is None or agv.grid_pos != agv.rest_target:
             self.block_counts[agv_id] += 1
-            logger.global_logger.record_agv_collision(agv_id)
+            self.logger.record_agv_collision(agv_id)
 
     def reset_block_count(self, agv_id: int):
         self.block_counts[agv_id] = 0
@@ -181,5 +192,5 @@ class AGVManager:
         self.need_rest_agvs = all_agv_ids.copy()
         self.need_replan_agvs = all_agv_ids.copy()
         self.block_counts = {agv_id: 0 for agv_id in all_agv_ids}
-        logger.global_logger.add_runtime_log("[AGVManager] All AGVs have been reset to initial states.")
+        self.logger.add_runtime_log("[AGVManager] All AGVs have been reset to initial states.")
 

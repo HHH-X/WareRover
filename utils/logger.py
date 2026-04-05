@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Optional, Tuple, TYPE_CHECKING
 import time
 from contextlib import contextmanager
-from config.settings import SimConfig
+from utils.simulation_context import SimulationContext
 from core.order import Order
 import os
 
@@ -9,18 +9,9 @@ if TYPE_CHECKING:
     from core.agvmanager import AGVManager
 
 class GlobalLogger:
-    """Global logger singleton for single-threaded simulation."""
 
-    _instance = None
-
-    def __new__(cls, config: Optional[SimConfig] = None):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._init(config)
-        return cls._instance
-
-    def _init(self, config: Optional[SimConfig] = None):
-        self.config = config
+    def __init__(self, ctx: SimulationContext):
+        self.config = ctx.system_config.sim_config
         self.reset()
 
     # ================= Reset =================
@@ -284,12 +275,3 @@ class GlobalLogger:
         if self._log_file:
             self._log_file.close()
             self._log_file = None
-
-
-# Global instance
-global_logger: Optional[GlobalLogger] = None
-
-def init_global_logger(config: SimConfig) -> GlobalLogger:
-    global global_logger
-    global_logger = GlobalLogger(config)
-    return global_logger

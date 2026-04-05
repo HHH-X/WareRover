@@ -1,19 +1,19 @@
 # 文件名: dhc_agv_wrapper.py
 import numpy as np
 from typing import List, Dict, Tuple
-from config.settings import SimConfig
+from config.settings import SimConfig, SystemConfig
 from core.agv import StepInfo
-from core.agvmanager import AGVManager
+from core.env import Env
 from core.gridmap import GridMap
 from core.ordermanager import OrderManager
-from core.env import Env
+from core.agvmanager import AGVManager
 from core.simulator import Simulator
 from core.data_generator import generate_send_data
 from core.fault_manager import FaultManager
 from scheduler.random_scheduler import RandomScheduler
-from scheduler.TA_scheduler import TAScheduler
-from planner.astar_planner import AStarPlanner
-from planner.cbs_fw_planner import FixedWindowCBSPlanner
+from utils.logger import GlobalLogger
+from utils.simulation_clock import SimulationClock
+from utils.simulation_context import SimulationContext
 from .dhc_converter import DHCCompatibleConverter
 from . import configs
 
@@ -46,18 +46,30 @@ class DHCAVGEnv:
         self,
         curriculum
     ):
-        
-        # --- 初始化各组件 ---
-        grid_map = GridMap()
-        self.ordermanager = OrderManager(grid_map)
-        self.agv_manager = AGVManager(grid_map, self.ordermanager)
-        self.real_env = Env(self.agv_manager, grid_map, self.ordermanager)
-        # self.scheduler = TAScheduler(self.ordermanager, grid_map, self.agv_manager)
-        self.scheduler = RandomScheduler(self.ordermanager, grid_map, self.agv_manager)
+        ctx = SimulationContext()
+        ctx.system_config = SystemConfig()
+        ctx.logger = GlobalLogger(ctx.system_config.sim_config)
+        ctx.clock = SimulationClock(ctx.logger)
+        bind_context_runtime(ctx)
+        ctx.grid_map = GridMap(ctx)
+        ctx.order_manager = OrderManager(ctx)
+        ctx.agv_manager = AGVManager(ctx)
+        ctx.env = Env(ctx)
+        ctx.fault_manager = FaultManager(ctx)
+        ctx.scheduler = RandomScheduler(ctx)
+
+        self._ctx = ctx
+        self.ordermanager = ctx.order_manager
+        self.agv_manager = ctx.agv_manager
+        self.real_env = ctx.env
+        self.scheduler = ctx.scheduler
 
         self.obs_radius = configs.obs_radius
-        # 转换器
-        self.converter = DHCCompatibleConverter(num_agvs=self.agv_manager.num_agvs, gridmap=grid_map, agvmanager=self.agv_manager)
+        self.converter = DHCCompatibleConverter(
+            num_agvs=self.agv_manager.num_agvs,
+            gridmap=ctx.grid_map,
+            agvmanager=self.agv_manager,
+        )
         self.steps = 0
         self.num_agents =  self.agv_manager.num_agvs
         self.map_size = (self.real_env.map.height, self.real_env.map.width)

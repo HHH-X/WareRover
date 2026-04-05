@@ -1,25 +1,14 @@
 import heapq
 from typing import Dict, Tuple, List, Set
 from collections import defaultdict
-from core.env import Env
-from core.gridmap import GridMap
-from core.ordermanager import OrderManager
-from core.fault_manager import FaultManager
-from core.agvmanager import AGVManager
 from planner.base_planner import BasePlanner
+from utils.simulation_context import SimulationContext
 
 MAX_ASTAR_NODES = 800
 
 class AStarPlanner(BasePlanner):
-    def __init__(
-        self, 
-        env: Env,
-        agv_manager: AGVManager,
-        order_manager: OrderManager, 
-        map: GridMap,
-        fault_manager: FaultManager
-    ):
-        super().__init__(env, agv_manager, order_manager, map, fault_manager)
+    def __init__(self, ctx: SimulationContext):
+        super().__init__(ctx)
         self.max_time = 100
         env_info = self.env.get_env_info()
         self.agv_sizes = env_info['agv_sizes']

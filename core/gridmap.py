@@ -1,12 +1,19 @@
-from typing import Dict, List, Tuple, Optional, Set
+from __future__ import annotations
+
+from typing import Dict, List, Tuple, Optional, Set, TYPE_CHECKING
 import numpy as np
-from config.settings import SimConfig
 import json
-import utils.logger as logger
+
+if TYPE_CHECKING:
+    from utils.simulation_context import SimulationContext
+
 
 class GridMap:
-    def __init__(self, sim_config: SimConfig):
-        
+    def __init__(self, ctx: SimulationContext):
+        assert ctx.system_config is not None
+        sim_config = ctx.system_config.sim_config
+        self.logger = ctx.logger
+
         with open(sim_config.map_file, "r") as f:
             map_data = json.load(f)
             
@@ -242,5 +249,5 @@ class GridMap:
         for box_id in self.box_status:
             self.box_status[box_id] = True
         self.dynamic_occupied.clear()
-        logger.global_logger.add_runtime_log("[GridMap] Map has been reset.")
+        self.logger.add_runtime_log("[GridMap] Map has been reset.")
 

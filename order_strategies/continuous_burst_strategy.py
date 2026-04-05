@@ -3,7 +3,6 @@ from typing import List
 from core.order import Order
 from config.settings import SystemConfig, ContinuousBurstConfig
 from order_strategies.order_generation_strategy import OrderGenerationStrategy
-import utils.logger as logger
 
 
 class ContinuousBurstStrategy(OrderGenerationStrategy):

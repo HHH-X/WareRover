@@ -1,44 +1,39 @@
 # planner/dhc_planner.py
-import torch
-import numpy as np
-from typing import Dict, Tuple, List, Set
-from collections import defaultdict
 import os
+from collections import defaultdict
+from typing import Dict, List, Set, Tuple
 
-from core.env import Env
-from core.gridmap import GridMap
-from core.ordermanager import OrderManager
-from core.fault_manager import FaultManager
-from core.agvmanager import AGVManager
+import torch
+
 from planner.base_planner import BasePlanner
+from utils.simulation_context import SimulationContext
 from algorithm.DHC.dhc_converter import DHCCompatibleConverter
 from algorithm.DHC.model import Network
 from algorithm.DHC.dhc_env import ACTION_DELTA
+import numpy as np
+
 
 class DHCPlanner(BasePlanner):
     """
     DHC (learned) policy planner; relies on env for conflict rejection, no reservation checks.
     """
-    def __init__(
-        self,
-        env: Env,
-        agv_manager: AGVManager,
-        order_manager: OrderManager,
-        map: GridMap,
-        fault_manager: FaultManager,
-        model_path: str,
-        forward_steps: int = 6,
-        device: str = "cuda" if torch.cuda.is_available() else "cpu"
-    ):
-        super().__init__(env, agv_manager, order_manager, map, fault_manager)
-        self.device = device
-        self.forward_steps = forward_steps
-        self.converter = DHCCompatibleConverter(num_agvs=self.env.agv_manager.num_agvs, gridmap=self.env.map, agvmanager=self.env.agv_manager)
+    def __init__(self, ctx: SimulationContext):
+        super().__init__(ctx)
+        assert ctx.system_config is not None
+        sim_cfg = ctx.system_config.sim_config
+        model_path = sim_cfg.dhc_model_path
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.forward_steps = 1
+        self.converter = DHCCompatibleConverter(
+            num_agvs=self.env.agv_manager.num_agvs,
+            gridmap=self.env.map,
+            agvmanager=self.env.agv_manager,
+        )
         self.model = Network().to(self.device)
         self.model.eval()
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"DHC model not found: {model_path}")
-        state_dict = torch.load(model_path, map_location=device)
+        state_dict = torch.load(model_path, map_location=self.device)
         self.model.load_state_dict(state_dict)
         print(f"[DHCPlanner] Loaded weights: {model_path}")
 

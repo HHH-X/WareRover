@@ -139,45 +139,48 @@ def _runtime_validate(map_json: Dict[str, Any], trial_steps: int) -> Dict[str, A
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(map_json, f, indent=2)
 
-        from config.settings import SimConfig
+        from config.settings import SystemConfig
         from core.gridmap import GridMap
         from core.ordermanager import OrderManager
         from core.agvmanager import AGVManager
+        from core.env import Env
+        from core.fault_manager import FaultManager
+        from core.simulator import Simulator
+        from utils.algorithm_factory import build_planner, build_scheduler
+        from utils.algorithm_registry import init_default_registries
+        from utils.logger import GlobalLogger
+        from utils.simulation_clock import SimulationClock
+        from utils.simulation_context import SimulationContext, bind_context_runtime
 
-        original_map = SimConfig.map_file
+        ctx = SimulationContext()
+        ctx.system_config = SystemConfig()
+        ctx.system_config.sim_config.map_file = tmp_path
         try:
-            SimConfig.map_file = tmp_path
-            grid_map = GridMap()
-            ordermanager = OrderManager(grid_map)
-            agv_manager = AGVManager(grid_map, ordermanager)
+            ctx.logger = GlobalLogger(ctx.system_config.sim_config)
+            ctx.clock = SimulationClock(ctx.logger)
+            bind_context_runtime(ctx)
+            ctx.grid_map = GridMap(ctx)
 
             if trial_steps <= 0:
                 return {"ok": True}
 
-            from core.env import Env
-            from core.fault_manager import FaultManager
-            from utils.algorithm_factory import build_scheduler, build_planner
-            from core.simulator import Simulator
-            from utils.logger import global_logger
-            from utils.simulation_clock import clock
-
-            clock.reset()
-            global_logger.reset()
-            env = Env(agv_manager, grid_map, ordermanager)
-            fault_manager = FaultManager(agv_manager, env, grid_map)
-            scheduler = build_scheduler(env, agv_manager, ordermanager, grid_map, fault_manager)
-            planner = build_planner(env, agv_manager, ordermanager, grid_map, fault_manager)
-            simulator = Simulator(grid_map, agv_manager, ordermanager, env, scheduler, planner)
+            init_default_registries()
+            ctx.order_manager = OrderManager(ctx)
+            ctx.agv_manager = AGVManager(ctx)
+            ctx.env = Env(ctx)
+            ctx.fault_manager = FaultManager(ctx)
+            ctx.scheduler = build_scheduler(ctx)
+            ctx.planner = build_planner(ctx)
+            ctx.simulator = Simulator(ctx)
+            max_steps = ctx.system_config.sim_config.max_steps
             for _ in range(trial_steps):
-                simulator.step()
-                fault_manager.step()
-                if clock.now() >= SimConfig.max_steps:
+                ctx.simulator.step()
+                ctx.fault_manager.step()
+                if ctx.clock.now() >= max_steps:
                     break
             return {"ok": True}
         except Exception as e:
             return {"ok": False, "error": str(e)}
-        finally:
-            SimConfig.map_file = original_map
     finally:
         if os.path.isfile(tmp_path):
             try:

@@ -3,14 +3,9 @@ import random
 from typing import Dict, List, Set, Tuple
 
 from core.agv import AGVAction
-from core.gridmap import GridMap
 from core.order import Order
-from core.ordermanager import OrderManager
-from core.env import Env
-from core.fault_manager import FaultManager
-from core.agvmanager import AGVManager
 from scheduler.base_scheduler import BaseScheduler
-import utils.logger as logger
+from utils.simulation_context import SimulationContext
 
 class RandomScheduler(BaseScheduler):
     """
@@ -18,15 +13,8 @@ class RandomScheduler(BaseScheduler):
     and randomly matches idle AGVs to orders (by size).
     """
 
-    def __init__(
-        self, 
-        env: Env,
-        agv_manager: AGVManager,
-        order_manager: OrderManager, 
-        map: GridMap,
-        fault_manager: FaultManager
-    ):
-        super().__init__(env, agv_manager, order_manager, map, fault_manager)
+    def __init__(self, ctx: SimulationContext):
+        super().__init__(ctx)
 
     def reset(self) -> None:
         logger.global_logger.add_runtime_log(

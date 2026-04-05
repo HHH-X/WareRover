@@ -3,8 +3,9 @@ from typing import Dict, Any, Tuple
 from core.gridmap import GridMap
 from core.agvmanager import AGVManager
 from core.ordermanager import OrderManager
-import utils.logger as logger
-from utils.simulation_clock import clock
+from utils.logger import GlobalLogger
+from utils.simulation_clock import SimulationClock
+from utils.simulation_context import SimulationContext
 
 def to_real_position(pos: Tuple[int, int], size: int = 1) -> Tuple[float, float]:
     """Grid (logical) top-left to real center position, with size offset."""
@@ -19,17 +20,20 @@ def agv_to_real_center(real_pos: Tuple[float, float], size: int) -> Tuple[float,
     offset = (size - 1) / 2.0
     return (real_pos[0] + offset, real_pos[1] + offset)
 
-def generate_send_data(map: GridMap, agvmanager: AGVManager, ordermanager: OrderManager, data_type: str = "init") -> Dict[str, Any]:
+def generate_send_data(
+    ctx: SimulationContext,
+    data_type: str = "init",
+) -> Dict[str, Any]:
     """Build frontend payload; all positions in real (center) coordinates."""
     data = {}
     if data_type == "init":
         data['type'] = 'init'
         data['map_size'] = {
-            "width": map.width,
-            "height": map.height
+            "width": ctx.grid_map.width,
+            "height": ctx.grid_map.height
         }
         agvs_info = {}
-        for agv in agvmanager.all_agvs():
+        for agv in ctx.agv_manager.all_agvs():
             agv_id = agv.id
             real_pos = agv.real_pos
             size = agv.size
@@ -42,77 +46,77 @@ def generate_send_data(map: GridMap, agvmanager: AGVManager, ordermanager: Order
         data['agvs'] = agvs_info
         data['boxes'] = {
             bid: {
-                "pos": to_real_position(pos, map.box_sizes.get(bid, 1)),
-                "size": map.box_sizes.get(bid, 1)
+                "pos": to_real_position(pos, ctx.grid_map.box_sizes.get(bid, 1)),
+                "size": ctx.grid_map.box_sizes.get(bid, 1)
             }
-            for bid, pos in map.box_positions.items()
+            for bid, pos in ctx.grid_map.box_positions.items()
         }
 
         data['receivers'] = {
             rid: {
-                "pos": to_real_position(pos, map.receiver_zones_size.get(rid, 1)),
-                "size": map.receiver_zones_size.get(rid, 1)
+                "pos": to_real_position(pos, ctx.grid_map.receiver_zones_size.get(rid, 1)),
+                "size": ctx.grid_map.receiver_zones_size.get(rid, 1)
             }
-            for rid, pos in map.receiver_zones.items()
+            for rid, pos in ctx.grid_map.receiver_zones.items()
         }
 
         data['wait_zones'] = {
             wid: {
-                "pos": to_real_position(pos, map.wait_zones_size.get(wid, 1)),
-                "size": map.wait_zones_size.get(wid, 1)
+                "pos": to_real_position(pos, ctx.grid_map.wait_zones_size.get(wid, 1)),
+                "size": ctx.grid_map.wait_zones_size.get(wid, 1)
             }
-            for wid, pos in map.wait_zones.items()
+            for wid, pos in ctx.grid_map.wait_zones.items()
         }
         
-        data['obstacles'] = [to_real_position(pos) for pos in map.obstacles]
+        data['obstacles'] = [to_real_position(pos) for pos in ctx.grid_map.obstacles]
 
         # Initial order panel data
         data['orders'] = {
             "counts": {
-                "unprocessed": len(ordermanager.unprocessed_orders),
-                "processing": len(ordermanager.processing_orders),
-                "completed": len(ordermanager.finished_orders),
+                "unprocessed": len(ctx.order_manager.unprocessed_orders),
+                "processing": len(ctx.order_manager.processing_orders),
+                "completed": len(ctx.order_manager.finished_orders),
             },
             "logs": {"generation": [], "assignment": [], "completion": []},
-            "agv_progress": logger.global_logger.get_agv_order_progress(agvmanager),
+            "agv_progress": ctx.logger.get_agv_order_progress(ctx.agv_manager),
         }
 
     elif data_type == "update":
         data['type'] = 'update'
-        agv_pos = {aid: agv_to_real_center(pos, agvmanager.get_agv_size(aid)) for aid, pos in agvmanager.get_all_real_positions().items()}
+        agv_pos = {aid: agv_to_real_center(pos, ctx.agv_manager.get_agv_size(aid)) for aid, pos in ctx.agv_manager.get_all_real_positions().items()}
         data['agvs'] = agv_pos
         
-        carrying_status = agvmanager.get_carried_box_ids()
+        carrying_status = ctx.agv_manager.get_carried_box_ids()
         boxes_on_agv = {}
         boxes_on_shelf = {}
         for agv_id, b_id in carrying_status.items():
             if b_id is not None:
                 boxes_on_agv[b_id] = agv_pos[agv_id]
         
-        boxes_on_shelf_id_set = map.box_id_set - set(boxes_on_agv.keys())
+        boxes_on_shelf_id_set = ctx.grid_map.box_id_set - set(boxes_on_agv.keys())
         for b_id in boxes_on_shelf_id_set:
-            shelf_pos = map.box_positions[b_id]
-            real_pos = to_real_position(shelf_pos, map.box_sizes.get(b_id, 1))
+            shelf_pos = ctx.grid_map.box_positions[b_id]
+            real_pos = to_real_position(shelf_pos, ctx.grid_map.box_sizes.get(b_id, 1))
             boxes_on_shelf[b_id] = real_pos
           
         data['boxes_on_agv'] = boxes_on_agv
         data['boxes_on_shelf'] = boxes_on_shelf
 
         safe_paths = {}
-        for agv_id, occupied_set in map.dynamic_occupied.items():
+        for agv_id, occupied_set in ctx.grid_map.dynamic_occupied.items():
             safe_paths[agv_id] = [to_real_position(pos) for pos in occupied_set]
         data['safe_paths'] = safe_paths
-        data['metrics'] = logger.global_logger.get_runtime_metrics(clock.now())
+        data['metrics'] = ctx.logger.get_runtime_metrics(ctx.clock.now())
 
         # Order panel data
         data['orders'] = {
             "counts": {
-                "unprocessed": len(ordermanager.unprocessed_orders),
-                "processing": len(ordermanager.processing_orders),
-                "completed": len(ordermanager.finished_orders),
+                "unprocessed": len(ctx.order_manager.unprocessed_orders),
+                "processing": len(ctx.order_manager.processing_orders),
+                "completed": len(ctx.order_manager.finished_orders),
             },
-            "logs": logger.global_logger.get_order_logs_for_panel(),
-            "agv_progress": logger.global_logger.get_agv_order_progress(agvmanager),
+            "logs": ctx.logger.get_order_logs_for_panel(),
+            "agv_progress": ctx.logger.get_agv_order_progress(ctx.agv_manager),
         }
 
     return data

@@ -2,28 +2,17 @@ import itertools
 from copy import deepcopy
 from collections import defaultdict
 from typing import List, Dict, Tuple, Set
-from core.gridmap import GridMap
 from core.order import Order
-from core.ordermanager import OrderManager
 from core.agv import AGVAction
-from core.agvmanager import AGVManager
-from core.env import Env
-from core.fault_manager import FaultManager
 from scheduler.base_scheduler import BaseScheduler
+from utils.simulation_context import SimulationContext
 from scipy.optimize import linear_sum_assignment
 from utils.base_utils import orders_to_tasks
 import random
 
 class TAScheduler(BaseScheduler):
-    def __init__(
-        self, 
-        env: Env,
-        agv_manager: AGVManager,
-        order_manager: OrderManager, 
-        map: GridMap,
-        fault_manager: FaultManager
-    ):
-        super().__init__(env, agv_manager, order_manager, map, fault_manager)
+    def __init__(self, ctx: SimulationContext):
+        super().__init__(ctx)
 
     def compute_manhattan_distance(self, pos1: Tuple[int, int], pos2: Tuple[int, int]) -> int:
         """Manhattan distance between two grid positions."""
