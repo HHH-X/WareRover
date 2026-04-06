@@ -1,0 +1,32 @@
+max_iterations: 10
+checkpoint_interval: 5
+
+llm:
+  primary_model: "DeepSeek-V3.2"
+  primary_model_weight: 0.8
+  secondary_model: "DeepSeek-V3.2"
+  secondary_model_weight: 0.2
+  api_base: "https://api.modelarts-maas.com/v1"
+  api_key: "gMUA0hpwCkyk2FQ32r7Al9XipidNzbaCad2uIXHzDzkXFsQbm9IYouRnUsPG379dKzM6hL604YwUoEWyDnEW5Q"
+  temperature: 0.7
+  max_tokens: 10000
+  timeout: 120
+
+prompt:
+  system_message: "Optimize complete MAPF planner implementation class code while preserving interface compatibility and runtime robustness."
+
+database:
+  population_size: 30
+  archive_size: 10
+  num_islands: 2
+  elite_selection_ratio: 0.2
+  exploitation_ratio: 0.7
+  similarity_threshold: 0.99
+
+evaluator:
+  timeout: 180
+  cascade_evaluation: false
+  parallel_evaluations: 2
+
+diff_based_evolution: true
+max_code_length: 60000

@@ -1,0 +1,3 @@
+{
+  "answer": "<<<<<<< SEARCH\n    scored.sort(reverse=True)\n    return [agv_id for _, agv_id in scored]\n=======\n    scored.sort(reverse=True)\n    return [agv_id for _, agv_id in scored]\n>>>>>>> REPLACE"
+}

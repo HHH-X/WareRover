@@ -52,13 +52,20 @@ class SchedulerRegistry(_BaseRegistry):
 def init_default_registries() -> None:
     from planner.astar_planner import AStarPlanner
     from planner.cbs_fw_planner import FixedWindowCBSPlanner
-    from planner.dhc_planner import DHCPlanner
+    from planner.evolved_wrapper_planner import EvolvedWrapperPlanner
     from scheduler.random_scheduler import RandomScheduler
     from scheduler.TA_scheduler import TAScheduler
 
     PlannerRegistry.register("astar", AStarPlanner)
     PlannerRegistry.register("cbs_fw", FixedWindowCBSPlanner)
-    PlannerRegistry.register("dhc", DHCPlanner)
+    PlannerRegistry.register("evolved_wrapper", EvolvedWrapperPlanner)
+
+    # DHC depends on torch; keep registry usable when torch is absent.
+    try:
+        from planner.dhc_planner import DHCPlanner
+        PlannerRegistry.register("dhc", DHCPlanner)
+    except Exception:
+        pass
 
     SchedulerRegistry.register("random", RandomScheduler)
     SchedulerRegistry.register("ta", TAScheduler)
