@@ -11,6 +11,12 @@ class FixedWindowCBSPlanner(BasePlanner):
     def __init__(self, ctx: SimulationContext):
         super().__init__(ctx)
         self.window_size = 10
+        self.env = ctx.env
+        self.agv_manager = ctx.agv_manager
+        self.order_manager = ctx.order_manager
+        self.map = ctx.grid_map
+        self.fault_manager = ctx.fault_manager
+        
 
     def plan(
         self, 

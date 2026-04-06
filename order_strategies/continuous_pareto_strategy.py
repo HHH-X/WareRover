@@ -72,7 +72,7 @@ class ContinuousParetoStrategy(OrderGenerationStrategy):
         batch_size = max(1, int(raw_count * self.config.scale))
 
         # size split
-        num_size2 = int(batch_size * SimConfig.size2_ratio)
+        num_size2 = int(batch_size * self.system_config.sim_config.size2_ratio)
         num_size1 = batch_size - num_size2
 
         for size, count in [(1, num_size1), (2, num_size2)]:

@@ -48,7 +48,7 @@ class OrderManager:
         elif mode == "continuous_pareto":
             return ContinuousParetoStrategy(self.system_config)
         elif mode == "continuous_burst":
-            return ContinuousBurstStrategy(self.system_config)
+            return ContinuousBurstStrategy(self.system_config, self.logger)
         else:
             raise ValueError(f"Unknown order_mode: {mode}")
         

@@ -19,7 +19,11 @@ class DHCPlanner(BasePlanner):
     """
     def __init__(self, ctx: SimulationContext):
         super().__init__(ctx)
-        assert ctx.system_config is not None
+        self.env = ctx.env
+        self.agv_manager = ctx.agv_manager
+        self.order_manager = ctx.order_manager
+        self.map = ctx.grid_map
+        self.fault_manager = ctx.fault_manager
         sim_cfg = ctx.system_config.sim_config
         model_path = sim_cfg.dhc_model_path
         self.device = "cuda" if torch.cuda.is_available() else "cpu"

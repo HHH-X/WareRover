@@ -17,13 +17,9 @@ class BasePlanner(ABC):
             and ctx.order_manager is not None
             and ctx.grid_map is not None
             and ctx.fault_manager is not None
+            and ctx.system_config is not None
         )
         self.ctx = ctx
-        self.env = ctx.env
-        self.agv_manager = ctx.agv_manager
-        self.order_manager = ctx.order_manager
-        self.map = ctx.grid_map
-        self.fault_manager = ctx.fault_manager
         self.max_time = 100
 
     @abstractmethod

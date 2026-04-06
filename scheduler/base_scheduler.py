@@ -23,13 +23,9 @@ class BaseScheduler(ABC):
             and ctx.order_manager is not None
             and ctx.grid_map is not None
             and ctx.fault_manager is not None
+            and ctx.logger is not None
         )
         self.ctx = ctx
-        self.env = ctx.env
-        self.agv_manager = ctx.agv_manager
-        self.order_manager = ctx.order_manager
-        self.map = ctx.grid_map
-        self.fault_manager = ctx.fault_manager
 
     @abstractmethod
     def assign_tasks(
@@ -60,7 +56,7 @@ class BaseScheduler(ABC):
         rest_assignments: Dict[int, Tuple[int, int]] = {}
         for agv_id in agv_ids:
             try:
-                rest_assignments[agv_id] = self.map.get_wait_zone_position(agv_id)
+                rest_assignments[agv_id] = self.ctx.grid_map.get_wait_zone_position(agv_id)
             except StopIteration:
                 break
 

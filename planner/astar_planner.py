@@ -9,6 +9,11 @@ MAX_ASTAR_NODES = 800
 class AStarPlanner(BasePlanner):
     def __init__(self, ctx: SimulationContext):
         super().__init__(ctx)
+        self.env = ctx.env
+        self.agv_manager = ctx.agv_manager
+        self.order_manager = ctx.order_manager
+        self.map = ctx.grid_map
+        self.fault_manager = ctx.fault_manager
         self.max_time = 100
         env_info = self.env.get_env_info()
         self.agv_sizes = env_info['agv_sizes']

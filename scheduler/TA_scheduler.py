@@ -13,6 +13,11 @@ import random
 class TAScheduler(BaseScheduler):
     def __init__(self, ctx: SimulationContext):
         super().__init__(ctx)
+        self.map = ctx.grid_map
+        self.order_manager = ctx.order_manager
+        self.agv_manager = ctx.agv_manager
+        self.logger = ctx.logger
+        
 
     def compute_manhattan_distance(self, pos1: Tuple[int, int], pos2: Tuple[int, int]) -> int:
         """Manhattan distance between two grid positions."""

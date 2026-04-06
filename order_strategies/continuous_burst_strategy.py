@@ -3,7 +3,7 @@ from typing import List
 from core.order import Order
 from config.settings import SystemConfig, ContinuousBurstConfig
 from order_strategies.order_generation_strategy import OrderGenerationStrategy
-
+from utils.logger import GlobalLogger
 
 class ContinuousBurstStrategy(OrderGenerationStrategy):
     """
@@ -11,7 +11,7 @@ class ContinuousBurstStrategy(OrderGenerationStrategy):
     high-frequency large batches for a duration.
     """
 
-    def __init__(self, system_config: SystemConfig):
+    def __init__(self, system_config: SystemConfig, logger: GlobalLogger):
         super().__init__(system_config)
         self.config = self.system_config.continuous_burst_config
         self.base_batch_size = self.config.base_batch_size
@@ -21,6 +21,7 @@ class ContinuousBurstStrategy(OrderGenerationStrategy):
         self.in_burst = False
         self.steps_remaining_in_burst = 0
         self.next_generation_step = 0
+        self.logger = logger
 
     def _try_trigger_burst(self, current_step: int) -> bool:
         """Whether to trigger a burst this step (probability-based)."""
@@ -33,7 +34,7 @@ class ContinuousBurstStrategy(OrderGenerationStrategy):
         if not self.in_burst and self._try_trigger_burst(current_step):
             self.in_burst = True
             self.steps_remaining_in_burst = self.config.burst_duration_steps
-            logger.global_logger.add_runtime_log(
+            self.logger.add_runtime_log(
                 f"[OrderManager] Burst promotion triggered at step {current_step} "
                 f"for {self.config.burst_duration_steps} steps!"
             )
@@ -42,7 +43,7 @@ class ContinuousBurstStrategy(OrderGenerationStrategy):
             self.steps_remaining_in_burst -= 1
             if self.steps_remaining_in_burst <= 0:
                 self.in_burst = False
-                logger.global_logger.add_runtime_log(f"[OrderManager] Burst promotion ended at step {current_step}")
+                self.logger.add_runtime_log(f"[OrderManager] Burst promotion ended at step {current_step}")
 
         if current_step >= self.next_generation_step:
             if self.in_burst:

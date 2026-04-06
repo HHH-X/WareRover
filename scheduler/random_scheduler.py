@@ -15,9 +15,14 @@ class RandomScheduler(BaseScheduler):
 
     def __init__(self, ctx: SimulationContext):
         super().__init__(ctx)
+        self.map = ctx.grid_map
+        self.order_manager = ctx.order_manager
+        self.agv_manager = ctx.agv_manager
+        self.logger = ctx.logger
+
 
     def reset(self) -> None:
-        logger.global_logger.add_runtime_log(
+        self.logger.add_runtime_log(
             "[RandomScheduler] Reset called (stateless scheduler, nothing to clear)."
         )
 

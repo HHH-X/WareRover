@@ -31,7 +31,7 @@ STATE = {
 RUNNING = True
 NEED_RESET = False
 
-def start_http_server(port=8000):
+def start_http_server(port=18000):
     """Start local HTTP server (avoids file:// CORS issues)."""
     os.chdir(os.path.abspath("."))
     handler = SimpleHTTPRequestHandler
