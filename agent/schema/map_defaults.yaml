@@ -1,0 +1,23 @@
+# 地图生成的默认值和必填项说明
+# LLM 在生成地图时会参考这些配置
+
+defaults:
+  agv_size: 1
+  box_size: 1
+  receiver_size: 1
+  wait_zone_size: 1
+
+required:
+  - "地图尺寸 (width, height)"
+  - "AGV 数量"
+  - "货架(box)数量"
+  - "收货台(receiver)数量"
+
+notes: |
+  - 如果用户未指定障碍物，则不生成障碍物
+  - 如果未指定等待区数量，默认等于 AGV 数量
+  - goods_ids 可以随机分配，每个box至少有1个goods_id
+  - 所有实体的位置不能重叠
+  - 实体不能放在地图边界之外
+  - size=2 的实体占 2x1 格(水平方向)，需要确保不与其他实体重叠
+  - AGV 的初始位置不在地图数据中指定，只需要 agv_id 和 size

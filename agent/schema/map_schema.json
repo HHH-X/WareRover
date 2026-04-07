@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["map", "boxes", "receivers", "wait_zones", "agvs"],
+  "properties": {
+    "map": {
+      "type": "object",
+      "required": ["width", "height"],
+      "properties": {
+        "width": {"type": "integer", "minimum": 3},
+        "height": {"type": "integer", "minimum": 3}
+      }
+    },
+    "boxes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["box_id", "position", "goods_ids", "size"],
+        "properties": {
+          "box_id": {"type": "integer", "minimum": 0},
+          "position": {
+            "type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2
+          },
+          "goods_ids": {"type": "array", "items": {"type": "integer"}},
+          "size": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "receivers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["receiver_id", "position", "size"],
+        "properties": {
+          "receiver_id": {"type": "integer", "minimum": 0},
+          "position": {
+            "type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2
+          },
+          "size": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "wait_zones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["wait_zone_id", "position", "size"],
+        "properties": {
+          "wait_zone_id": {"type": "integer", "minimum": 0},
+          "position": {
+            "type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2
+          },
+          "size": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "agvs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["agv_id", "size"],
+        "properties": {
+          "agv_id": {"type": "integer", "minimum": 0},
+          "size": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "obstacles": {
+      "type": "array",
+      "items": {
+        "type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2
+      }
+    }
+  }
+}
