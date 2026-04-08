@@ -1,0 +1,86 @@
+max_iterations: 10
+checkpoint_interval: 5
+llm:
+  primary_model: "DeepSeek-V3.2"
+  primary_model_weight: 0.8
+  secondary_model: "DeepSeek-V3.2"
+  secondary_model_weight: 0.2
+  api_base: "https://api.modelarts-maas.com/v1"
+  api_key: "$OPENAI_API_KEY"
+  temperature: 0.7
+  max_tokens: 10000
+  timeout: 120
+prompt:
+  system_message: |
+    You are an expert in Multi-Agent Path Finding (MAPF) for warehouse AGV systems.
+    Your task is to optimize the {target} algorithm implementation to improve overall simulation performance.
+
+    ## Problem Domain
+    This is a warehouse simulation where multiple AGVs (Automated Guided Vehicles) of different sizes
+    navigate a grid map to pick up goods from shelves and deliver them to receiver stations.
+    The system has two core algorithm components:
+    - **Planner**: computes collision-free paths for multiple AGVs simultaneously.
+    - **Scheduler**: assigns pending orders to idle AGVs and produces task sequences.
+
+    ## Interface Contracts (MUST be preserved)
+
+    ### Planner — class inherits BasePlanner
+    ```
+    def plan(self, targets: Dict[int, Tuple[Tuple[int,int], Tuple[int,int]]],
+             scheduler: BaseScheduler) -> Dict[int, List[Tuple[int,int]]]
+    ```
+    - `targets`: agv_id -> (start_pos, goal_pos)
+    - Returns: agv_id -> path (list of grid cells, NOT including start; first element is next cell)
+    - Must avoid vertex and edge collisions between AGVs of different sizes.
+
+    ### Scheduler — class inherits BaseScheduler
+    ```
+    def assign_tasks(self, idle_agv_ids: Set[int],
+                     planner: BasePlanner) -> Dict[int, List[Tuple[Tuple[int,int], AGVAction, int]]]
+    ```
+    - Returns: agv_id -> list of (target_position, AGVAction, extra_field) tasks.
+    - AGVAction enum: PICK, HANDOVER, PLACE.
+    - Must respect AGV size constraints (order.required_size <= agv size).
+
+    ## Available Context (self.ctx: SimulationContext)
+    - self.ctx.env.get_env_info() -> dict with 'action_queues', 'current_grid_pos', 'agv_sizes', 'carrying_status'
+    - self.ctx.env.get_walkable_neighbors(pos, size) -> reachable neighbor cells
+    - self.ctx.grid_map: get_boxes_by_goods(), get_box_position(), get_receiver_position(), get_wait_zone_position()
+    - self.ctx.order_manager: get_unprocessed_orders(), mark_order_as_processing()
+    - self.ctx.agv_manager: get_agv_size(), get idle/busy AGV info
+    - self.ctx.fault_manager: AGV fault status
+
+    ## Scoring Dimensions (weights in combined_score)
+    - completion_score (35%): task success rate — fraction of orders completed
+    - makespan_score (35%): 1/(1+avg_sim_steps) — lower steps is better
+    - time_score (20%): 1/(1+avg_planner_time_ms) — faster planning is better
+    - stability_score (10%): fraction of seeds where all orders finished
+
+    ## Optimization Directions
+    - Improve conflict resolution (fewer deadlocks, fewer replanning cycles)
+    - Better heuristics (distance, congestion-aware cost functions)
+    - Smarter task assignment (minimize total travel distance, balance workload)
+    - Handle AGV size heterogeneity (size-1 vs size-2 AGVs occupy different footprints)
+    - Robustness to AGV faults (fault_manager may disable AGVs mid-simulation)
+
+    ## Constraints
+    - The class MUST inherit from the correct base class and implement all abstract methods.
+    - Do NOT change the method signatures of plan() or assign_tasks().
+    - The algorithm must terminate within reasonable time (avoid infinite loops).
+    - All imports must be available in the project environment (standard lib + numpy + scipy are safe).
+  num_top_programs: 3
+  use_template_stochasticity: true
+database:
+  population_size: 30
+  archive_size: 10
+  num_islands: 2
+  elite_selection_ratio: 0.2
+  exploitation_ratio: 0.7
+  similarity_threshold: 0.99
+evaluator:
+  timeout: 180
+  cascade_evaluation: true
+  cascade_thresholds: [0.01]
+  parallel_evaluations: 2
+diff_based_evolution: true
+max_code_length: 60000

@@ -43,9 +43,9 @@
     },
     {
       "type": "optimize",
-      "detail": "用户关于优化的具体描述",
-      "algo_type": "planner 或 scheduler",
-      "optimize_source": "文件路径 或 generated(如果是优化刚生成的)"
+      "detail": "用户关于优化的完整描述，包括想要优化什么、如何优化、优化目标等",
+      "algo_type": "planner 或 scheduler 或 both",
+      "optimize_source": "用户提及的算法来源描述（如 'astar'、'已有的TA调度器'、'generated' 表示刚生成的，留空表示未明确指定）"
     },
     {
       "type": "run",
@@ -60,4 +60,6 @@
 - detail 字段提取用户原话中与该意图相关的部分
 - 如果用户输入只包含一种意图，intents 数组也只有一个元素
 - algo_type、algo_name、skill_name、optimize_source 只在相关意图类型中出现
-- 如果用户没有明确指定 optimize_source，且之前有 codegen 意图，则 optimize_source 设为 "generated"
+- optimize 意图中，detail 字段应尽可能完整地保留用户关于优化的描述（优化什么算法、来源、优化目标等）
+- optimize 意图中，algo_type 支持 "planner"、"scheduler" 或 "both"（同时优化两者）
+- optimize_source 只需要记录用户的原始描述，不需要转为精确文件路径。如果用户没有明确指定来源且之前有 codegen 意图，则设为 "generated"
