@@ -434,7 +434,7 @@ class Config:
     def from_yaml(cls, path: Union[str, Path]) -> "Config":
         """Load configuration from a YAML file"""
         config_path = Path(path).resolve()
-        with open(config_path, "r") as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             config_dict = yaml.safe_load(f)
         config = cls.from_dict(config_dict)
 
@@ -487,7 +487,7 @@ class Config:
 
     def to_yaml(self, path: Union[str, Path]) -> None:
         """Save configuration to a YAML file"""
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             yaml.dump(self.to_dict(), f, default_flow_style=False)
 
 

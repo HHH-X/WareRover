@@ -243,7 +243,7 @@ class OpenEvolve:
 
     def _load_initial_program(self) -> str:
         """Load the initial program from file"""
-        with open(self.initial_program_path, "r") as f:
+        with open(self.initial_program_path, "r", encoding="utf-8") as f:
             return f.read()
 
     async def run(
@@ -465,12 +465,12 @@ class OpenEvolve:
         if best_program:
             # Save the best program at this checkpoint
             best_program_path = os.path.join(checkpoint_path, f"best_program{self.file_extension}")
-            with open(best_program_path, "w") as f:
+            with open(best_program_path, "w", encoding="utf-8") as f:
                 f.write(best_program.code)
 
             # Save metrics
             best_program_info_path = os.path.join(checkpoint_path, "best_program_info.json")
-            with open(best_program_info_path, "w") as f:
+            with open(best_program_info_path, "w", encoding="utf-8") as f:
                 import json
 
                 json.dump(
@@ -557,12 +557,12 @@ class OpenEvolve:
         filename = f"best_program{self.file_extension}"
         code_path = os.path.join(best_dir, filename)
 
-        with open(code_path, "w") as f:
+        with open(code_path, "w", encoding="utf-8") as f:
             f.write(program.code)
 
         # Save complete program info including metrics
         info_path = os.path.join(best_dir, "best_program_info.json")
-        with open(info_path, "w") as f:
+        with open(info_path, "w", encoding="utf-8") as f:
             import json
 
             json.dump(

@@ -143,7 +143,7 @@ async def _run_evolution_async(
 
         # Auto-disable cascade evaluation if the evaluator doesn't define stage functions
         if config_obj.evaluator.cascade_evaluation:
-            with open(evaluator_path, "r") as f:
+            with open(evaluator_path, "r", encoding="utf-8") as f:
                 eval_content = f.read()
             if "evaluate_stage1" not in eval_content:
                 config_obj.evaluator.cascade_evaluation = False
@@ -227,7 +227,7 @@ def _prepare_program(
         temp_dir = tempfile.gettempdir()
 
     program_file = os.path.join(temp_dir, f"program_{uuid.uuid4().hex[:8]}.py")
-    with open(program_file, "w") as f:
+    with open(program_file, "w", encoding="utf-8") as f:
         f.write(code)
     temp_files.append(program_file)
 
@@ -301,7 +301,7 @@ def evaluate(program_path):
         temp_dir = tempfile.gettempdir()
 
     eval_file = os.path.join(temp_dir, f"evaluator_{uuid.uuid4().hex[:8]}.py")
-    with open(eval_file, "w") as f:
+    with open(eval_file, "w", encoding="utf-8") as f:
         f.write(evaluator_code)
     temp_files.append(eval_file)
 
