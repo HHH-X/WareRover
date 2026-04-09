@@ -13,8 +13,7 @@ from core.fault_manager import FaultManager
 from core.gridmap import GridMap
 from core.ordermanager import OrderManager
 from core.simulator import Simulator
-from utils.algorithm_factory import build_planner, build_scheduler
-from utils.algorithm_registry import init_default_registries
+from utils.algorithm_registry import default_registry
 from utils.logger import GlobalLogger
 from utils.simulation_clock import SimulationClock
 from utils.simulation_context import SimulationContext
@@ -37,7 +36,7 @@ def run_simulation(
 
     ctx = SimulationContext()
     ctx.system_config = cfg
-    init_default_registries()
+    default_registry.init_defaults()
 
     ctx.logger = GlobalLogger(ctx)
     ctx.clock = SimulationClock(ctx)
@@ -46,8 +45,8 @@ def run_simulation(
     ctx.agv_manager = AGVManager(ctx)
     ctx.env = Env(ctx)
     ctx.fault_manager = FaultManager(ctx)
-    ctx.scheduler = build_scheduler(ctx)
-    ctx.planner = build_planner(ctx)
+    ctx.scheduler = default_registry.build_scheduler(ctx)
+    ctx.planner = default_registry.build_planner(ctx)
     ctx.simulator = Simulator(ctx)
 
     while (

@@ -12,4 +12,5 @@ config/envs/
 .env
 .env.local
 .env.*.local
+api_key.txt
 mapf_agent/api_key

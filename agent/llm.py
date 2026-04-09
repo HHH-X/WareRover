@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Optional
 
 from openai import APIConnectionError, APIError, OpenAI, RateLimitError
 
+from utils.api_key import load_api_key
+
 _CLIENT: Optional[OpenAI] = None
 
 
@@ -15,10 +17,7 @@ def _client() -> OpenAI:
     global _CLIENT
     if _CLIENT is not None:
         return _CLIENT
-    key = os.getenv("OPENAI_API_KEY", "").strip()
-    if not key:
-        raise RuntimeError("请设置环境变量 OPENAI_API_KEY")
-    kwargs: Dict[str, Any] = {"api_key": key}
+    kwargs: Dict[str, Any] = {"api_key": load_api_key()}
     base_url = os.getenv("OPENAI_BASE_URL")
     if base_url:
         kwargs["base_url"] = base_url

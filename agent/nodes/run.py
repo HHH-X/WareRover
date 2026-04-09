@@ -7,7 +7,7 @@ from typing import Dict
 from config.settings import SystemConfig
 from agent.run_sim import run_simulation
 from agent.state import AgentState
-from utils.algorithm_registry import load_generated_planner, load_generated_scheduler
+from utils.algorithm_registry import default_registry
 
 
 def run_node(state: AgentState) -> Dict:
@@ -23,10 +23,10 @@ def run_node(state: AgentState) -> Dict:
         try:
             code = open(path, encoding="utf-8").read()
             if kind == "planner":
-                load_generated_planner(code, "agent_generated_planner")
+                default_registry.load_generated_planner(code, "agent_generated_planner")
                 config.sim_config.planner_type = "agent_generated_planner"
             elif kind == "scheduler":
-                load_generated_scheduler(code, "agent_generated_scheduler")
+                default_registry.load_generated_scheduler(code, "agent_generated_scheduler")
                 config.sim_config.scheduler_type = "agent_generated_scheduler"
         except Exception as exc:
             return {"error": f"注册生成的{kind}算法失败: {exc}"}

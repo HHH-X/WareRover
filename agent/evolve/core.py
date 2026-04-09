@@ -182,7 +182,12 @@ def run_evolution(request: EvolveRequest) -> EvolveResult:
         cfg_text = _load_default_config(target)
     cfg_path.write_text(cfg_text, encoding="utf-8")
 
+    import os
     import sys
+
+    from utils.api_key import load_api_key
+    os.environ["OPENAI_API_KEY"] = load_api_key()
+
     oe_src = _REPO_ROOT / "openevolve"
     if str(_REPO_ROOT) not in sys.path:
         sys.path.insert(0, str(_REPO_ROOT))

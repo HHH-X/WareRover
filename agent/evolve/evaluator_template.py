@@ -28,8 +28,7 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
         from core.simulator import Simulator
         from planner.base_planner import BasePlanner
         from scheduler.base_scheduler import BaseScheduler
-        from utils.algorithm_factory import build_planner, build_scheduler
-        from utils.algorithm_registry import PlannerRegistry, SchedulerRegistry, init_default_registries
+        from utils.algorithm_registry import AlgorithmRegistry
         from utils.logger import GlobalLogger
         from utils.simulation_clock import SimulationClock
         from utils.simulation_context import SimulationContext
@@ -40,6 +39,8 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
         SEEDS = {seeds!r}
         _SYS_CFG_JSON = {sys_cfg_json!r}
         _STAGE1_MAX_STEPS = 200
+
+        _registry = AlgorithmRegistry()
 
         def _load_module(path: str):
             spec = importlib.util.spec_from_file_location("candidate", path)
@@ -60,9 +61,9 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
         def _register_candidate(program_path):
             mod = _load_module(program_path)
             if TARGET in ("planner", "both"):
-                PlannerRegistry.register("{planner_reg}", _pick_subclass(mod, BasePlanner, "planner"))
+                _registry.register_planner("{planner_reg}", _pick_subclass(mod, BasePlanner, "planner"))
             if TARGET in ("scheduler", "both"):
-                SchedulerRegistry.register("{scheduler_reg}", _pick_subclass(mod, BaseScheduler, "scheduler"))
+                _registry.register_scheduler("{scheduler_reg}", _pick_subclass(mod, BaseScheduler, "scheduler"))
 
         def _make_config(seed, max_steps=None):
             if _SYS_CFG_JSON:
@@ -95,7 +96,7 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
             cfg.sim_config.scheduler_type = st
             ctx = SimulationContext()
             ctx.system_config = cfg
-            init_default_registries()
+            _registry.init_defaults()
             ctx.logger = GlobalLogger(ctx)
             ctx.clock = SimulationClock(ctx)
             ctx.grid_map = GridMap(ctx)
@@ -103,8 +104,8 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
             ctx.agv_manager = AGVManager(ctx)
             ctx.env = Env(ctx)
             ctx.fault_manager = FaultManager(ctx)
-            ctx.scheduler = build_scheduler(ctx)
-            ctx.planner = build_planner(ctx)
+            ctx.scheduler = _registry.build_scheduler(ctx)
+            ctx.planner = _registry.build_planner(ctx)
             ctx.simulator = Simulator(ctx)
             while not ctx.order_manager.is_all_orders_completed() and ctx.clock.now() < cfg.sim_config.max_steps:
                 ctx.simulator.step(); ctx.fault_manager.step()

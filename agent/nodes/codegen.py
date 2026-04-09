@@ -10,7 +10,7 @@ from config.settings import SystemConfig
 from agent.llm import chat
 from agent.run_sim import run_simulation
 from agent.state import AgentState
-from utils.algorithm_registry import load_generated_planner, load_generated_scheduler
+from utils.algorithm_registry import default_registry
 
 _PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "codegen.txt"
 _PLANNER_BASE = Path(__file__).resolve().parent.parent.parent / "planner" / "base_planner.py"
@@ -64,9 +64,9 @@ def _build_prompt(algo_type: str, user_request: str, skill_name: str = "") -> st
 
 def _try_load(code: str, algo_type: str, name: str):
     if algo_type == "planner":
-        load_generated_planner(code, name)
+        default_registry.load_generated_planner(code, name)
     else:
-        load_generated_scheduler(code, name)
+        default_registry.load_generated_scheduler(code, name)
 
 
 def _smoke_test(algo_type: str, name: str, state: AgentState) -> Optional[str]:

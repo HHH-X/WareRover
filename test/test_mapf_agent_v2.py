@@ -9,7 +9,7 @@ from mapf_agent_v2.tools.config_tool import apply_patch_to_system_config, valida
 from mapf_agent_v2.tools.map_tool import fill_defaults, generate_map_json, missing_required
 from mapf_agent_v2.tools.optimize_tool import run_stage2_optimization
 from mapf_agent_v2.workflow.graph import build_graph
-from utils.algorithm_registry import PlannerRegistry
+from utils.algorithm_registry import default_registry
 
 
 def test_intent_order_run_only(monkeypatch) -> None:
@@ -79,7 +79,7 @@ class DemoPlanner(BasePlanner):
 """
     monkeypatch.setattr(codegen_tool_module, "chat_completion", lambda *args, **kwargs: fake_code)
     name, path = generate_algorithm_code("planner", "demo_planner", "生成一个简单 planner")
-    assert PlannerRegistry.has(name)
+    assert default_registry.has_planner(name)
     assert Path(path).is_file()
 
 
