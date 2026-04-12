@@ -1,9 +1,9 @@
-"""REPL entry: python -m agent"""
+"""REPL entry: python -m mapf_agent"""
 from __future__ import annotations
 
 from langgraph.types import Command
 
-from agent.graph import build_graph
+from mapf_agent.graph import build_graph
 
 THREAD = {"configurable": {"thread_id": "session-1"}}
 

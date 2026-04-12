@@ -4,9 +4,9 @@ from __future__ import annotations
 import json
 from typing import Dict
 
-from agent.evolve.core import EvolveRequest, OptimizationTarget, run_evolution
-from agent.evolve.resolver import resolve_algorithm_source
-from agent.state import AgentState
+from mapf_agent.evolve.core import EvolveRequest, OptimizationTarget, run_evolution
+from mapf_agent.evolve.resolver import resolve_algorithm_source
+from mapf_agent.state import AgentState
 
 
 def _serialize_system_config(state: AgentState) -> str:
@@ -22,6 +22,13 @@ def _serialize_system_config(state: AgentState) -> str:
         return ""
 
 
+_TARGET_LABELS = {
+    OptimizationTarget.PLANNER: "路径规划器",
+    OptimizationTarget.SCHEDULER: "任务调度器",
+    OptimizationTarget.BOTH: "路径规划器 + 任务调度器",
+}
+
+
 def optimize_node(state: AgentState) -> Dict:
     intents = state.get("intents") or []
     idx = state.get("intent_index", 0)
@@ -32,6 +39,7 @@ def optimize_node(state: AgentState) -> Dict:
     source_hint = intent.get("optimize_source", "")
 
     target = OptimizationTarget(algo_type) if algo_type != "both" else OptimizationTarget.BOTH
+    print(f"[算法优化] 优化目标: {_TARGET_LABELS.get(target, algo_type)}")
 
     try:
         if target == OptimizationTarget.BOTH:
@@ -53,11 +61,14 @@ def optimize_node(state: AgentState) -> Dict:
         system_config_json=_serialize_system_config(state),
     )
 
+    print("[算法优化] 开始进化优化，这可能需要较长时间...")
     try:
         result = run_evolution(req)
     except Exception as exc:
+        print("[算法优化] 优化异常终止")
         return {"error": f"优化运行失败: {exc}"}
 
+    print(f"[算法优化] 完成 — 最佳分数: {result.best_score}")
     return {
         "optimize_result": {
             "run_dir": result.run_dir,

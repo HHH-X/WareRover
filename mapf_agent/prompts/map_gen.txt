@@ -22,5 +22,5 @@
 - box 的 goods_ids 中的 id 应从 0 开始递增，每个 box 至少一个
 - 如果用户描述中缺少必填信息，返回如下 JSON 表示缺失:
 ```json
-{"error": "missing_info", "missing": ["缺少的信息1", "缺少的信息2"]}
+{{"error": "missing_info", "missing": ["缺少的信息1", "缺少的信息2"]}}
 ```

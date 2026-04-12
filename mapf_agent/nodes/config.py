@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from config.settings import SystemConfig
-from agent.llm import chat_json
-from agent.state import AgentState
+from mapf_agent.llm import chat_json
+from mapf_agent.state import AgentState
 
 _PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "config_patch.txt"
 
@@ -76,7 +76,6 @@ def _validate_and_apply(config: SystemConfig, patch: Dict) -> List[str]:
 def config_node(state: AgentState) -> Dict:
     config: SystemConfig = state.get("system_config") or SystemConfig()
 
-    # Auto-apply map path from earlier map_gen step
     map_path = state.get("map_file_path")
     if map_path:
         config.sim_config.map_file = map_path
@@ -84,17 +83,24 @@ def config_node(state: AgentState) -> Dict:
     intents = state.get("intents") or []
     idx = state.get("intent_index", 0)
     detail = intents[idx].get("detail", "") if idx < len(intents) else ""
-    user_msg = detail or state.get("user_input", "")
 
+    print("[配置修改] 正在解析配置变更...")
     system_prompt = _PROMPT_PATH.read_text(encoding="utf-8")
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_msg},
+        {"role": "user", "content": detail},
     ]
     patch = chat_json(messages)
 
+    updates = patch.get("updates", [])
+    if updates:
+        fields = [u.get("key", "?") for u in updates]
+        print(f"[配置修改] 将修改 {len(fields)} 个字段: {', '.join(fields)}")
+
     errors = _validate_and_apply(config, patch)
     if errors:
+        print(f"[配置修改] 部分字段应用失败: {'; '.join(errors)}")
         return {"system_config": config, "error": f"配置应用部分失败: {'; '.join(errors)}"}
 
+    print("[配置修改] 配置已更新")
     return {"system_config": config, "error": ""}

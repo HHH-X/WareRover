@@ -16,6 +16,47 @@ if TYPE_CHECKING:
     from utils.simulation_context import SimulationContext
 
 
+def _build_exec_namespace() -> dict:
+    """Build a namespace pre-populated with common imports for exec'd code."""
+    import abc
+    import math
+    import random
+    import heapq
+    from collections import defaultdict, deque
+    from typing import Dict, List, Set, Tuple, Optional
+
+    from utils.simulation_context import SimulationContext
+    from core.agv import AGVAction
+    from core.gridmap import GridMap
+    from core.ordermanager import OrderManager, Order
+    from core.env import Env
+    from core.fault_manager import FaultManager
+    from core.agvmanager import AGVManager
+
+    return {
+        "ABC": abc.ABC,
+        "abstractmethod": abc.abstractmethod,
+        "math": math,
+        "random": random,
+        "heapq": heapq,
+        "defaultdict": defaultdict,
+        "deque": deque,
+        "Dict": Dict,
+        "List": List,
+        "Set": Set,
+        "Tuple": Tuple,
+        "Optional": Optional,
+        "SimulationContext": SimulationContext,
+        "AGVAction": AGVAction,
+        "GridMap": GridMap,
+        "OrderManager": OrderManager,
+        "Order": Order,
+        "Env": Env,
+        "FaultManager": FaultManager,
+        "AGVManager": AGVManager,
+    }
+
+
 class AlgorithmRegistry:
     def __init__(self) -> None:
         self._planners: Dict[str, Type] = {}
@@ -91,7 +132,8 @@ class AlgorithmRegistry:
     def load_generated_planner(self, code_str: str, name: str) -> Type[BasePlanner]:
         from planner.base_planner import BasePlanner
 
-        namespace: dict = {}
+        namespace: dict = _build_exec_namespace()
+        namespace["BasePlanner"] = BasePlanner
         exec(code_str, namespace)
         for value in namespace.values():
             if isinstance(value, type) and issubclass(value, BasePlanner) and value is not BasePlanner:
@@ -102,7 +144,8 @@ class AlgorithmRegistry:
     def load_generated_scheduler(self, code_str: str, name: str) -> Type[BaseScheduler]:
         from scheduler.base_scheduler import BaseScheduler
 
-        namespace: dict = {}
+        namespace: dict = _build_exec_namespace()
+        namespace["BaseScheduler"] = BaseScheduler
         exec(code_str, namespace)
         for value in namespace.values():
             if isinstance(value, type) and issubclass(value, BaseScheduler) and value is not BaseScheduler:

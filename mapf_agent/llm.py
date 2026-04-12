@@ -18,7 +18,7 @@ def _client() -> OpenAI:
     if _CLIENT is not None:
         return _CLIENT
     kwargs: Dict[str, Any] = {"api_key": load_api_key()}
-    base_url = os.getenv("OPENAI_BASE_URL")
+    base_url = os.getenv("OPENAI_BASE_URL", "https://api.modelarts-maas.com/v1")
     if base_url:
         kwargs["base_url"] = base_url
     _CLIENT = OpenAI(**kwargs)

@@ -7,13 +7,13 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, StateGraph
 from langgraph.types import interrupt
 
-from agent.state import AgentState
-from agent.nodes.intent import intent_node
-from agent.nodes.map_gen import map_gen_node
-from agent.nodes.config import config_node
-from agent.nodes.run import run_node
-from agent.nodes.codegen import codegen_node
-from agent.nodes.optimize import optimize_node
+from mapf_agent.state import AgentState
+from mapf_agent.nodes.intent import intent_node
+from mapf_agent.nodes.map_gen import map_gen_node
+from mapf_agent.nodes.config import config_node
+from mapf_agent.nodes.run import run_node
+from mapf_agent.nodes.codegen import codegen_node
+from mapf_agent.nodes.optimize import optimize_node
 
 
 # ── routing helpers ──────────────────────────────────────────────
@@ -42,14 +42,36 @@ def post_node_route(state: AgentState) -> Literal["ask", "next"]:
 
 # ── utility nodes ────────────────────────────────────────────────
 
+_INTENT_LABELS = {
+    "map": "生成地图", "config": "修改配置", "codegen": "生成算法",
+    "optimize": "优化算法", "run": "运行仿真",
+}
+
+
 def advance_node(state: AgentState) -> Dict:
-    return {"intent_index": state.get("intent_index", 0) + 1}
+    idx = state.get("intent_index", 0)
+    intents = state.get("intents") or []
+    next_idx = idx + 1
+    if next_idx < len(intents):
+        next_type = intents[next_idx].get("type", "")
+        label = _INTENT_LABELS.get(next_type, next_type)
+        print(f"[进度] 任务 {next_idx + 1}/{len(intents)}: {label}")
+    return {"intent_index": next_idx}
 
 
 def ask_user_node(state: AgentState) -> Dict:
     question = (state.get("error") or "").removeprefix("NEED_INPUT:")
     answer = interrupt({"question": question})
-    return {"error": "", "user_input": str(answer).strip()}
+    answer_str = str(answer).strip()
+
+    intents = list(state.get("intents") or [])
+    idx = state.get("intent_index", 0)
+    if idx < len(intents):
+        old_detail = intents[idx].get("detail", "")
+        intents[idx] = {**intents[idx], "detail": f"{old_detail}\n{answer_str}"}
+        return {"error": "", "user_input": answer_str, "intents": intents}
+
+    return {"error": "", "user_input": answer_str}
 
 
 def respond_node(state: AgentState) -> Dict:

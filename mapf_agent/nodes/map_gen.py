@@ -9,8 +9,8 @@ from typing import Dict
 import jsonschema
 import yaml
 
-from agent.llm import chat_json
-from agent.state import AgentState
+from mapf_agent.llm import chat_json
+from mapf_agent.state import AgentState
 
 _BASE = Path(__file__).resolve().parent.parent
 _SCHEMA_PATH = _BASE / "schema" / "map_schema.json"
@@ -42,13 +42,11 @@ def map_gen_node(state: AgentState) -> Dict:
     idx = state.get("intent_index", 0)
     detail = intents[idx].get("detail", "") if idx < len(intents) else ""
 
-    extra = state.get("user_input", "")
-    user_msg = detail or extra
-
-    system_prompt, schema = _build_prompt(user_msg)
+    print("[地图生成] 正在生成地图...")
+    system_prompt, schema = _build_prompt(detail)
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_msg},
+        {"role": "user", "content": detail},
     ]
 
     result = chat_json(messages, max_tokens=8192)
@@ -60,6 +58,7 @@ def map_gen_node(state: AgentState) -> Dict:
     try:
         jsonschema.validate(instance=result, schema=schema)
     except jsonschema.ValidationError as exc:
+        print("[地图生成] 数据校验失败")
         return {"error": f"地图数据校验失败: {exc.message}"}
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -70,4 +69,5 @@ def map_gen_node(state: AgentState) -> Dict:
     _MAP_DIR.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
 
+    print(f"[地图生成] 完成 — {w}×{h} 地图, {n_agv} 台AGV → {filename}")
     return {"map_file_path": str(out_path), "error": ""}

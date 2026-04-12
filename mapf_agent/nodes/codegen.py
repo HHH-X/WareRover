@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from config.settings import SystemConfig
-from agent.llm import chat
-from agent.run_sim import run_simulation
-from agent.state import AgentState
+from mapf_agent.llm import chat
+from mapf_agent.run_sim import run_simulation
+from mapf_agent.state import AgentState
 from utils.algorithm_registry import default_registry
 
 _PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "codegen.txt"
@@ -86,6 +86,9 @@ def _smoke_test(algo_type: str, name: str, state: AgentState) -> Optional[str]:
         return str(exc)
 
 
+_ALGO_LABELS = {"planner": "路径规划器", "scheduler": "任务调度器"}
+
+
 def codegen_node(state: AgentState) -> Dict:
     intents = state.get("intents") or []
     idx = state.get("intent_index", 0)
@@ -96,6 +99,14 @@ def codegen_node(state: AgentState) -> Dict:
     skill_name = intent.get("skill_name", "")
     detail = intent.get("detail", "")
 
+    label = _ALGO_LABELS.get(algo_type, algo_type)
+    parts = [f"[代码生成] 正在生成{label}"]
+    if algo_name:
+        parts.append(f"({algo_name})")
+    if skill_name:
+        parts.append(f"[skill: {skill_name}]")
+    print(" ".join(parts) + "...")
+
     reg_name = f"agent_gen_{algo_name or algo_type}"
     system_prompt = _build_prompt(algo_type, detail, skill_name)
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": detail}]
@@ -103,6 +114,7 @@ def codegen_node(state: AgentState) -> Dict:
     last_error = ""
     for attempt in range(_MAX_RETRIES):
         if last_error:
+            print(f"[代码生成] 第 {attempt + 1} 次重试 — 上次错误: {last_error[:80]}")
             messages.append({"role": "user", "content": f"上次生成的代码运行报错:\n{last_error}\n请修复并重新生成完整代码。"})
 
         raw = chat(messages, max_tokens=8192)
@@ -114,12 +126,12 @@ def codegen_node(state: AgentState) -> Dict:
             last_error = f"加载失败: {exc}"
             continue
 
+        print(f"[代码生成] 代码加载成功，正在运行冒烟测试 ({_SMOKE_TEST_STEPS} 步)...")
         smoke_err = _smoke_test(algo_type, reg_name, state)
         if smoke_err:
             last_error = f"运行测试失败: {smoke_err}"
             continue
 
-        # Save to file
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         target_dir = Path(__file__).resolve().parent.parent.parent / algo_type
         filename = f"generated_{algo_name or algo_type}_{timestamp}.py"
@@ -128,6 +140,8 @@ def codegen_node(state: AgentState) -> Dict:
 
         gen = dict(state.get("generated_code") or {})
         gen[algo_type] = str(out_path)
+        print(f"[代码生成] 完成 — 已保存至 {filename}")
         return {"generated_code": gen, "error": ""}
 
+    print(f"[代码生成] 失败 — {_MAX_RETRIES} 次重试均未通过")
     return {"error": f"代码生成失败（{_MAX_RETRIES}次重试后仍有错误）: {last_error}"}
