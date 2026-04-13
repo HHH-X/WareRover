@@ -10,13 +10,13 @@ import jsonschema
 import yaml
 
 from mapf_agent.llm import chat_json
+from mapf_agent.paths import output_dir
 from mapf_agent.state import AgentState
 
 _BASE = Path(__file__).resolve().parent.parent
 _SCHEMA_PATH = _BASE / "schema" / "map_schema.json"
 _DEFAULTS_PATH = _BASE / "schema" / "map_defaults.yaml"
 _PROMPT_PATH = _BASE / "prompts" / "map_gen.txt"
-_MAP_DIR = Path(__file__).resolve().parent.parent.parent / "config" / "maps"
 
 
 def _load_resources():
@@ -65,8 +65,7 @@ def map_gen_node(state: AgentState) -> Dict:
     w, h = result["map"]["width"], result["map"]["height"]
     n_agv = len(result.get("agvs", []))
     filename = f"map_{w}_{h}_{n_agv}agv_{timestamp}.json"
-    out_path = _MAP_DIR / filename
-    _MAP_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = output_dir("maps") / filename
     out_path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
 
     print(f"[地图生成] 完成 — {w}×{h} 地图, {n_agv} 台AGV → {filename}")

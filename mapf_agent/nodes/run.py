@@ -37,6 +37,6 @@ def run_node(state: AgentState) -> Dict:
     except Exception as exc:
         print("[仿真运行] 仿真异常终止")
         return {"error": f"仿真运行失败: {exc}"}
-
+    print("[仿真运行] metrics: ", metrics)
     print("[仿真运行] 仿真完成")
     return {"run_metrics": metrics, "error": ""}

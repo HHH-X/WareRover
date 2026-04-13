@@ -1,6 +1,9 @@
 """Unified algorithm registry: register, look-up, build and dynamically load
 planner / scheduler implementations.
 
+Built-in algorithms are registered lazily (as import specs) so that heavy
+dependencies like ``torch`` are only loaded when actually needed.
+
 Each ``AlgorithmRegistry`` instance holds its own mapping so that concurrent
 processes (or threads) never interfere with each other.  A module-level
 ``default_registry`` is provided for convenience in single-process entry
@@ -8,12 +11,16 @@ points.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Type
+import importlib
+from typing import TYPE_CHECKING, Any, Dict, Tuple, Type, Union
 
 if TYPE_CHECKING:
     from planner.base_planner import BasePlanner
     from scheduler.base_scheduler import BaseScheduler
     from utils.simulation_context import SimulationContext
+
+_LazySpec = Tuple[str, str]  # (module_path, class_name)
+_Entry = Union[Type, _LazySpec]
 
 
 def _build_exec_namespace() -> dict:
@@ -57,10 +64,34 @@ def _build_exec_namespace() -> dict:
     }
 
 
+# ── Default built-in algorithms (lazy specs) ──
+
+_DEFAULT_PLANNERS: Dict[str, _LazySpec] = {
+    "astar": ("planner.astar_planner", "AStarPlanner"),
+    "cbs_fw": ("planner.cbs_fw_planner", "FixedWindowCBSPlanner"),
+    "dhc": ("planner.dhc_planner", "DHCPlanner"),
+}
+
+_DEFAULT_SCHEDULERS: Dict[str, _LazySpec] = {
+    "random": ("scheduler.random_scheduler", "RandomScheduler"),
+    "ta": ("scheduler.TA_scheduler", "TAScheduler"),
+}
+
+
 class AlgorithmRegistry:
     def __init__(self) -> None:
-        self._planners: Dict[str, Type] = {}
-        self._schedulers: Dict[str, Type] = {}
+        self._planners: Dict[str, _Entry] = dict(_DEFAULT_PLANNERS)
+        self._schedulers: Dict[str, _Entry] = dict(_DEFAULT_SCHEDULERS)
+
+    # ── internal ──
+
+    @staticmethod
+    def _resolve(entry: _Entry) -> Type:
+        if isinstance(entry, tuple):
+            module_path, class_name = entry
+            mod = importlib.import_module(module_path)
+            return getattr(mod, class_name)
+        return entry
 
     # ── registration ──
 
@@ -70,6 +101,12 @@ class AlgorithmRegistry:
     def register_scheduler(self, name: str, cls: Type) -> None:
         self._schedulers[name.strip().lower()] = cls
 
+    def register_planner_lazy(self, name: str, module_path: str, class_name: str) -> None:
+        self._planners[name.strip().lower()] = (module_path, class_name)
+
+    def register_scheduler_lazy(self, name: str, module_path: str, class_name: str) -> None:
+        self._schedulers[name.strip().lower()] = (module_path, class_name)
+
     # ── lookup ──
 
     def get_planner(self, name: str) -> Type:
@@ -78,7 +115,9 @@ class AlgorithmRegistry:
             raise ValueError(
                 f"Planner '{name}' not found. Available: {sorted(self._planners)}"
             )
-        return self._planners[key]
+        cls = self._resolve(self._planners[key])
+        self._planners[key] = cls
+        return cls
 
     def get_scheduler(self, name: str) -> Type:
         key = name.strip().lower()
@@ -86,33 +125,15 @@ class AlgorithmRegistry:
             raise ValueError(
                 f"Scheduler '{name}' not found. Available: {sorted(self._schedulers)}"
             )
-        return self._schedulers[key]
+        cls = self._resolve(self._schedulers[key])
+        self._schedulers[key] = cls
+        return cls
 
     def has_planner(self, name: str) -> bool:
         return name.strip().lower() in self._planners
 
     def has_scheduler(self, name: str) -> bool:
         return name.strip().lower() in self._schedulers
-
-    # ── default built-in algorithms ──
-
-    def init_defaults(self) -> None:
-        from planner.astar_planner import AStarPlanner
-        from planner.cbs_fw_planner import FixedWindowCBSPlanner
-        from scheduler.random_scheduler import RandomScheduler
-        from scheduler.TA_scheduler import TAScheduler
-
-        self.register_planner("astar", AStarPlanner)
-        self.register_planner("cbs_fw", FixedWindowCBSPlanner)
-
-        try:
-            from planner.dhc_planner import DHCPlanner
-            self.register_planner("dhc", DHCPlanner)
-        except Exception:
-            pass
-
-        self.register_scheduler("random", RandomScheduler)
-        self.register_scheduler("ta", TAScheduler)
 
     # ── factory helpers ──
 

@@ -46,7 +46,6 @@ async def simulator_loop(websocket, message_queue):
 
     ctx = SimulationContext()
     ctx.system_config = SystemConfig()
-    default_registry.init_defaults()
 
     ctx.logger = GlobalLogger(ctx)
     ctx.clock = SimulationClock(ctx)

@@ -9,6 +9,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
+from mapf_agent.paths import output_dir
+
 CodeSource = Union[str, Path]
 _PKG_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _PKG_DIR.parent.parent
@@ -29,7 +31,7 @@ class EvolveRequest:
     baseline_scheduler_type: str = "random"
     config_path: Optional[CodeSource] = None
     iterations: Optional[int] = None
-    output_root: CodeSource = "agent/evolve_runs"
+    output_root: Optional[CodeSource] = None
     seeds: Sequence[int] = (42, 43, 44)
     system_config_json: Optional[str] = None
 
@@ -160,7 +162,8 @@ def run_evolution(request: EvolveRequest) -> EvolveResult:
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_id = f"evolve_{target.value}_{ts}_{uuid.uuid4().hex[:6]}"
-    run_dir = Path(request.output_root) / run_id
+    root = Path(request.output_root) if request.output_root else output_dir("evolve")
+    run_dir = root / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
 
     init_path = run_dir / "initial_program.py"

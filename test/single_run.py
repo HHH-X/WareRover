@@ -32,7 +32,6 @@ def run_single_episode(seed: int = 42) -> Dict:
     ctx.system_config = SystemConfig()
     ctx.system_config.sim_config.order_seed = seed
     ctx.system_config.fault_config.fault_seed = seed
-    default_registry.init_defaults()
 
     ctx.logger = GlobalLogger(ctx)
     ctx.clock = SimulationClock(ctx)

@@ -58,6 +58,36 @@ def chat(
     raise RuntimeError(f"LLM 调用失败: {last_err}")
 
 
+def chat_completion(
+    messages: List[Dict[str, Any]],
+    *,
+    tools: Any = None,
+    temperature: float = 0.2,
+    max_tokens: int = 4096,
+    retries: int = 3,
+):
+    """Call LLM and return the raw ChatCompletionMessage (supports tool calling)."""
+    kwargs: Dict[str, Any] = {
+        "model": _model(),
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+    if tools:
+        kwargs["tools"] = tools
+
+    last_err: Optional[Exception] = None
+    for attempt in range(retries):
+        try:
+            resp = _client().chat.completions.create(**kwargs)
+            return resp.choices[0].message
+        except (RateLimitError, APIError, APIConnectionError) as exc:
+            last_err = exc
+            if attempt < retries - 1:
+                time.sleep(2 ** attempt)
+    raise RuntimeError(f"LLM 调用失败: {last_err}")
+
+
 def chat_json(messages: List[Dict[str, str]], **kwargs: Any) -> Dict[str, Any]:
     raw = chat(messages, json_mode=True, **kwargs)
     try:

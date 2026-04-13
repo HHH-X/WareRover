@@ -55,7 +55,7 @@ def main() -> None:
     parser.add_argument("--scheduler-source", help="Scheduler 源文件（target=both 时使用）")
     parser.add_argument("--config", "-c", help="OpenEvolve 配置 YAML 路径")
     parser.add_argument("--iterations", "-n", type=int, help="迭代次数")
-    parser.add_argument("--output", "-o", default="agent/evolve_runs", help="输出根目录")
+    parser.add_argument("--output", "-o", default=None, help="输出根目录 (默认: output/evolve/)")
     parser.add_argument("--baseline-planner", default="astar", help="基线 planner 类型")
     parser.add_argument("--baseline-scheduler", default="random", help="基线 scheduler 类型")
 

@@ -96,7 +96,6 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
             cfg.sim_config.scheduler_type = st
             ctx = SimulationContext()
             ctx.system_config = cfg
-            _registry.init_defaults()
             ctx.logger = GlobalLogger(ctx)
             ctx.clock = SimulationClock(ctx)
             ctx.grid_map = GridMap(ctx)

@@ -36,7 +36,6 @@ def run_simulation(
 
     ctx = SimulationContext()
     ctx.system_config = cfg
-    default_registry.init_defaults()
 
     ctx.logger = GlobalLogger(ctx)
     ctx.clock = SimulationClock(ctx)

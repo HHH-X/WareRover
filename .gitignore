@@ -15,3 +15,4 @@ config/envs/
 api_key.txt
 mapf_agent/api_key
 mapf_agent/evolve_runs/
+output/
