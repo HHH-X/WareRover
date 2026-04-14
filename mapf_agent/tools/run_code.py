@@ -25,10 +25,17 @@ def _extract_code(raw: str) -> str:
     return raw.strip()
 
 
+def _truncate(text: str, max_len: int = 200) -> str:
+    text = text.replace("\n", " ").strip()
+    return text if len(text) <= max_len else text[:max_len] + "..."
+
+
 def test_code(code: str, algo_type: str, reg_name: str,
               state: "AgentState") -> str:
     """Load code into registry and run a smoke test. Returns '测试通过' or error."""
     code = _extract_code(code)
+    line_count = code.count("\n") + 1
+    print(f"  [工具调用] test_code → 代码 ({line_count} 行)")
 
     try:
         if algo_type == "planner":
@@ -36,7 +43,9 @@ def test_code(code: str, algo_type: str, reg_name: str,
         else:
             default_registry.load_generated_scheduler(code, reg_name)
     except Exception as exc:
-        return f"代码加载失败: {exc}"
+        result = f"代码加载失败: {exc}"
+        print(f"  [工具返回] ✗ {_truncate(result)}")
+        return result
 
     cfg = copy.deepcopy(state.get("system_config") or SystemConfig())
     cfg.sim_config.max_steps = _SMOKE_TEST_STEPS
@@ -47,9 +56,13 @@ def test_code(code: str, algo_type: str, reg_name: str,
     else:
         cfg.sim_config.scheduler_type = reg_name
 
+    print(f"  [测试中] 冒烟测试 ({_SMOKE_TEST_STEPS} 步仿真)...")
     try:
         run_simulation(config=cfg, max_steps=_SMOKE_TEST_STEPS)
     except Exception as exc:
-        return f"冒烟测试失败: {exc}"
+        result = f"冒烟测试失败: {exc}"
+        print(f"  [工具返回] ✗ {_truncate(result)}")
+        return result
 
+    print("  [工具返回] ✓ 测试通过")
     return "测试通过"

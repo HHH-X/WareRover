@@ -78,18 +78,44 @@ def get_class_signatures(path: str) -> str:
     return "\n".join(results) if results else "未找到类定义"
 
 
+def _truncate(text: str, max_len: int = 120) -> str:
+    text = text.replace("\n", " ").strip()
+    return text if len(text) <= max_len else text[:max_len] + "..."
+
+
 def execute(name: str, arguments: dict) -> str:
     try:
         if name == "list_directory":
-            return list_directory(arguments["path"])
+            path = arguments["path"]
+            print(f"  [工具调用] list_directory → 目录: {path}")
+            result = list_directory(path)
+            entries = [l for l in result.splitlines() if l.strip()]
+            dirs = sum(1 for e in entries if e.startswith("[DIR]"))
+            files = sum(1 for e in entries if e.startswith("[FILE]"))
+            print(f"  [工具返回] 共 {dirs} 个子目录, {files} 个文件")
+            return result
         if name == "read_file":
-            return read_file(
-                arguments["path"],
-                arguments.get("start_line"),
-                arguments.get("end_line"),
-            )
+            path = arguments["path"]
+            start = arguments.get("start_line")
+            end = arguments.get("end_line")
+            range_hint = f" (行 {start}-{end})" if start and end \
+                else f" (从行 {start})" if start else ""
+            print(f"  [工具调用] read_file → 文件: {path}{range_hint}")
+            result = read_file(path, start, end)
+            print(f"  [工具返回] 读取到 {len(result.splitlines())} 行内容")
+            return result
         if name == "get_class_signatures":
-            return get_class_signatures(arguments["path"])
+            path = arguments["path"]
+            print(f"  [工具调用] get_class_signatures → 文件: {path}")
+            result = get_class_signatures(path)
+            classes = [l for l in result.splitlines() if l.startswith("class ")]
+            if classes:
+                names = [c.split("(")[0].replace("class ", "") for c in classes]
+                print(f"  [工具返回] 找到类: {', '.join(names)}")
+            else:
+                print(f"  [工具返回] {_truncate(result)}")
+            return result
     except Exception as e:
+        print(f"  [工具错误] {e}")
         return f"工具执行错误: {e}"
     return f"未知探索工具: {name}"

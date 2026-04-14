@@ -22,6 +22,11 @@ _MAX_ROUNDS = 20
 _KEY_DIRS = ["core", "planner", "scheduler", "utils", "config", "order_strategies"]
 
 
+def _truncate(text: str, max_len: int = 200) -> str:
+    text = text.replace("\n", " ").strip()
+    return text if len(text) <= max_len else text[:max_len] + "..."
+
+
 def _read_interface(algo_type: str) -> str:
     path = _PLANNER_BASE if algo_type == "planner" else _SCHEDULER_BASE
     return path.read_text(encoding="utf-8")
@@ -122,9 +127,13 @@ def codegen_node(state: AgentState) -> Dict:
     executor = create_executor(algo_type, reg_name, state)
 
     for round_num in range(1, _MAX_ROUNDS + 1):
+        print(f"\n{'─' * 50}")
         print(f"[代码生成] 轮次 {round_num}/{_MAX_ROUNDS}")
         msg = chat_completion(messages, tools=TOOL_DEFINITIONS, max_tokens=8192)
         messages.append(_msg_from_completion(msg))
+
+        if msg.content:
+            print(f"  [LLM] {_truncate(msg.content, 200)}")
 
         # --- LLM called tools ---
         if msg.tool_calls:
@@ -135,7 +144,6 @@ def codegen_node(state: AgentState) -> Dict:
                     args = json.loads(tc.function.arguments)
                 except json.JSONDecodeError:
                     args = {}
-                print(f"  [工具] {fn_name}")
                 result = executor(fn_name, args)
                 messages.append({
                     "role": "tool",
@@ -154,7 +162,8 @@ def codegen_node(state: AgentState) -> Dict:
         # --- LLM returned plain text (no tool calls) ---
         code = _extract_code(msg.content or "")
         if code:
-            print("  [自动测试] LLM 直接输出了代码，自动提交测试...")
+            line_count = code.count("\n") + 1
+            print(f"  [自动测试] LLM 直接输出了代码 ({line_count} 行)，自动提交测试...")
             result = executor("test_code", {"code": code})
             if result == _SUCCESS:
                 return _save_result(code, algo_type, algo_name, state)
@@ -163,7 +172,7 @@ def codegen_node(state: AgentState) -> Dict:
                 "content": f"代码测试失败: {result}\n请根据错误信息修复代码，然后使用 test_code 工具重新提交。",
             })
 
-    print(f"[代码生成] 失败 — 达到最大轮次 {_MAX_ROUNDS}")
+    print(f"\n[代码生成] 失败 — 达到最大轮次 {_MAX_ROUNDS}")
     return {"error": f"代码生成失败（{_MAX_ROUNDS} 轮后仍未通过测试）"}
 
 
@@ -176,5 +185,8 @@ def _save_result(code: str, algo_type: str, algo_name: str,
 
     gen = dict(state.get("generated_code") or {})
     gen[algo_type] = str(out_path)
-    print(f"[代码生成] 完成 — 已保存至 {filename}")
+    line_count = code.count("\n") + 1
+    print(f"\n{'═' * 50}")
+    print(f"[代码生成] ✓ 完成 — {line_count} 行代码已保存至 {filename}")
+    print(f"{'═' * 50}")
     return {"generated_code": gen, "error": ""}
