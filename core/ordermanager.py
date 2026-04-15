@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Tuple, Optional, Generator, TYPE_CHECKING
 import random
 import json
-from config.settings import SystemConfig, OneShotConfig, ContinuousConstantConfig, ContinuousPeriodicConfig
+from config.settings import SystemConfig
 from order_strategies import (
     OrderGenerationStrategy,
     OneShotStrategy,
@@ -21,9 +21,9 @@ if TYPE_CHECKING:
 
 class OrderManager:
     def __init__(self, ctx: SimulationContext):
-        assert ctx.system_config is not None and ctx.grid_map is not None
+        assert ctx.system_config is not None and ctx.warehouse_map is not None
         self.system_config = ctx.system_config
-        self.map = ctx.grid_map
+        self.warehouse_map = ctx.warehouse_map
         self.logger = ctx.logger
         self.clock = ctx.clock
         self.total_orders_limit = self.system_config.sim_config.total_orders_limit
@@ -34,7 +34,6 @@ class OrderManager:
         self.finished_orders: Dict[int, Order] = {}
 
         self.next_order_id = 0
-
         self.strategy = self._create_strategy()
 
     def _create_strategy(self) -> OrderGenerationStrategy:
@@ -51,20 +50,20 @@ class OrderManager:
             return ContinuousBurstStrategy(self.system_config, self.logger)
         else:
             raise ValueError(f"Unknown order_mode: {mode}")
-        
+
     def can_generate_more_orders(self) -> bool:
         return len(self.all_orders) < self.total_orders_limit
 
     def step(self):
-        """Called once per simulator step."""
-        if self.can_generate_more_orders():  
+        if self.can_generate_more_orders():
             current_step = self.clock.now()
             new_orders = self.strategy.update(current_step)
             accepted_count = 0
             for order in new_orders:
-                if(self.can_generate_more_orders()):
+                if self.can_generate_more_orders():
                     order.order_id = self.next_order_id
                     order.created_step = current_step
+                    self._fill_floor_info(order)
                     self.unprocessed_orders[self.next_order_id] = order
                     self.all_orders.append(order)
                     self.next_order_id += 1
@@ -79,15 +78,27 @@ class OrderManager:
                         goods_id=order.goods_id,
                         box_id=getattr(order, 'box_id', None),
                     )
-                self.logger.add_runtime_log(f"[OrderManager] Step {current_step}: Accepted {accepted_count} new orders. Total orders: {len(self.all_orders)}")
+                self.logger.add_runtime_log(
+                    f"[OrderManager] Step {current_step}: Accepted {accepted_count} new orders. "
+                    f"Total orders: {len(self.all_orders)}")
         self.check_processing_timeouts()
-        
+
+    def _fill_floor_info(self, order: Order):
+        """Determine source_floor (from goods/box) and target_floor (from receiver)."""
+        box_ids = self.warehouse_map.get_boxes_by_goods(order.goods_id)
+        if box_ids:
+            source_floor = self.warehouse_map.get_box_floor(box_ids[0])
+            order.source_floor = source_floor if source_floor is not None else 0
+        target_floor = self.warehouse_map.get_receiver_floor(order.receiver_id)
+        order.target_floor = target_floor if target_floor is not None else 0
+        order.is_cross_floor = order.source_floor != order.target_floor
+
     def get_all_orders(self) -> List[Order]:
         return self.all_orders
-    
+
     def get_unprocessed_orders(self) -> List[Order]:
         return list(self.unprocessed_orders.values())
-    
+
     def mark_order_as_processing(self, order_id: int, agv_id: int) -> bool:
         if order_id not in self.unprocessed_orders:
             return False
@@ -97,25 +108,27 @@ class OrderManager:
         box_id = getattr(order, 'box_id', None)
         self.logger.add_order_assignment_log(order_id=order_id, agv_id=agv_id, box_id=box_id)
         return True
-    
-    def complete_order(self, order_id: int, agv_id: int, box_id: Optional[int], agv_pos: Tuple[int, int]) -> bool:
-        """Complete order: move from processing_orders or unprocessed_orders to finished_orders."""
+
+    def complete_order(self, order_id: int, agv_id: int,
+                       box_id: Optional[int], agv_pos: Tuple[int, int]) -> bool:
         if order_id in self.processing_orders:
             order_source = self.processing_orders
         elif order_id in self.unprocessed_orders:
             order_source = self.unprocessed_orders
         else:
-            self.logger.add_runtime_log(f"[ERROR] Order {order_id} not found in processing or unprocessed orders.")
+            self.logger.add_runtime_log(
+                f"[ERROR] Order {order_id} not found in processing or unprocessed orders.")
             return False
 
         order = order_source[order_id]
-        goods_list = self.map.get_goods_by_box(box_id) if box_id is not None else []
-        receiver_pos = self.map.get_receiver_position(order.receiver_id)
+        goods_list = self.warehouse_map.get_goods_by_box(box_id) if box_id is not None else []
+        receiver_pos = self.warehouse_map.get_receiver_position(order.receiver_id)
 
         if order.goods_id in goods_list and agv_pos == receiver_pos:
             order.finished_step = self.clock.now()
             self.finished_orders[order_id] = order_source.pop(order_id)
-            self.logger.add_runtime_log(f"[OrderManager] Order {order_id} completed by AGV {agv_id} at step {self.clock.now()}.")
+            self.logger.add_runtime_log(
+                f"[OrderManager] Order {order_id} completed by AGV {agv_id} at step {self.clock.now()}.")
             self.logger.add_order_completion_log(order_id=order_id, agv_id=agv_id)
             self.logger.record_order_completed(self.finished_orders[order_id])
             return True
@@ -123,16 +136,15 @@ class OrderManager:
             self.logger.add_runtime_log(
                 f"[FAIL] Order {order_id} not fulfilled by AGV {agv_id}. "
                 f"Expected goods {order.goods_id} at receiver {receiver_pos}, "
-                f"but got goods {goods_list} at {agv_pos} with box_id={box_id}."
-            )
-
+                f"but got goods {goods_list} at {agv_pos} with box_id={box_id}.")
             return False
-    
+
     def is_all_orders_completed(self) -> bool:
-        return len(self.unprocessed_orders) == 0 and len(self.processing_orders) == 0 and not self.can_generate_more_orders()
+        return (len(self.unprocessed_orders) == 0
+                and len(self.processing_orders) == 0
+                and not self.can_generate_more_orders())
 
     def check_processing_timeouts(self):
-        """Return timed-out processing orders to unprocessed."""
         timeout_orders = []
         current_step = self.clock.now()
         for order_id, order in self.processing_orders.items():
@@ -145,10 +157,8 @@ class OrderManager:
             order = self.processing_orders.pop(order_id)
             order.start_processing_step = None
             self.unprocessed_orders[order_id] = order
-
             self.logger.add_runtime_log(
-                f"[OrderManager] Order {order_id} timeout, returned to unprocessed queue."
-            )
+                f"[OrderManager] Order {order_id} timeout, returned to unprocessed queue.")
 
     def reset_order(self):
         self.all_orders.clear()

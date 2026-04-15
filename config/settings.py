@@ -53,7 +53,7 @@ class SimConfig:
     # Random seed for order generation; None means non-deterministic
 
     # Map and simulation step configuration
-    map_file: str = "config/maps/map_25_20_het.json"  # Default map file path
+    map_file: str = "config\maps\multi_floor_test.json"  # Default map file path
     max_steps: int = 1000
 
     time_step: float = 1.0        # Duration of each simulation step (seconds)

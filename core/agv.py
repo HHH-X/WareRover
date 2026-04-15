@@ -1,22 +1,31 @@
+from __future__ import annotations
+
 from collections import deque
-from typing import Deque, List, Tuple, Optional, Dict, Set, Generator
+from typing import Deque, List, Tuple, Optional, Dict, Set, Generator, TYPE_CHECKING
 from enum import Enum, auto
 from core.gridmap import GridMap
-from core.ordermanager import OrderManager
 from config.settings import SimConfig
-import json
 
-epsilon = 1e-4 
+if TYPE_CHECKING:
+    from core.ordermanager import OrderManager
+
+epsilon = 1e-4
+
+
 class Direction(Enum):
     UP = auto()
     DOWN = auto()
     LEFT = auto()
     RIGHT = auto()
 
+
 class AGVAction(Enum):
     PICK = "pick"
     PLACE = "place"
     HANDOVER = "handover"
+    ELEVATOR_LOAD = "elevator_load"
+    ELEVATOR_UNLOAD = "elevator_unload"
+
 
 class StepInfo(Enum):
     MOVE = auto()
@@ -27,18 +36,23 @@ class StepInfo(Enum):
     TURNING = auto()
     OTHER = auto()
 
+
 class AGV:
+    """AGV entity. All grid positions use (row, col) convention."""
+
     def __init__(
         self,
         sim_config: SimConfig,
         agv_id: int,
-        size:int,
+        size: int,
+        floor_id: int,
         init_grid_pos: Tuple[int, int],
         map_inst: GridMap,
         order_manager: OrderManager,
     ):
         self.id: int = agv_id
         self.size: int = size
+        self.floor_id: int = floor_id
         self.init_grid_pos: Tuple[int, int] = init_grid_pos
         self.grid_pos: Tuple[int, int] = init_grid_pos
         self.real_pos: Tuple[float, float] = (init_grid_pos[0] + 0.5, init_grid_pos[1] + 0.5)
@@ -57,11 +71,11 @@ class AGV:
         self.target_direction: Optional[Direction] = None
 
         self.carried_box_id: int = None
-
         self.is_working: bool = True
+        self.last_completed_task_pos: Tuple[int, int] = init_grid_pos
 
-        # Position when last task was completed (for progress calculation)
-        self.last_completed_task_pos: Tuple[int, int] = init_grid_pos 
+        self.elevator_load_pending: Optional[Tuple[int, int]] = None   # (elevator_id, box_id)
+        self.elevator_unload_pending: Optional[int] = None             # elevator_id
 
     @property
     def is_idle(self) -> bool:
@@ -70,26 +84,24 @@ class AGV:
     @property
     def is_resting(self) -> bool:
         return self.rest_target is not None and self.grid_pos == self.rest_target
-    
+
     @property
     def is_aligned(self) -> bool:
-        """Whether real_pos is aligned with the center of grid_pos."""
-        gx, gy = self.grid_pos
-        expected_x, expected_y = gx + 0.5, gy + 0.5
-        rx, ry = self.real_pos
-        return abs(rx - expected_x) < epsilon and abs(ry - expected_y) < epsilon
-
+        gr, gc = self.grid_pos
+        expected_r, expected_c = gr + 0.5, gc + 0.5
+        rr, rc = self.real_pos
+        return abs(rr - expected_r) < epsilon and abs(rc - expected_c) < epsilon
 
     def step(self, next_grid: Tuple[int, int]) -> Tuple[bool, StepInfo]:
         if not self.is_working:
             return False, StepInfo.OTHER
-        
+
         if self.turning_timer > 0:
             self.turning_timer -= 1
-            if(self.turning_timer == 0):
+            if self.turning_timer == 0:
                 self.direction = self.target_direction
             return False, StepInfo.TURNING
-               
+
         _, step_info = self.update_position(next_grid)
         replan_required = False
         if self.action_queue and self.grid_pos == self.action_queue[0]:
@@ -111,51 +123,50 @@ class AGV:
 
         return replan_required, step_info
 
-
     def update_position(self, next_grid: Tuple[int, int]) -> tuple[bool, StepInfo]:
-        dx = next_grid[0] - self.grid_pos[0]
-        dy = next_grid[1] - self.grid_pos[1]
+        dr = next_grid[0] - self.grid_pos[0]
+        dc = next_grid[1] - self.grid_pos[1]
 
         step_info = StepInfo.MOVE
-        if dx == 1:
+        if dc == 1:
             self.target_direction = Direction.RIGHT
-        elif dx == -1:
+        elif dc == -1:
             self.target_direction = Direction.LEFT
-        elif dy == 1:
+        elif dr == 1:
             self.target_direction = Direction.DOWN
-        elif dy == -1:
+        elif dr == -1:
             self.target_direction = Direction.UP
         else:
             self.target_direction = None
             step_info = StepInfo.STAY_OFF_GOAL
         self.turning_timer = self._calculate_turn_time(self.direction, self.target_direction)
-        if( self.turning_timer > 0):
+        if self.turning_timer > 0:
             self.turning_timer -= 1
-            if(self.turning_timer == 0):
+            if self.turning_timer == 0:
                 self.direction = self.target_direction
             return False, StepInfo.TURNING
-        
+
         self.speed = self.max_speed
         offset = self.speed * self.time_step
-        x, y = self.real_pos
+        r, c = self.real_pos
 
         moved = False
-        if dx != 0:
-            target_x = next_grid[0] + 0.5
-            if abs(target_x - x) <= offset + epsilon:
-                x = target_x
+        if dr != 0:
+            target_r = next_grid[0] + 0.5
+            if abs(target_r - r) <= offset + epsilon:
+                r = target_r
                 moved = True
             else:
-                x += offset * dx
-        if dy != 0:
-            target_y = next_grid[1] + 0.5
-            if abs(target_y - y) <= offset + epsilon:
-                y = target_y
+                r += offset * dr
+        if dc != 0:
+            target_c = next_grid[1] + 0.5
+            if abs(target_c - c) <= offset + epsilon:
+                c = target_c
                 moved = True
             else:
-                y += offset * dy
+                c += offset * dc
 
-        self.real_pos = (x, y)
+        self.real_pos = (r, c)
         if moved:
             self.grid_pos = next_grid
         return moved, step_info
@@ -164,7 +175,8 @@ class AGV:
         box_id = self.map.pick_box_at(self.grid_pos)
         box_size = self.map.box_sizes.get(box_id, 1)
         if box_id is not None and box_size != self.size:
-            raise ValueError(f"AGV {self.id} cannot pick box {box_id}: size mismatch (AGV={self.size}, box={box_size})")
+            raise ValueError(
+                f"AGV {self.id} cannot pick box {box_id}: size mismatch (AGV={self.size}, box={box_size})")
         if box_id is not None:
             self.carried_box_id = int(box_id)
 
@@ -183,6 +195,16 @@ class AGV:
             box_id=self.carried_box_id,
             agv_pos=self.grid_pos
         )
+
+    def _elevator_load(self, elevator_id: Optional[int]):
+        """Mark box for loading onto elevator. Actual transfer handled by Simulator."""
+        if self.carried_box_id is not None and elevator_id is not None:
+            self.elevator_load_pending = (elevator_id, self.carried_box_id)
+
+    def _elevator_unload(self, elevator_id: Optional[int]):
+        """Mark request to unload from elevator. Actual transfer handled by Simulator."""
+        if elevator_id is not None:
+            self.elevator_unload_pending = elevator_id
 
     def assign_task(self, task_positions: List[Tuple[Tuple[int, int], AGVAction, Optional[int]]]):
         self.task_queue = deque(task_positions)
@@ -204,9 +226,12 @@ class AGV:
             self._place_box()
         elif action == AGVAction.HANDOVER:
             self._handover_box(extra)
+        elif action == AGVAction.ELEVATOR_LOAD:
+            self._elevator_load(extra)
+        elif action == AGVAction.ELEVATOR_UNLOAD:
+            self._elevator_unload(extra)
 
     def reset(self):
-        """Reset AGV to initial state and position."""
         self.grid_pos = self.init_grid_pos
         self.real_pos = (self.init_grid_pos[0] + 0.5, self.init_grid_pos[1] + 0.5)
         self.task_queue.clear()
@@ -216,8 +241,11 @@ class AGV:
         self.is_working = True
         self.direction = None
         self.last_completed_task_pos = self.init_grid_pos
-    
-    def _calculate_turn_time(self, current_direction: Direction, target_direction: Optional[Direction],) -> int:
+        self.elevator_load_pending = None
+        self.elevator_unload_pending = None
+
+    def _calculate_turn_time(self, current_direction: Direction,
+                             target_direction: Optional[Direction]) -> int:
         if target_direction is None or current_direction == target_direction:
             return 0
         opposites = {

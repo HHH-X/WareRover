@@ -1,0 +1,304 @@
+{
+  "map": {
+    "width": 12,
+    "height": 10,
+    "floors": 2
+  },
+  "floors": [
+    {
+      "floor_id": 0,
+      "boxes": [
+        {
+          "box_id": 0,
+          "position": [
+            3,
+            4
+          ],
+          "goods_ids": [
+            0
+          ]
+        },
+        {
+          "box_id": 1,
+          "position": [
+            3,
+            5
+          ],
+          "goods_ids": [
+            1
+          ]
+        },
+        {
+          "box_id": 2,
+          "position": [
+            3,
+            6
+          ],
+          "goods_ids": [
+            2
+          ]
+        },
+        {
+          "box_id": 3,
+          "position": [
+            6,
+            4
+          ],
+          "goods_ids": [
+            3
+          ]
+        },
+        {
+          "box_id": 4,
+          "position": [
+            6,
+            5
+          ],
+          "goods_ids": [
+            4
+          ]
+        },
+        {
+          "box_id": 5,
+          "position": [
+            6,
+            6
+          ],
+          "goods_ids": [
+            5
+          ]
+        }
+      ],
+      "receivers": [
+        {
+          "receiver_id": 0,
+          "position": [
+            3,
+            0
+          ]
+        },
+        {
+          "receiver_id": 1,
+          "position": [
+            6,
+            0
+          ]
+        },
+        {
+          "receiver_id": 2,
+          "position": [
+            3,
+            11
+          ]
+        },
+        {
+          "receiver_id": 3,
+          "position": [
+            6,
+            11
+          ]
+        }
+      ],
+      "wait_zones": [
+        {
+          "wait_zone_id": 0,
+          "position": [
+            0,
+            1
+          ]
+        },
+        {
+          "wait_zone_id": 1,
+          "position": [
+            0,
+            3
+          ]
+        },
+        {
+          "wait_zone_id": 2,
+          "position": [
+            0,
+            5
+          ]
+        },
+        {
+          "wait_zone_id": 3,
+          "position": [
+            0,
+            7
+          ]
+        }
+      ],
+      "agvs": [
+        {
+          "agv_id": 0
+        },
+        {
+          "agv_id": 1
+        },
+        {
+          "agv_id": 2
+        },
+        {
+          "agv_id": 3
+        }
+      ],
+      "obstacles": []
+    },
+    {
+      "floor_id": 1,
+      "boxes": [
+        {
+          "box_id": 10,
+          "position": [
+            3,
+            4
+          ],
+          "goods_ids": [
+            10
+          ]
+        },
+        {
+          "box_id": 11,
+          "position": [
+            3,
+            5
+          ],
+          "goods_ids": [
+            11
+          ]
+        },
+        {
+          "box_id": 12,
+          "position": [
+            3,
+            6
+          ],
+          "goods_ids": [
+            12
+          ]
+        },
+        {
+          "box_id": 13,
+          "position": [
+            6,
+            4
+          ],
+          "goods_ids": [
+            13
+          ]
+        },
+        {
+          "box_id": 14,
+          "position": [
+            6,
+            5
+          ],
+          "goods_ids": [
+            14
+          ]
+        },
+        {
+          "box_id": 15,
+          "position": [
+            6,
+            6
+          ],
+          "goods_ids": [
+            15
+          ]
+        }
+      ],
+      "receivers": [
+        {
+          "receiver_id": 10,
+          "position": [
+            3,
+            0
+          ]
+        },
+        {
+          "receiver_id": 11,
+          "position": [
+            6,
+            0
+          ]
+        },
+        {
+          "receiver_id": 12,
+          "position": [
+            3,
+            11
+          ]
+        },
+        {
+          "receiver_id": 13,
+          "position": [
+            6,
+            11
+          ]
+        }
+      ],
+      "wait_zones": [
+        {
+          "wait_zone_id": 4,
+          "position": [
+            0,
+            1
+          ]
+        },
+        {
+          "wait_zone_id": 5,
+          "position": [
+            0,
+            3
+          ]
+        },
+        {
+          "wait_zone_id": 6,
+          "position": [
+            0,
+            5
+          ]
+        },
+        {
+          "wait_zone_id": 7,
+          "position": [
+            0,
+            7
+          ]
+        }
+      ],
+      "agvs": [
+        {
+          "agv_id": 4
+        },
+        {
+          "agv_id": 5
+        },
+        {
+          "agv_id": 6
+        },
+        {
+          "agv_id": 7
+        }
+      ],
+      "obstacles": []
+    }
+  ],
+  "elevators": [
+    {
+      "elevator_id": 0,
+      "position": [
+        5,
+        9
+      ],
+      "floors": [
+        0,
+        1
+      ],
+      "travel_time": 5,
+      "capacity": 1
+    }
+  ]
+}

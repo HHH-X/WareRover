@@ -4,6 +4,8 @@ import { Box } from './entities/box.js';
 import { Obstacle } from './entities/obstacle.js';
 import { RestArea } from './entities/restArea.js';
 import { ReceiveArea } from './entities/receiveArea.js';
+import { Elevator } from './entities/elevator.js';
+import { FLOOR_HEIGHT } from './scene.js';
 import { updateMetrics } from './panel.js';
 import { updateOrderPanel } from './orderPanel.js';
 
@@ -13,84 +15,119 @@ function connectWebSocket(world) {
   ws = new WebSocket("ws://localhost:8765");
 
   ws.onmessage = (event) => {
-    // try {
-    //   const data = JSON.parse(event.data);
-    //   console.log("收到数据:", data);
-    // } catch (err) {
-    //   console.error("JSON 解析失败:", event.data, err);
-    // }
     const data = JSON.parse(event.data);
-    console.log("get data: ",data)
+    console.log("get data: ", data);
+
     if (data.type === "init") {
-      // 初始化地图和对象 ...
-      world.addMap(data.map_size);
-      
-      if (data.boxes) {
-        for (const boxId in data.boxes) {
-          const box = data.boxes[boxId];
-          const pos = box.pos;
-          const size = box.size;
-          world.addBox(new Box(parseInt(boxId), pos, size));
-          world.addShelf(new Shelf(parseInt(boxId), pos, size));
-          
+      const numFloors = data.num_floors || 1;
+      world.addMap(data.map_size, numFloors);
+
+      // Per-floor entities
+      if (data.floors) {
+        for (const [fid, floorData] of Object.entries(data.floors)) {
+          const floorId = parseInt(fid);
+
+          if (floorData.boxes) {
+            for (const boxId in floorData.boxes) {
+              const box = floorData.boxes[boxId];
+              world.addBox(new Box(parseInt(boxId), box.pos, box.size), floorId);
+              world.addShelf(new Shelf(parseInt(boxId), box.pos, box.size), floorId);
+            }
+          }
+
+          if (floorData.receivers) {
+            for (const rid in floorData.receivers) {
+              const recv = floorData.receivers[rid];
+              world.addReceiveArea(new ReceiveArea(rid, recv.pos, recv.size), floorId);
+            }
+          }
+
+          if (floorData.wait_zones) {
+            for (const key in floorData.wait_zones) {
+              const wz = floorData.wait_zones[key];
+              world.addRestArea(new RestArea(wz.pos, wz.size), floorId);
+            }
+          }
+
+          if (floorData.obstacles) {
+            floorData.obstacles.forEach(pos => {
+              world.addObstacle(new Obstacle(pos), floorId);
+            });
+          }
         }
       }
 
-      if (data.receivers) {
-        for (const rid in data.receivers) {
-          const receiver = data.receivers[rid];
-          world.addReceiveArea(new ReceiveArea(rid, receiver.pos, receiver.size));
-        }
-      }
-
+      // AGVs
       if (data.agvs) {
         for (const agvId in data.agvs) {
-          const agv = data.agvs[agvId];
-          world.addAGV(new AGV(parseInt(agvId), agv.pos, agv.size));
+          const agvData = data.agvs[agvId];
+          const floorId = agvData.floor || 0;
+          world.addAGV(new AGV(parseInt(agvId), agvData.pos, agvData.size), floorId);
         }
       }
 
-      if (data.wait_zones) {
-        for (const key in data.wait_zones) {
-          const wait_zone = data.wait_zones[key];
-          world.addRestArea(new RestArea(wait_zone.pos, wait_zone.size));
+      // Elevators
+      if (data.elevators) {
+        for (const eid in data.elevators) {
+          const eData = data.elevators[eid];
+          world.addElevator(new Elevator(
+            parseInt(eid), eData.pos, eData.floors || [0], FLOOR_HEIGHT
+          ));
         }
       }
 
-      if (data.obstacles) {
-        data.obstacles.forEach(pos => {
-          world.addObstacle(new Obstacle(pos));
-        });
+      // Build floor toggle controls
+      if (window.buildFloorToggles) {
+        window.buildFloorToggles(numFloors);
       }
     }
+
     if (data.type === "update") {
-      // 更新 AGV 位置
+      // Update AGV positions
       if (data.agvs) {
         for (const key in data.agvs) {
-          const pos = data.agvs[key];
+          const agvData = data.agvs[key];
+          const pos = agvData.pos || agvData;
           const agv = world.agvs.get(parseInt(key));
           if (agv) agv.update(pos);
         }
       }
 
-      // 直接更新 Box 坐标（AGV 上和 shelf 上分开处理）
+      // Box updates
       if (data.boxes_on_agv) {
-        for (const [boxId, pos] of Object.entries(data.boxes_on_agv)) {
+        for (const [boxId, boxData] of Object.entries(data.boxes_on_agv)) {
+          const pos = boxData.pos || boxData;
           const box = world.boxes.get(parseInt(boxId));
-          if (box) box.update(pos, 0.55); // y = 0.5 高度
+          if (box) box.update(pos, 0.55);
         }
       }
 
       if (data.boxes_on_shelf) {
-        for (const [boxId, pos] of Object.entries(data.boxes_on_shelf)) {
+        for (const [boxId, boxData] of Object.entries(data.boxes_on_shelf)) {
+          const pos = boxData.pos || boxData;
           const box = world.boxes.get(parseInt(boxId));
-          if (box) box.update(pos, 0.7); // y = 0.5 高度
+          if (box) box.update(pos, 0.7);
         }
       }
 
-      //更新安全路径
+      // Safe paths
       if (data.safe_paths) {
-        world.safePathRenderer.updatePaths(data.safe_paths);
+        // Flatten to simple format for safePathRenderer
+        const flatPaths = {};
+        for (const [key, pathData] of Object.entries(data.safe_paths)) {
+          flatPaths[key] = pathData.path || pathData;
+        }
+        world.safePathRenderer.updatePaths(flatPaths);
+      }
+
+      // Elevator status
+      if (data.elevators) {
+        for (const [eid, eStatus] of Object.entries(data.elevators)) {
+          const elev = world.elevators.get(parseInt(eid));
+          if (elev && eStatus.state) {
+            elev.updateState(eStatus.state, eStatus.timer);
+          }
+        }
       }
 
       if (data.metrics) {
@@ -101,6 +138,7 @@ function connectWebSocket(world) {
         updateOrderPanel(data.orders);
       }
     }
+
     if (data.type === "init" && data.orders) {
       updateOrderPanel(data.orders);
     }

@@ -10,40 +10,38 @@ from scipy.optimize import linear_sum_assignment
 from utils.base_utils import orders_to_tasks
 import random
 
+
 class TAScheduler(BaseScheduler):
     def __init__(self, ctx: SimulationContext):
         super().__init__(ctx)
-        self.map = ctx.grid_map
+        self.warehouse_map = ctx.warehouse_map
         self.order_manager = ctx.order_manager
         self.agv_manager = ctx.agv_manager
+        self.elevator_manager = ctx.elevator_manager
         self.logger = ctx.logger
-        
 
     def compute_manhattan_distance(self, pos1: Tuple[int, int], pos2: Tuple[int, int]) -> int:
-        """Manhattan distance between two grid positions."""
         return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
 
     def compute_task_cost(self, agv_pos: Tuple[int, int], order_group: List[Order]) -> int:
-        """Total cost for one AGV to execute a contiguous order group (pick -> deliver -> ... -> return to box)."""
         if not order_group:
             return float('inf')
         first_order = order_group[0]
-        box_ids = self.map.get_boxes_by_goods(first_order.goods_id)
+        box_ids = self.warehouse_map.get_boxes_by_goods(first_order.goods_id)
         selected_box_id = random.choice(box_ids)
-        box_pos = self.map.get_box_position(selected_box_id)
+        box_pos = self.warehouse_map.get_box_position(selected_box_id)
         total_cost = self.compute_manhattan_distance(agv_pos, box_pos)
-        receiver_pos = self.map.get_receiver_position(first_order.receiver_id)
+        receiver_pos = self.warehouse_map.get_receiver_position(first_order.receiver_id)
         total_cost += self.compute_manhattan_distance(box_pos, receiver_pos)
         prev_receiver_pos = receiver_pos
         for order in order_group[1:]:
-            next_receiver_pos = self.map.get_receiver_position(order.receiver_id)
+            next_receiver_pos = self.warehouse_map.get_receiver_position(order.receiver_id)
             total_cost += self.compute_manhattan_distance(prev_receiver_pos, next_receiver_pos)
             prev_receiver_pos = next_receiver_pos
         total_cost += self.compute_manhattan_distance(prev_receiver_pos, box_pos)
         return total_cost
 
-    def build_cost_matrix(self, idle_agv_ids: List[int], grouped_orders: List[List['Order']]) -> List[List[int]]:
-        """Build cost matrix: cost_matrix[agv_idx][order_group_idx] = full cost for that AGV to do that group."""
+    def build_cost_matrix(self, idle_agv_ids: List[int], grouped_orders: List[List[Order]]) -> List[List[int]]:
         cost_matrix = []
         for agv_id in idle_agv_ids:
             agv_pos = self.agv_manager.get_grid_position(agv_id)
@@ -55,11 +53,6 @@ class TAScheduler(BaseScheduler):
         return cost_matrix
 
     def task_assignment(self, cost_matrix: List[List[int]]) -> Dict[int, int]:
-        """
-        Hungarian algorithm on A x M cost matrix. If M >= A: assign A tasks to A AGVs to minimize total cost.
-        If M < A: pad with dummy columns (high cost), then return only AGVs assigned to real tasks.
-        Returns: {agv_idx -> task_idx} where task_idx is index into grouped_orders (0..M-1).
-        """
         if not cost_matrix:
             return {}
         A = len(cost_matrix)
@@ -88,42 +81,66 @@ class TAScheduler(BaseScheduler):
     def assign_tasks(
         self, idle_agv_ids: Set[int], planner
     ) -> Dict[int, List[Tuple[Tuple[int, int], AGVAction, int]]]:
-        """Assign task lists to idle AGVs using cost-based assignment (Hungarian) per size and goods group."""
         if self.order_manager.is_all_orders_completed() or not idle_agv_ids:
             return {}
+
+        # Only handle same-floor orders with TA; cross-floor falls back to simple assignment
+        same_floor_orders = [o for o in self.order_manager.get_unprocessed_orders()
+                             if not o.is_cross_floor]
+
         size_to_orders = defaultdict(list)
-        for order in self.order_manager.get_unprocessed_orders():
+        for order in same_floor_orders:
             size_to_orders[order.required_size].append(order)
+
+        # Filter AGVs: only assign to AGVs on the same floor as the orders' source
         size_to_agvs = defaultdict(list)
         for agv_id in idle_agv_ids:
             agv_size = self.agv_manager.get_agv_size(agv_id)
             size_to_agvs[agv_size].append(agv_id)
+
         agv_task_map = {}
         for size, agv_ids in size_to_agvs.items():
             valid_orders = size_to_orders.get(size, [])
             if not valid_orders:
                 continue
-            goods_to_orders = defaultdict(list)
-            for order in valid_orders:
-                goods_to_orders[order.goods_id].append(order)
-            grouped_orders = list(goods_to_orders.values())
-            cost_matrix = self.build_cost_matrix(agv_ids, grouped_orders)
-            assignment = self.task_assignment(cost_matrix)
-            agv_to_orders = defaultdict(list)
-            for agv_idx, task_idx in assignment.items():
-                agv_id = agv_ids[agv_idx]
-                agv_to_orders[agv_id] = grouped_orders[task_idx]
-            for agv_id, orders in agv_to_orders.items():
-                copied_orders = deepcopy(orders)
-                for order in copied_orders:
-                    box_ids = self.map.get_boxes_by_goods(order.goods_id)
-                    if not box_ids:
-                        raise ValueError(f"No available box found for goods_id={order.goods_id}")
-                    order.box_id = random.choice(box_ids)
 
-                agv_task_map[agv_id] = orders_to_tasks(copied_orders, self.map)
-                for original_order in orders:
-                    self.order_manager.mark_order_as_processing(original_order.order_id, agv_id)
+            # Group AGVs by floor, orders by source_floor
+            floor_agvs = defaultdict(list)
+            for aid in agv_ids:
+                floor_agvs[self.agv_manager.get_agv_floor(aid)].append(aid)
+
+            floor_orders = defaultdict(list)
+            for o in valid_orders:
+                floor_orders[o.source_floor].append(o)
+
+            for fid, f_agvs in floor_agvs.items():
+                f_orders = floor_orders.get(fid, [])
+                if not f_orders:
+                    continue
+
+                goods_to_orders = defaultdict(list)
+                for order in f_orders:
+                    goods_to_orders[order.goods_id].append(order)
+                grouped_orders = list(goods_to_orders.values())
+
+                cost_matrix = self.build_cost_matrix(f_agvs, grouped_orders)
+                assignment = self.task_assignment(cost_matrix)
+
+                agv_to_orders = defaultdict(list)
+                for agv_idx, task_idx in assignment.items():
+                    agv_id = f_agvs[agv_idx]
+                    agv_to_orders[agv_id] = grouped_orders[task_idx]
+
+                for agv_id, orders in agv_to_orders.items():
+                    copied_orders = deepcopy(orders)
+                    for order in copied_orders:
+                        box_ids = self.warehouse_map.get_boxes_by_goods(order.goods_id)
+                        if not box_ids:
+                            raise ValueError(f"No available box for goods_id={order.goods_id}")
+                        order.box_id = random.choice(box_ids)
+
+                    agv_task_map[agv_id] = orders_to_tasks(copied_orders, self.warehouse_map)
+                    for original_order in orders:
+                        self.order_manager.mark_order_as_processing(original_order.order_id, agv_id)
 
         return agv_task_map
-    

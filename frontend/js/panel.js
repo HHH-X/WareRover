@@ -18,6 +18,7 @@ function initPanel() {
         <label><input type="checkbox" id="showAgvId"> Show AGV IDs</label><br>
         <label><input type="checkbox" id="showBoxId"> Show Box IDs</label><br>
         <label><input type="checkbox" id="showRecvId"> Show Receive Zone IDs</label>
+        <div id="floorToggles" style="margin-top:8px;"></div>
       </div>
     </div>
 
@@ -145,6 +146,26 @@ function initPanel() {
   showRecvId.addEventListener('change', (e) => {
     window.sceneWorld?.receiveAreas.forEach(r => r.setLabelVisible(e.target.checked));
   });
+
+  // Floor toggles are built dynamically after init data arrives
+  window.buildFloorToggles = function(numFloors) {
+    const container = document.getElementById('floorToggles');
+    if (!container || numFloors <= 1) return;
+    container.innerHTML = '<strong style="font-size:12px;">Floors:</strong><br>';
+    for (let f = 0; f < numFloors; f++) {
+      const label = document.createElement('label');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = true;
+      cb.addEventListener('change', () => {
+        window.sceneWorld?.setFloorVisibility(f, cb.checked);
+      });
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(` Floor ${f}`));
+      container.appendChild(label);
+      container.appendChild(document.createElement('br'));
+    }
+  };
 }
 
 function updateMetrics(metrics) {

@@ -11,9 +11,10 @@ import numpy as np
 from typing import List, Dict
 
 from config.settings import SystemConfig, SimConfig
+from core.elevator import ElevatorManager
 from core.env import Env
 from core.fault_manager import FaultManager
-from core.gridmap import GridMap
+from core.warehouse_map import WarehouseMap
 from core.agvmanager import AGVManager
 from core.ordermanager import OrderManager
 from core.simulator import Simulator
@@ -35,9 +36,10 @@ def run_single_episode(seed: int = 42) -> Dict:
 
     ctx.logger = GlobalLogger(ctx)
     ctx.clock = SimulationClock(ctx)
-    ctx.grid_map = GridMap(ctx)
+    ctx.warehouse_map = WarehouseMap(ctx)
     ctx.order_manager = OrderManager(ctx)
     ctx.agv_manager = AGVManager(ctx)
+    ctx.elevator_manager = ElevatorManager(ctx.warehouse_map, ctx.logger)
     ctx.env = Env(ctx)
     ctx.fault_manager = FaultManager(ctx)
     ctx.scheduler = default_registry.build_scheduler(ctx)

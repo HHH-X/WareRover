@@ -35,6 +35,7 @@ def _build_exec_namespace() -> dict:
     from utils.simulation_context import SimulationContext
     from core.agv import AGVAction
     from core.gridmap import GridMap
+    from core.warehouse_map import WarehouseMap
     from core.ordermanager import OrderManager, Order
     from core.env import Env
     from core.fault_manager import FaultManager
@@ -56,6 +57,7 @@ def _build_exec_namespace() -> dict:
         "SimulationContext": SimulationContext,
         "AGVAction": AGVAction,
         "GridMap": GridMap,
+        "WarehouseMap": WarehouseMap,
         "OrderManager": OrderManager,
         "Order": Order,
         "Env": Env,

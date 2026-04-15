@@ -12,33 +12,31 @@ class Simulator:
     def __init__(self, ctx: SimulationContext):
         assert (
             ctx.system_config is not None
-            and ctx.grid_map is not None
+            and ctx.warehouse_map is not None
             and ctx.agv_manager is not None
             and ctx.order_manager is not None
             and ctx.env is not None
+            and ctx.elevator_manager is not None
             and ctx.scheduler is not None
             and ctx.planner is not None
             and ctx.logger is not None
             and ctx.clock is not None
         )
         self.system_config = ctx.system_config
-        self.map = ctx.grid_map
+        self.warehouse_map = ctx.warehouse_map
         self.agv_manager = ctx.agv_manager
         self.order_manager = ctx.order_manager
         self.env = ctx.env
+        self.elevator_manager = ctx.elevator_manager
         self.scheduler = ctx.scheduler
         self.planner = ctx.planner
         self.clock = ctx.clock
         self.logger = ctx.logger
 
     def step(self):
-        """
-        One simulation step: order manager step, assign tasks to idle AGVs,
-        assign rest areas, replan paths for AGVs that need it, then run env step (conflict detection and movement).
-        """
         if self.clock.now() % 30 == 0:
-            # print(f"\n--- Simulator Step {clock.now()} ---")
             self.logger.add_runtime_log(f"Simulator Step {self.clock.now()}")
+
         self.order_manager.step()
         idle_agv_set = self.agv_manager.get_idle_agv_ids()
 
@@ -58,11 +56,22 @@ class Simulator:
         self.agv_manager.replan_paths(new_paths)
 
         self.env.step()
+        self.elevator_manager.step()
+        self._process_elevator_actions()
         self.clock.tick()
 
-        if self.order_all_finished():
-            print("All orders have been completed.")
+    def _process_elevator_actions(self):
+        """Handle pending elevator load/unload actions from AGVs."""
+        for agv in self.agv_manager.all_agvs():
+            if agv.elevator_load_pending is not None:
+                elev_id, box_id = agv.elevator_load_pending
+                if self.elevator_manager.load_box(elev_id, box_id, agv.floor_id):
+                    agv.carried_box_id = None
+                agv.elevator_load_pending = None
 
-    def order_all_finished(self) -> bool:
-        """Check if all orders are completed (placeholder; should use OrderManager)."""
-        return False  # TODO: integrate with OrderManager
+            if agv.elevator_unload_pending is not None:
+                elev_id = agv.elevator_unload_pending
+                box_id = self.elevator_manager.unload_box(elev_id, agv.floor_id)
+                if box_id is not None:
+                    agv.carried_box_id = box_id
+                agv.elevator_unload_pending = None

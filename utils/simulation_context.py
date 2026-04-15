@@ -9,9 +9,10 @@ from config.settings import SystemConfig
 
 if TYPE_CHECKING:
     from core.agvmanager import AGVManager
+    from core.elevator import ElevatorManager
     from core.env import Env
     from core.fault_manager import FaultManager
-    from core.gridmap import GridMap
+    from core.warehouse_map import WarehouseMap
     from core.ordermanager import OrderManager
     from core.simulator import Simulator
     from planner.base_planner import BasePlanner
@@ -27,10 +28,11 @@ class SimulationContext:
     system_config: Optional[SystemConfig] = None
     logger: Optional[GlobalLogger] = None
     clock: Optional[SimulationClock] = None
-    grid_map: Optional[GridMap] = None
+    warehouse_map: Optional[WarehouseMap] = None
     order_manager: Optional[OrderManager] = None
     agv_manager: Optional[AGVManager] = None
     env: Optional[Env] = None
+    elevator_manager: Optional[ElevatorManager] = None
     fault_manager: Optional[FaultManager] = None
     scheduler: Optional[BaseScheduler] = None
     planner: Optional[BasePlanner] = None

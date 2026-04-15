@@ -11,9 +11,10 @@ import numpy as np
 
 from config.settings import SystemConfig
 from core.data_generator import generate_send_data
+from core.elevator import ElevatorManager
 from core.env import Env
 from core.fault_manager import FaultManager
-from core.gridmap import GridMap
+from core.warehouse_map import WarehouseMap
 from core.agvmanager import AGVManager
 from core.ordermanager import OrderManager
 from core.simulator import Simulator
@@ -49,9 +50,10 @@ async def simulator_loop(websocket, message_queue):
 
     ctx.logger = GlobalLogger(ctx)
     ctx.clock = SimulationClock(ctx)
-    ctx.grid_map = GridMap(ctx)
+    ctx.warehouse_map = WarehouseMap(ctx)
     ctx.order_manager = OrderManager(ctx)
     ctx.agv_manager = AGVManager(ctx)
+    ctx.elevator_manager = ElevatorManager(ctx.warehouse_map, ctx.logger)
     ctx.env = Env(ctx)
     ctx.fault_manager = FaultManager(ctx)
     ctx.scheduler = default_registry.build_scheduler(ctx)
@@ -69,6 +71,7 @@ async def simulator_loop(websocket, message_queue):
             print("Resetting simulation...")
             ctx.clock.reset()
             ctx.env.reset()
+            ctx.elevator_manager.reset()
             ctx.scheduler.reset()
             ctx.logger.reset()
             NEED_RESET = False

@@ -22,7 +22,7 @@ class DHCPlanner(BasePlanner):
         self.env = ctx.env
         self.agv_manager = ctx.agv_manager
         self.order_manager = ctx.order_manager
-        self.map = ctx.grid_map
+        self.warehouse_map = ctx.warehouse_map
         self.fault_manager = ctx.fault_manager
         sim_cfg = ctx.system_config.sim_config
         model_path = sim_cfg.dhc_model_path
@@ -30,7 +30,7 @@ class DHCPlanner(BasePlanner):
         self.forward_steps = 1
         self.converter = DHCCompatibleConverter(
             num_agvs=self.env.agv_manager.num_agvs,
-            gridmap=self.env.map,
+            gridmap=self.warehouse_map.get_floor(0),
             agvmanager=self.env.agv_manager,
         )
         self.model = Network().to(self.device)
@@ -46,18 +46,14 @@ class DHCPlanner(BasePlanner):
         targets: Dict[int, Tuple[Tuple[int, int], Tuple[int, int]]],
         scheduler
     ) -> Dict[int, List[Tuple[int, int]]]:
-        """
-        Input: targets {agv_id: (current_pos, goal_pos)}.
-        Output: {agv_id: [next_pos1, next_pos2, ...]} with length <= forward_steps.
-        """
         if not targets:
             return {}
-        env_info = self.env.get_env_info()
-        static_grid = env_info['static_grid']
+        env_info = self.env.get_env_info_for_floor(0)
+        type_grid = env_info['type_grid']
         current_positions = env_info['current_grid_pos']
         obs_dhc, pos_dhc = self.converter.convert(
-            static_grid=static_grid,
-            agv_positions_xy=current_positions,
+            type_grid=type_grid,
+            agv_positions=current_positions,
             targets=targets
         )
         with torch.no_grad():
@@ -67,14 +63,14 @@ class DHCPlanner(BasePlanner):
         paths: Dict[int, List[Tuple[int, int]]] = {}
         active_ids = list(targets.keys())
         for idx, agv_id in enumerate(active_ids):
-            start_x, start_y = targets[agv_id][0]
-            dx, dy = ACTION_DELTA[actions[idx]]
+            start_row, start_col = targets[agv_id][0]
+            drow, dcol = ACTION_DELTA[actions[idx]]
             path = []
-            cur_x, cur_y = start_x, start_y
+            cur_row, cur_col = start_row, start_col
             for _ in range(self.forward_steps):
-                next_x = cur_x + dx
-                next_y = cur_y + dy
-                path.append((next_x, next_y))
-                cur_x, cur_y = next_x, next_y
+                next_row = cur_row + drow
+                next_col = cur_col + dcol
+                path.append((next_row, next_col))
+                cur_row, cur_col = next_row, next_col
             paths[agv_id] = path
         return paths

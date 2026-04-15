@@ -4,57 +4,333 @@
     "height": 20
   },
   "boxes": [
-    { "box_id": 0, "position": [10, 6], "goods_ids": [0] },
-    { "box_id": 1, "position": [11, 6], "goods_ids": [1] },
-    { "box_id": 2, "position": [12, 6], "goods_ids": [2] },
-    { "box_id": 3, "position": [13, 6], "goods_ids": [3] },
-    { "box_id": 4, "position": [10, 7], "goods_ids": [4] },
-    { "box_id": 5, "position": [11, 7], "goods_ids": [5] },
-    { "box_id": 6, "position": [12, 7], "goods_ids": [6] },
-    { "box_id": 7, "position": [13, 7], "goods_ids": [7] },
-    { "box_id": 8, "position": [10, 10], "goods_ids": [8] },
-    { "box_id": 9, "position": [11, 10], "goods_ids": [9] },
-    { "box_id": 10, "position": [12, 10], "goods_ids": [10] },
-    { "box_id": 11, "position": [13, 10], "goods_ids": [11] },
-    { "box_id": 12, "position": [10, 11], "goods_ids": [12] },
-    { "box_id": 13, "position": [11, 11], "goods_ids": [13] },
-    { "box_id": 14, "position": [12, 11], "goods_ids": [14] },
-    { "box_id": 15, "position": [13, 11], "goods_ids": [15] }
+    {
+      "box_id": 0,
+      "position": [
+        6,
+        10
+      ],
+      "goods_ids": [
+        0
+      ]
+    },
+    {
+      "box_id": 1,
+      "position": [
+        6,
+        11
+      ],
+      "goods_ids": [
+        1
+      ]
+    },
+    {
+      "box_id": 2,
+      "position": [
+        6,
+        12
+      ],
+      "goods_ids": [
+        2
+      ]
+    },
+    {
+      "box_id": 3,
+      "position": [
+        6,
+        13
+      ],
+      "goods_ids": [
+        3
+      ]
+    },
+    {
+      "box_id": 4,
+      "position": [
+        7,
+        10
+      ],
+      "goods_ids": [
+        4
+      ]
+    },
+    {
+      "box_id": 5,
+      "position": [
+        7,
+        11
+      ],
+      "goods_ids": [
+        5
+      ]
+    },
+    {
+      "box_id": 6,
+      "position": [
+        7,
+        12
+      ],
+      "goods_ids": [
+        6
+      ]
+    },
+    {
+      "box_id": 7,
+      "position": [
+        7,
+        13
+      ],
+      "goods_ids": [
+        7
+      ]
+    },
+    {
+      "box_id": 8,
+      "position": [
+        10,
+        10
+      ],
+      "goods_ids": [
+        8
+      ]
+    },
+    {
+      "box_id": 9,
+      "position": [
+        10,
+        11
+      ],
+      "goods_ids": [
+        9
+      ]
+    },
+    {
+      "box_id": 10,
+      "position": [
+        10,
+        12
+      ],
+      "goods_ids": [
+        10
+      ]
+    },
+    {
+      "box_id": 11,
+      "position": [
+        10,
+        13
+      ],
+      "goods_ids": [
+        11
+      ]
+    },
+    {
+      "box_id": 12,
+      "position": [
+        11,
+        10
+      ],
+      "goods_ids": [
+        12
+      ]
+    },
+    {
+      "box_id": 13,
+      "position": [
+        11,
+        11
+      ],
+      "goods_ids": [
+        13
+      ]
+    },
+    {
+      "box_id": 14,
+      "position": [
+        11,
+        12
+      ],
+      "goods_ids": [
+        14
+      ]
+    },
+    {
+      "box_id": 15,
+      "position": [
+        11,
+        13
+      ],
+      "goods_ids": [
+        15
+      ]
+    }
   ],
   "receivers": [
-    { "receiver_id": 0, "position": [2, 19] },
-    { "receiver_id": 1, "position": [5, 19] },
-    { "receiver_id": 2, "position": [8, 19] },
-    { "receiver_id": 3, "position": [11, 19] },
-    { "receiver_id": 4, "position": [14, 19] },
-    { "receiver_id": 5, "position": [17, 19] },
-    { "receiver_id": 6, "position": [0, 10] },
-    { "receiver_id": 7, "position": [24, 10] }
+    {
+      "receiver_id": 0,
+      "position": [
+        19,
+        2
+      ]
+    },
+    {
+      "receiver_id": 1,
+      "position": [
+        19,
+        5
+      ]
+    },
+    {
+      "receiver_id": 2,
+      "position": [
+        19,
+        8
+      ]
+    },
+    {
+      "receiver_id": 3,
+      "position": [
+        19,
+        11
+      ]
+    },
+    {
+      "receiver_id": 4,
+      "position": [
+        19,
+        14
+      ]
+    },
+    {
+      "receiver_id": 5,
+      "position": [
+        19,
+        17
+      ]
+    },
+    {
+      "receiver_id": 6,
+      "position": [
+        10,
+        0
+      ]
+    },
+    {
+      "receiver_id": 7,
+      "position": [
+        10,
+        24
+      ]
+    }
   ],
   "wait_zones": [
-    { "wait_zone_id": 0, "position": [2, 1] },
-    { "wait_zone_id": 1, "position": [4, 1] },
-    { "wait_zone_id": 2, "position": [6, 1] },
-    { "wait_zone_id": 3, "position": [8, 1] },
-    { "wait_zone_id": 4, "position": [10, 1] },
-    { "wait_zone_id": 5, "position": [12, 1] },
-    { "wait_zone_id": 6, "position": [14, 1] },
-    { "wait_zone_id": 7, "position": [16, 1] }
+    {
+      "wait_zone_id": 0,
+      "position": [
+        1,
+        2
+      ]
+    },
+    {
+      "wait_zone_id": 1,
+      "position": [
+        1,
+        4
+      ]
+    },
+    {
+      "wait_zone_id": 2,
+      "position": [
+        1,
+        6
+      ]
+    },
+    {
+      "wait_zone_id": 3,
+      "position": [
+        1,
+        8
+      ]
+    },
+    {
+      "wait_zone_id": 4,
+      "position": [
+        1,
+        10
+      ]
+    },
+    {
+      "wait_zone_id": 5,
+      "position": [
+        1,
+        12
+      ]
+    },
+    {
+      "wait_zone_id": 6,
+      "position": [
+        1,
+        14
+      ]
+    },
+    {
+      "wait_zone_id": 7,
+      "position": [
+        1,
+        16
+      ]
+    }
   ],
   "agvs": [
-    { "agv_id": 0, "size": 1 },
-    { "agv_id": 1, "size": 1 },
-    { "agv_id": 2, "size": 1 },
-    { "agv_id": 3, "size": 1 },
-    { "agv_id": 4, "size": 1 },
-    { "agv_id": 5, "size": 1 },
-    { "agv_id": 6, "size": 1 },
-    { "agv_id": 7, "size": 1 }
+    {
+      "agv_id": 0,
+      "size": 1
+    },
+    {
+      "agv_id": 1,
+      "size": 1
+    },
+    {
+      "agv_id": 2,
+      "size": 1
+    },
+    {
+      "agv_id": 3,
+      "size": 1
+    },
+    {
+      "agv_id": 4,
+      "size": 1
+    },
+    {
+      "agv_id": 5,
+      "size": 1
+    },
+    {
+      "agv_id": 6,
+      "size": 1
+    },
+    {
+      "agv_id": 7,
+      "size": 1
+    }
   ],
   "obstacles": [
-    [18, 9],
-    [18, 10],
-    [19, 9],
-    [19, 10]
+    [
+      9,
+      18
+    ],
+    [
+      10,
+      18
+    ],
+    [
+      9,
+      19
+    ],
+    [
+      10,
+      19
+    ]
   ]
 }

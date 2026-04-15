@@ -1,26 +1,43 @@
 from __future__ import annotations
 
+from enum import IntEnum
 from typing import Dict, List, Tuple, Optional, Set, TYPE_CHECKING
 import numpy as np
-import json
 
 if TYPE_CHECKING:
-    from utils.simulation_context import SimulationContext
+    from utils.logger import GlobalLogger
+
+
+class CellType(IntEnum):
+    FREE = 0
+    OBSTACLE = 1
+    BOX = 2
 
 
 class GridMap:
-    def __init__(self, ctx: SimulationContext):
-        assert ctx.system_config is not None
-        sim_config = ctx.system_config.sim_config
-        self.logger = ctx.logger
+    """Single-floor grid map. Created by WarehouseMap for each floor.
 
-        with open(sim_config.map_file, "r") as f:
-            map_data = json.load(f)
-            
-        self.width = map_data["map"]["width"]
-        self.height = map_data["map"]["height"]
-        # static_grid: -2=obstacle, -1=free, >=0=box_id
-        self.static_grid = np.full((self.height, self.width), -1, dtype=int)
+    Coordinate convention: all positions are (row, col) tuples.
+    - row: vertical axis (0 = top, increases downward)
+    - col: horizontal axis (0 = left, increases rightward)
+    Grid arrays have shape (height, width) = (num_rows, num_cols).
+    """
+
+    def __init__(
+        self,
+        floor_id: int,
+        width: int,
+        height: int,
+        floor_data: dict,
+        logger: GlobalLogger,
+    ):
+        self.floor_id = floor_id
+        self.width = width
+        self.height = height
+        self.logger = logger
+
+        self.type_grid = np.full((self.height, self.width), CellType.FREE, dtype=np.int8)
+        self.id_grid = np.full((self.height, self.width), -1, dtype=np.int32)
 
         self.box_positions: Dict[int, Tuple[int, int]] = {}
         self.box_sizes: Dict[int, int] = {}
@@ -30,12 +47,12 @@ class GridMap:
         self.goods_to_boxes: Dict[int, List[int]] = {}
         self.goods_id_set: Set[int] = set()
 
-        for box in map_data.get("boxes", []):
+        for box in floor_data.get("boxes", []):
             box_id = box["box_id"]
-            x, y = box["position"]
+            row, col = box["position"]
             goods_ids = box.get("goods_ids", [])
             size = box.get("size", 1)
-            self.box_positions[box_id] = (x, y)
+            self.box_positions[box_id] = (row, col)
             self.box_sizes[box_id] = size
             self.box_to_goods[box_id] = goods_ids
             self.box_status[box_id] = True
@@ -43,18 +60,21 @@ class GridMap:
             for gid in goods_ids:
                 self.goods_to_boxes.setdefault(gid, []).append(box_id)
                 self.goods_id_set.add(gid)
-            for dx in range(size):
-                for dy in range(size):
-                    self.static_grid[y + dy][x + dx] = box_id
+            for dr in range(size):
+                for dc in range(size):
+                    self.type_grid[row + dr][col + dc] = CellType.BOX
+                    self.id_grid[row + dr][col + dc] = box_id
 
         self.obstacles: Set[Tuple[int, int]] = set()
-        for x, y in map_data.get("obstacles", []):
-            self.static_grid[y][x] = -2
-            self.obstacles.add((x, y))
+        for obs in floor_data.get("obstacles", []):
+            row, col = obs[0], obs[1] if isinstance(obs, (list, tuple)) else (obs["position"][0], obs["position"][1])
+            self.type_grid[row][col] = CellType.OBSTACLE
+            self.obstacles.add((row, col))
+
         self.receiver_zones: Dict[int, Tuple[int, int]] = {}
         self.receiver_id_set: Set[int] = set()
         self.receiver_zones_size: Dict[int, int] = {}
-        for r in map_data.get("receivers", []):
+        for r in floor_data.get("receivers", []):
             rid = r["receiver_id"]
             pos = tuple(r["position"])
             size = r.get("size", 1)
@@ -64,28 +84,29 @@ class GridMap:
 
         self.wait_zones: Dict[int, Tuple[int, int]] = {}
         self.wait_zones_size: Dict[int, int] = {}
-        for zone in map_data.get("wait_zones", []):
+        for zone in floor_data.get("wait_zones", []):
             zid = zone["wait_zone_id"]
             pos = tuple(zone["position"])
             size = zone.get("size", 1)
             self.wait_zones[zid] = pos
             self.wait_zones_size[zid] = size
 
+        self.elevator_positions: Dict[int, Tuple[int, int]] = {}
+        for elev in floor_data.get("elevators", []):
+            self.elevator_positions[elev["elevator_id"]] = tuple(elev["position"])
+
         self.dynamic_occupied: Dict[str, list[Tuple[int, int]]] = {}
 
     def add_dynamic_occupancy(self, key: str, cells: List[Tuple[int, int]]):
-        """Register a set of temporarily occupied cells (e.g. repair path)."""
         self.dynamic_occupied[key] = cells
 
     def remove_dynamic_occupancy(self, key: str):
-        """Remove a set of temporary occupancies."""
         if key in self.dynamic_occupied:
             del self.dynamic_occupied[key]
 
-    def is_occupied(self, x: int, y: int) -> bool:
-        """True if cell is temporarily occupied (excludes static obstacles)."""
+    def is_occupied(self, row: int, col: int) -> bool:
         for cells in self.dynamic_occupied.values():
-            if (x, y) in cells:
+            if (row, col) in cells:
                 return True
         return False
 
@@ -94,61 +115,62 @@ class GridMap:
                     to_pos: Tuple[int, int],
                     from_pos: Tuple[int, int],
                     carrying_goods: bool) -> bool:
-        """Whether AGV (top-left at from_pos) can move one step to to_pos; uses head-edge and target-cell rules."""
-        x_from, y_from = from_pos
-        x_to, y_to = to_pos
-        dx, dy = x_to - x_from, y_to - y_from
+        r_from, c_from = from_pos
+        r_to, c_to = to_pos
+        dr, dc = r_to - r_from, c_to - c_from
 
-        if abs(dx) + abs(dy) != 1:
+        if abs(dr) + abs(dc) != 1:
             return False
 
-        if not (0 <= x_to and x_to + agv_size - 1 < self.width and
-                0 <= y_to and y_to + agv_size - 1 < self.height):
+        if not (0 <= r_to and r_to + agv_size - 1 < self.height and
+                0 <= c_to and c_to + agv_size - 1 < self.width):
             return False
 
-        if not (0 <= x_from and x_from + agv_size - 1 < self.width and
-                0 <= y_from and y_from + agv_size - 1 < self.height):
+        if not (0 <= r_from and r_from + agv_size - 1 < self.height and
+                0 <= c_from and c_from + agv_size - 1 < self.width):
             return False
 
-        if dx == 1:
-            head_positions = [(x_from + agv_size - 1, y_from + i) for i in range(agv_size)]
-        elif dx == -1:
-            head_positions = [(x_from, y_from + i) for i in range(agv_size)]
-        elif dy == 1:
-            head_positions = [(x_from + i, y_from + agv_size - 1) for i in range(agv_size)]
+        if dc == 1:
+            head_positions = [(r_from + i, c_from + agv_size - 1) for i in range(agv_size)]
+        elif dc == -1:
+            head_positions = [(r_from + i, c_from) for i in range(agv_size)]
+        elif dr == 1:
+            head_positions = [(r_from + agv_size - 1, c_from + i) for i in range(agv_size)]
         else:
-            head_positions = [(x_from + i, y_from) for i in range(agv_size)]
+            head_positions = [(r_from, c_from + i) for i in range(agv_size)]
 
-        next_positions = [(hx + dx, hy + dy) for (hx, hy) in head_positions]
+        next_positions = [(hr + dr, hc + dc) for (hr, hc) in head_positions]
 
-        for (hx, hy) in head_positions + next_positions:
-            if not (0 <= hx < self.width and 0 <= hy < self.height):
+        for (hr, hc) in head_positions + next_positions:
+            if not (0 <= hr < self.height and 0 <= hc < self.width):
                 return False
 
-        head_vals = [self.static_grid[hy][hx] for (hx, hy) in head_positions]
-        next_vals = [self.static_grid[ny][nx] for (nx, ny) in next_positions]
+        head_types = [self.type_grid[hr, hc] for (hr, hc) in head_positions]
+        head_ids = [self.id_grid[hr, hc] for (hr, hc) in head_positions]
+        next_types = [self.type_grid[nr, nc] for (nr, nc) in next_positions]
+        next_ids = [self.id_grid[nr, nc] for (nr, nc) in next_positions]
 
-        if any(v == -2 for v in head_vals + next_vals):
+        if any(t == CellType.OBSTACLE for t in head_types + next_types):
             return False
 
         if self.dynamic_occupied:
-            for (hx, hy) in head_positions + next_positions:
-                if self.is_occupied(hx, hy):
+            for (hr, hc) in head_positions + next_positions:
+                if self.is_occupied(hr, hc):
                     return False
 
-        def classify_group(vals):
-            if all(v == -1 for v in vals):
+        def classify_group(types, ids):
+            if all(t == CellType.FREE for t in types):
                 return ("empty", None)
-            if all(v >= 0 for v in vals):
-                first = vals[0]
-                if all(v == first for v in vals):
+            if all(t == CellType.BOX for t in types):
+                first = ids[0]
+                if all(i == first for i in ids):
                     return ("shelf", first)
                 else:
                     return ("mixed", None)
             return ("mixed", None)
 
-        head_type, head_id = classify_group(head_vals)
-        next_type, next_id = classify_group(next_vals)
+        head_type, head_id = classify_group(head_types, head_ids)
+        next_type, next_id = classify_group(next_types, next_ids)
 
         if head_type == "mixed" or next_type == "mixed":
             return False
@@ -180,47 +202,43 @@ class GridMap:
         agv_size: int,
         pos: Tuple[int, int],
         carrying_goods: bool) -> List[Tuple[int, int]]:
-        """All adjacent top-left positions the AGV can move to from pos."""
-        x, y = pos
+        row, col = pos
         neighbors = []
         directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
-        for dx, dy in directions:
-            nx, ny = x + dx, y + dy
-            if not (0 <= nx and nx + agv_size - 1 < self.width and
-                    0 <= ny and ny + agv_size - 1 < self.height):
+        for dr, dc in directions:
+            nr, nc = row + dr, col + dc
+            if not (0 <= nr and nr + agv_size - 1 < self.height and
+                    0 <= nc and nc + agv_size - 1 < self.width):
                 continue
-            if self.is_walkable(agv_size, (nx, ny), (x, y), carrying_goods):
-                neighbors.append((nx, ny))
+            if self.is_walkable(agv_size, (nr, nc), (row, col), carrying_goods):
+                neighbors.append((nr, nc))
 
         return neighbors
 
     def pick_box_at(self, pos: Tuple[int, int]) -> Optional[int]:
-        x, y = pos
-        box_id = self.static_grid[y][x]
+        row, col = pos
+        if self.type_grid[row, col] != CellType.BOX:
+            return None
+        box_id = self.id_grid[row, col]
         expected_pos = self.box_positions.get(box_id)
         if expected_pos != pos:
             return None
         if self.box_status[box_id]:
             self.box_status[box_id] = False
             return box_id
-
         return None
 
-
     def place_box_at(self, pos: Tuple[int, int], box_id: int) -> bool:
-        x, y = pos
         expected_pos = self.box_positions.get(box_id)
         if expected_pos != pos:
             return False
         if not self.box_status.get(box_id, True):
             self.box_status[box_id] = True
             return True
-
         return False
-    
+
     def get_all_box_status(self) -> Dict[int, bool]:
-        """Return whether each box is in place."""
         return dict(self.box_status)
 
     def get_box_position(self, box_id: int) -> Optional[Tuple[int, int]]:
@@ -244,10 +262,11 @@ class GridMap:
     def get_wait_zone_position(self, zone_id: int) -> Optional[Tuple[int, int]]:
         return self.wait_zones.get(zone_id)
 
+    def get_elevator_position(self, elevator_id: int) -> Optional[Tuple[int, int]]:
+        return self.elevator_positions.get(elevator_id)
+
     def reset_map(self):
-        """Reset dynamic map state (box presence, temporary occupancies)."""
         for box_id in self.box_status:
             self.box_status[box_id] = True
         self.dynamic_occupied.clear()
-        self.logger.add_runtime_log("[GridMap] Map has been reset.")
-
+        self.logger.add_runtime_log(f"[GridMap F{self.floor_id}] Map has been reset.")

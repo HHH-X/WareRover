@@ -10,58 +10,107 @@ epsilon = 1e-4
 
 
 class Env:
+    """Environment for conflict resolution and AGV stepping.
+
+    All positions use (row, col) convention.
+    """
+
     def __init__(self, ctx: SimulationContext):
         assert (
             ctx.agv_manager is not None
-            and ctx.grid_map is not None
+            and ctx.warehouse_map is not None
             and ctx.order_manager is not None
         )
         self.agv_manager = ctx.agv_manager
-        self.map = ctx.grid_map
+        self.warehouse_map = ctx.warehouse_map
         self.order_manager = ctx.order_manager
 
+    def _floor_map(self, agv_id: int):
+        """Get the GridMap for this AGV's floor."""
+        fid = self.agv_manager.get_agv_floor(agv_id)
+        return self.warehouse_map.get_floor(fid)
+
     def get_env_info(self):
-        static_grid = self.map.static_grid
+        """Global env info across all floors (backward-compatible)."""
         carrying_status = self.agv_manager.get_carrying_status()
         action_queues = self.agv_manager.get_all_action_queues()
         current_grid_pos = self.agv_manager.get_all_current_pos()
         agv_sizes = self.agv_manager.agv_sizes
+        agv_floors = self.agv_manager.agv_floors
 
         return {
-            'static_grid': static_grid,
             'carrying_status': carrying_status,
             'action_queues': action_queues,
             'current_grid_pos': current_grid_pos,
-            'agv_sizes': agv_sizes
+            'agv_sizes': agv_sizes,
+            'agv_floors': agv_floors,
         }
-    
-    def get_walkable_neighbors(self, agv_id: int, pos: Tuple[int, int], carrying_goods: bool) -> List[Tuple[int, int]]:
-        return self.map.get_walkable_neighbors(self.agv_manager.get_agv_size(agv_id), pos, carrying_goods)
-    
-    def is_walkable(self, agv_id: int, to_pos: Tuple[int, int], from_pos: Tuple[int, int], carrying_goods: bool) -> bool:
-        return self.map.is_walkable(self.agv_manager.get_agv_size(agv_id), to_pos, from_pos, carrying_goods)
+
+    def get_env_info_for_floor(self, floor_id: int):
+        """Per-floor env info for planner / scheduler."""
+        floor_grid = self.warehouse_map.get_floor(floor_id)
+        floor_agvs = self.agv_manager.get_agvs_on_floor(floor_id)
+        carrying_status = {aid: self.agv_manager.get_agv(aid).carried_box_id is not None
+                           for aid in floor_agvs}
+        action_queues = self.agv_manager.get_action_queues_on_floor(floor_id)
+        current_grid_pos = self.agv_manager.get_current_pos_on_floor(floor_id)
+        agv_sizes = {aid: self.agv_manager.agv_sizes[aid] for aid in floor_agvs}
+
+        return {
+            'type_grid': floor_grid.type_grid,
+            'id_grid': floor_grid.id_grid,
+            'carrying_status': carrying_status,
+            'action_queues': action_queues,
+            'current_grid_pos': current_grid_pos,
+            'agv_sizes': agv_sizes,
+        }
+
+    def get_walkable_neighbors(self, agv_id: int, pos: Tuple[int, int],
+                               carrying_goods: bool) -> List[Tuple[int, int]]:
+        fmap = self._floor_map(agv_id)
+        return fmap.get_walkable_neighbors(self.agv_manager.get_agv_size(agv_id), pos, carrying_goods)
+
+    def is_walkable(self, agv_id: int, to_pos: Tuple[int, int],
+                    from_pos: Tuple[int, int], carrying_goods: bool) -> bool:
+        fmap = self._floor_map(agv_id)
+        return fmap.is_walkable(self.agv_manager.get_agv_size(agv_id), to_pos, from_pos, carrying_goods)
 
     def step(self) -> Dict[int, StepInfo]:
-        next_positions, block_agvs = self.resolve_conflicts()
-        step_info_dict = self.agv_manager.step_all(next_positions)
-        for agv_id in block_agvs:
+        """Resolve conflicts per floor, then step all AGVs."""
+        all_final: Dict[int, Tuple[int, int]] = {}
+        all_blocked: Set[int] = set()
+
+        for fid in self.warehouse_map.all_floor_ids():
+            floor_agvs = self.agv_manager.get_agvs_on_floor(fid)
+            if not floor_agvs:
+                continue
+            floor_grid = self.warehouse_map.get_floor(fid)
+            final, blocked = self._resolve_conflicts_for_floor(fid, floor_agvs, floor_grid)
+            all_final.update(final)
+            all_blocked |= blocked
+
+        step_info_dict = self.agv_manager.step_all(all_final)
+        for agv_id in all_blocked:
             step_info_dict[agv_id] = StepInfo.COLLISION
         return step_info_dict
 
-    def resolve_conflicts(self) -> Tuple[Dict[int, Tuple[int, int]], Set[int]]:
-        current_pos = self.agv_manager.get_all_current_pos()
-        next_pos = self.agv_manager.get_all_next_pos()
-        real_pos = self.agv_manager.get_all_real_positions()
-        carrying_status = self.agv_manager.get_carrying_status()
+    def _resolve_conflicts_for_floor(
+        self, floor_id: int, floor_agvs: Set[int], floor_grid
+    ) -> Tuple[Dict[int, Tuple[int, int]], Set[int]]:
+        current_pos = {aid: self.agv_manager.get_agv(aid).grid_pos for aid in floor_agvs}
+        next_pos = {aid: self.agv_manager.get_agv(aid).get_next_pos() for aid in floor_agvs}
+        real_pos = {aid: self.agv_manager.get_agv(aid).real_pos for aid in floor_agvs}
+        carrying_status = {aid: self.agv_manager.get_agv(aid).carried_box_id is not None
+                           for aid in floor_agvs}
 
         final_next_pos: Dict[int, Tuple[int, int]] = dict(next_pos)
         block_agvs: Set[int] = set()
 
         for agv_id, tgt in next_pos.items():
             cur = current_pos[agv_id]
-            dx = abs(tgt[0] - cur[0])
-            dy = abs(tgt[1] - cur[1])
-            if dx + dy > 1:
+            dr = abs(tgt[0] - cur[0])
+            dc = abs(tgt[1] - cur[1])
+            if dr + dc > 1:
                 print(f"[Warning] AGV {agv_id} invalid move {cur} -> {tgt}, forced to stay.")
                 next_pos[agv_id] = cur
 
@@ -72,15 +121,10 @@ class Env:
             cur = current_pos[agv_id]
             tgt = final_next_pos[agv_id]
             occ = self._get_next_occupied_positions(agv_id, cur, tgt)
-
             for pos in occ:
                 if pos not in vertex_conflict_dict:
                     vertex_conflict_dict[pos] = set()
                 if vertex_conflict_dict[pos]:
-                    print("current_pos:", current_pos)
-                    print("next_pos:", next_pos)
-                    print("real_pos:", real_pos)
-                    print("conflict at:", pos, "by agv:", agv_id, "and agv(s):", vertex_conflict_dict[pos])
                     raise ValueError(f"Conflict in static phase for AGV {agv_id} at {pos}")
                 vertex_conflict_dict[pos].add(agv_id)
 
@@ -113,7 +157,8 @@ class Env:
                 if tgt == cur:
                     continue
 
-                walkable = self.map.is_walkable(self.agv_manager.get_agv_size(agv_id), tgt, cur, carrying)
+                walkable = floor_grid.is_walkable(
+                    self.agv_manager.get_agv_size(agv_id), tgt, cur, carrying)
                 occ = self._get_next_occupied_positions(agv_id, cur, tgt)
                 has_vertex_conflict = any(
                     (cell in cur_vertex_dict and len(cur_vertex_dict[cell] - {agv_id}) > 0)
@@ -146,37 +191,35 @@ class Env:
     def _get_next_occupied_positions(
         self, agv_id: int, cur: Tuple[int, int], tgt: Tuple[int, int]
     ) -> Set[Tuple[int, int]]:
-        """Return all cells occupied by this AGV during move from cur to tgt (size-aware)."""
         size = self.agv_manager.get_agv_size(agv_id)
 
         def footprint(pos: Tuple[int, int]) -> Set[Tuple[int, int]]:
-            x, y = pos
-            return {(x + dx, y + dy) for dx in range(size) for dy in range(size)}
+            row, col = pos
+            return {(row + dr, col + dc) for dr in range(size) for dc in range(size)}
 
         if cur == tgt:
             return footprint(cur)
 
         real_pos = self.agv_manager.get_real_position(agv_id)
         speed = self.agv_manager.get_agv_speed(agv_id)
-        time_step = 1
-        offset = speed * time_step
-        x, y = real_pos
-        dx = tgt[0] - cur[0]
-        dy = tgt[1] - cur[1]
+        move_offset = speed * 1
+        r, c = real_pos
+        dr = tgt[0] - cur[0]
+        dc = tgt[1] - cur[1]
         cur_fp = footprint(cur)
         tgt_fp = footprint(tgt)
 
         occupied: Set[Tuple[int, int]] = set()
 
-        if dx != 0:
-            target_x = tgt[0] + 0.5
-            if abs(target_x - x) <= offset + epsilon:
+        if dr != 0:
+            target_r = tgt[0] + 0.5
+            if abs(target_r - r) <= move_offset + epsilon:
                 occupied |= tgt_fp
             else:
                 occupied |= (cur_fp | tgt_fp)
-        elif dy != 0:
-            target_y = tgt[1] + 0.5
-            if abs(target_y - y) <= offset + epsilon:
+        elif dc != 0:
+            target_c = tgt[1] + 0.5
+            if abs(target_c - c) <= move_offset + epsilon:
                 occupied |= tgt_fp
             else:
                 occupied |= (cur_fp | tgt_fp)
@@ -186,19 +229,16 @@ class Env:
         return occupied
 
     def classify_by_grid_center(self, real_positions: Dict[int, Tuple[float, float]]) -> Tuple[Set[int], Set[int]]:
-        """Split AGV IDs into in_center (x,y both *.5) and not_in_center."""
         in_center = set()
         not_in_center = set()
-
-        for agv_id, (x, y) in real_positions.items():
-            if abs(x % 1 - 0.5) < epsilon and abs(y % 1 - 0.5) < epsilon:
+        for agv_id, (r, c) in real_positions.items():
+            if abs(r % 1 - 0.5) < epsilon and abs(c % 1 - 0.5) < epsilon:
                 in_center.add(agv_id)
             else:
                 not_in_center.add(agv_id)
-
         return in_center, not_in_center
 
     def reset(self):
         self.agv_manager.reset_agvs()
-        self.map.reset_map()
+        self.warehouse_map.reset()
         self.order_manager.reset_order()

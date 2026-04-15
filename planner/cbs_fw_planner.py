@@ -1,4 +1,3 @@
-from abc import ABC
 from typing import Dict, Tuple, List
 import heapq
 from collections import defaultdict
@@ -7,30 +6,42 @@ from utils.simulation_context import SimulationContext
 
 MAX_CBS_NODES = 800
 
+
 class FixedWindowCBSPlanner(BasePlanner):
     def __init__(self, ctx: SimulationContext):
         super().__init__(ctx)
         self.window_size = 10
         self.env = ctx.env
         self.agv_manager = ctx.agv_manager
-        self.order_manager = ctx.order_manager
-        self.map = ctx.grid_map
-        self.fault_manager = ctx.fault_manager
-        
+        self.warehouse_map = ctx.warehouse_map
 
     def plan(
-        self, 
-        targets: Dict[int, Tuple[Tuple[int, int], Tuple[int, int]]], 
+        self,
+        targets: Dict[int, Tuple[Tuple[int, int], Tuple[int, int]]],
         scheduler
     ) -> Dict[int, List[Tuple[int, int]]]:
-        """Fixed-window CBS for centralized path planning; returns paths without start position."""
         if not targets:
             return {}
-        env_info = self.env.get_env_info()
+
+        # Group by floor
+        floor_targets: Dict[int, Dict[int, Tuple]] = defaultdict(dict)
+        for agv_id, (start, goal) in targets.items():
+            fid = self.agv_manager.get_agv_floor(agv_id)
+            floor_targets[fid][agv_id] = (start, goal)
+
+        all_paths = {}
+        for fid, ftargets in floor_targets.items():
+            floor_paths = self._plan_floor(fid, ftargets)
+            all_paths.update(floor_paths)
+        return all_paths
+
+    def _plan_floor(self, floor_id: int, targets: Dict[int, Tuple]) -> Dict[int, List[Tuple[int, int]]]:
+        env_info = self.env.get_env_info_for_floor(floor_id)
         carrying_status = env_info["carrying_status"]
         action_queues = env_info["action_queues"]
         current_pos = env_info["current_grid_pos"]
         self.agv_sizes = env_info["agv_sizes"]
+
         full_paths = {
             agv_id: [current_pos[agv_id]] + path
             for agv_id, path in action_queues.items()
@@ -45,17 +56,12 @@ class FixedWindowCBSPlanner(BasePlanner):
                 planned_paths[agv_id] = path[1:] if len(path) > 1 else []
         return planned_paths
 
-    def _cbs_window(
-        self,
-        targets: Dict[int, Tuple[Tuple[int, int], Tuple[int, int]]],
-        carrying_status: Dict[int, bool],
-        fixed_agents: Dict[int, List[Tuple[int, int]]],
-    ) -> Dict[int, List[Tuple[int, int]]]:
+    def _cbs_window(self, targets, carrying_status, fixed_agents):
         planning_agents = set(targets.keys())
         root = {'constraints': [], 'paths': {}, 'cost': 0}
         for agv_id, (start, goal) in targets.items():
             path = self._a_star_with_constraints(
-                agv_id, start, goal, carrying_status[agv_id], [], goal
+                agv_id, start, goal, carrying_status.get(agv_id, False), [], goal
             )
             if path is None:
                 path = [start]
@@ -65,7 +71,8 @@ class FixedWindowCBSPlanner(BasePlanner):
             root['paths'][agv_id] = path
             root['cost'] += len(path) - 1
         for agv_id, path in fixed_agents.items():
-            root['paths'][agv_id] = path[: self.window_size + 1]
+            root['paths'][agv_id] = path[:self.window_size + 1]
+
         open_list = []
         heapq.heappush(open_list, (root['cost'], 0, root))
         node_id = 1
@@ -89,7 +96,7 @@ class FixedWindowCBSPlanner(BasePlanner):
                 }
                 start, goal = targets[agent]
                 new_path = self._a_star_with_constraints(
-                    agent, start, goal, carrying_status[agent], child['constraints'], goal
+                    agent, start, goal, carrying_status.get(agent, False), child['constraints'], goal
                 )
                 if new_path is None:
                     continue
@@ -100,10 +107,11 @@ class FixedWindowCBSPlanner(BasePlanner):
                 child['cost'] = sum(len(p) - 1 for p in child['paths'].values() if p)
                 heapq.heappush(open_list, (child['cost'], node_id, child))
                 node_id += 1
+
         fallback = {}
         for agv_id, (start, goal) in targets.items():
             path = self._a_star_with_constraints(
-                agv_id, start, goal, carrying_status[agv_id], [], goal
+                agv_id, start, goal, carrying_status.get(agv_id, False), [], goal
             )
             if path is None:
                 path = [start]
@@ -113,15 +121,7 @@ class FixedWindowCBSPlanner(BasePlanner):
             fallback[agv_id] = path
         return fallback
 
-    def _a_star_with_constraints(
-        self,
-        agv_id: int,
-        start: Tuple[int, int],
-        goal: Tuple[int, int],
-        carrying: bool,
-        constraints: List[Dict],
-        true_goal: Tuple[int, int]
-    ) -> List[Tuple[int, int]]:
+    def _a_star_with_constraints(self, agv_id, start, goal, carrying, constraints, true_goal):
         vertex_cons = defaultdict(set)
         edge_cons = defaultdict(set)
         for c in constraints:
@@ -134,6 +134,7 @@ class FixedWindowCBSPlanner(BasePlanner):
                 edge_cons[t].add((tuple(c['loc'][0]), tuple(c['loc'][1])))
         if self._occupied_cells(agv_id, start) & vertex_cons.get(0, set()):
             return None
+
         start_state = (start, 0)
         open_heap = []
         gscore = {start_state: 0}
@@ -150,14 +151,15 @@ class FixedWindowCBSPlanner(BasePlanner):
             parents[(pos, t)] = parent
             closed.add((pos, t))
             if pos == goal or t >= self.window_size:
-                path = self._reconstruct_path((pos, t), parents)
-                return path
+                return self._reconstruct_path((pos, t), parents)
+
             if not (self._occupied_cells(agv_id, pos) & vertex_cons.get(t + 1, set())):
                 succ = (pos, t + 1)
                 ng = g + 1
                 if gscore.get(succ, INF) > ng:
                     gscore[succ] = ng
                     heapq.heappush(open_heap, (ng + self._h(pos, goal), ng, succ, (pos, t)))
+
             for nb in self.env.get_walkable_neighbors(agv_id, pos, carrying):
                 if self._occupied_cells(agv_id, nb) & vertex_cons.get(t + 1, set()):
                     continue
@@ -183,7 +185,7 @@ class FixedWindowCBSPlanner(BasePlanner):
         path.reverse()
         return path
 
-    def _detect_conflict(self, paths: Dict[int, List[Tuple[int, int]]], planning_agents: set, fixed_agents: set):
+    def _detect_conflict(self, paths, planning_agents, fixed_agents):
         agents = set(paths.keys())
         max_len = max((len(paths[aid]) for aid in agents), default=0)
         for t in range(max_len):
@@ -196,16 +198,12 @@ class FixedWindowCBSPlanner(BasePlanner):
                     occupied_by[cell].append(agv_id)
             for cell, agvs in occupied_by.items():
                 if len(agvs) > 1:
-                    conflicting_agvs = [a for a in agvs if a in planning_agents]
+                    conflicting = [a for a in agvs if a in planning_agents]
                     fixed_conflicting = [a for a in agvs if a in fixed_agents]
-                    if len(conflicting_agvs) >= 2:
-                        a1, a2 = conflicting_agvs[0], conflicting_agvs[1]
-                    elif len(conflicting_agvs) == 1 and fixed_conflicting:
-                        a1 = conflicting_agvs[0]
-                        a2 = fixed_conflicting[0]
-                    else:
-                        continue
-                    return a1, a2, t, [cell]
+                    if len(conflicting) >= 2:
+                        return conflicting[0], conflicting[1], t, [cell]
+                    elif len(conflicting) == 1 and fixed_conflicting:
+                        return conflicting[0], fixed_conflicting[0], t, [cell]
             if t > 0:
                 ids = list(agents)
                 for i in range(len(ids)):
@@ -231,18 +229,16 @@ class FixedWindowCBSPlanner(BasePlanner):
             c2 = {'agent': a2, 'loc': [v, u], 'time': time}
         return c1, c2
 
-    def _is_vertex_free(self, agv_id: int, pos: Tuple[int, int], time: int, constraints: List[Dict]) -> bool:
-        """True if agv_id can occupy pos at time (no vertex constraint forbids its occupied cells)."""
-        forbidden_cells = set()
+    def _is_vertex_free(self, agv_id, pos, time, constraints):
+        forbidden = set()
         for c in constraints:
             if c.get('agent') != agv_id:
                 continue
             if c.get('time') == time and len(c.get('loc', [])) == 1:
-                forbidden_cells.add(tuple(c['loc'][0]))
-        return self._occupied_cells(agv_id, pos) & forbidden_cells == set()
+                forbidden.add(tuple(c['loc'][0]))
+        return self._occupied_cells(agv_id, pos) & forbidden == set()
 
-    def _occupied_cells(self, agv_id, pos: Tuple[int, int]) -> set:
-        """Return set of grid cells occupied by this AGV (top-left + size)."""
+    def _occupied_cells(self, agv_id, pos):
         size = self.agv_sizes.get(agv_id, 1)
-        x, y = pos
-        return {(x + dx, y + dy) for dx in range(size) for dy in range(size)}
+        row, col = pos
+        return {(row + dr, col + dc) for dr in range(size) for dc in range(size)}

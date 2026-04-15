@@ -9,13 +9,14 @@ from utils.simulation_context import SimulationContext
 if TYPE_CHECKING:
     from scheduler.base_scheduler import BaseScheduler
 
+
 class BasePlanner(ABC):
     def __init__(self, ctx: SimulationContext):
         assert (
             ctx.env is not None
             and ctx.agv_manager is not None
             and ctx.order_manager is not None
-            and ctx.grid_map is not None
+            and ctx.warehouse_map is not None
             and ctx.fault_manager is not None
             and ctx.system_config is not None
         )
@@ -30,15 +31,11 @@ class BasePlanner(ABC):
     ) -> Dict[int, List[Tuple[int, int]]]:
         """
         Centralized path planning for AGVs that need replanning.
+        Plans are per-floor (AGVs on different floors don't interact).
 
         Args:
-            targets: Mapping from agv_id to (start_pos, target_pos) for each AGV to plan.
-            scheduler: The scheduler instance (for context; may be used by implementations).
-
+            targets: {agv_id: (start_pos, target_pos)}
         Returns:
-            Mapping from agv_id to a list of grid positions forming the path.
-            Path must NOT include the start position; the first element is the next cell after start.
-            Use self.env.get_env_info() for action_queues (waypoints without current pos)
-            and current_grid_pos for current positions.
+            {agv_id: path} (path excludes start position)
         """
         pass
