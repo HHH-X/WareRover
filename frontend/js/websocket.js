@@ -83,13 +83,23 @@ function connectWebSocket(world) {
     }
 
     if (data.type === "update") {
-      // Update AGV positions
+      // Update AGV positions and floor transitions
       if (data.agvs) {
         for (const key in data.agvs) {
           const agvData = data.agvs[key];
           const pos = agvData.pos || agvData;
           const agv = world.agvs.get(parseInt(key));
-          if (agv) agv.update(pos);
+          if (!agv) continue;
+
+          if (agvData.in_elevator) {
+            agv.setVisible(false);
+          } else {
+            agv.setVisible(true);
+            if (agvData.floor != null && agvData.floor !== agv.floorId) {
+              agv.moveToFloor(agvData.floor, world);
+            }
+            agv.update(pos);
+          }
         }
       }
 
@@ -124,8 +134,8 @@ function connectWebSocket(world) {
       if (data.elevators) {
         for (const [eid, eStatus] of Object.entries(data.elevators)) {
           const elev = world.elevators.get(parseInt(eid));
-          if (elev && eStatus.state) {
-            elev.updateState(eStatus.state, eStatus.timer);
+          if (elev) {
+            elev.updateState(eStatus);
           }
         }
       }

@@ -55,7 +55,7 @@ class DHCAVGEnv:
         ctx.warehouse_map = WarehouseMap(ctx)
         ctx.order_manager = OrderManager(ctx)
         ctx.agv_manager = AGVManager(ctx)
-        ctx.elevator_manager = ElevatorManager(ctx.warehouse_map, ctx.logger)
+        ctx.elevator_manager = ElevatorManager(ctx.warehouse_map, ctx.agv_manager, ctx.logger)
         ctx.env = Env(ctx)
         ctx.fault_manager = FaultManager(ctx)
         ctx.scheduler = RandomScheduler(ctx)

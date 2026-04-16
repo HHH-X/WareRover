@@ -17,7 +17,7 @@ class ElevatorDef:
     position: Tuple[int, int]
     connected_floors: List[int]
     travel_time: int = 5
-    capacity: int = 1
+    size: int = 1
 
 
 class WarehouseMap:
@@ -40,14 +40,15 @@ class WarehouseMap:
         self.num_floors: int = map_data["map"].get("floors", 1)
 
         # Parse elevator definitions
+        default_travel_time = sim_config.elevator_travel_time_per_floor
         self.elevator_defs: Dict[int, ElevatorDef] = {}
         for e in map_data.get("elevators", []):
             ed = ElevatorDef(
                 elevator_id=e["elevator_id"],
                 position=tuple(e["position"]),
                 connected_floors=e.get("floors", list(range(self.num_floors))),
-                travel_time=e.get("travel_time", 5),
-                capacity=e.get("capacity", 1),
+                travel_time=e.get("travel_time", default_travel_time),
+                size=e.get("size", 1),
             )
             self.elevator_defs[ed.elevator_id] = ed
 

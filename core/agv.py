@@ -23,8 +23,7 @@ class AGVAction(Enum):
     PICK = "pick"
     PLACE = "place"
     HANDOVER = "handover"
-    ELEVATOR_LOAD = "elevator_load"
-    ELEVATOR_UNLOAD = "elevator_unload"
+    ENTER_ELEVATOR = "enter_elevator"
 
 
 class StepInfo(Enum):
@@ -53,6 +52,7 @@ class AGV:
         self.id: int = agv_id
         self.size: int = size
         self.floor_id: int = floor_id
+        self.init_floor_id: int = floor_id
         self.init_grid_pos: Tuple[int, int] = init_grid_pos
         self.grid_pos: Tuple[int, int] = init_grid_pos
         self.real_pos: Tuple[float, float] = (init_grid_pos[0] + 0.5, init_grid_pos[1] + 0.5)
@@ -74,8 +74,8 @@ class AGV:
         self.is_working: bool = True
         self.last_completed_task_pos: Tuple[int, int] = init_grid_pos
 
-        self.elevator_load_pending: Optional[Tuple[int, int]] = None   # (elevator_id, box_id)
-        self.elevator_unload_pending: Optional[int] = None             # elevator_id
+        self.in_elevator: bool = False
+        self.elevator_pending: Optional[Tuple[int, int]] = None  # (elevator_id, target_floor)
 
     @property
     def is_idle(self) -> bool:
@@ -93,7 +93,7 @@ class AGV:
         return abs(rr - expected_r) < epsilon and abs(rc - expected_c) < epsilon
 
     def step(self, next_grid: Tuple[int, int]) -> Tuple[bool, StepInfo]:
-        if not self.is_working:
+        if not self.is_working or self.in_elevator:
             return False, StepInfo.OTHER
 
         if self.turning_timer > 0:
@@ -196,15 +196,10 @@ class AGV:
             agv_pos=self.grid_pos
         )
 
-    def _elevator_load(self, elevator_id: Optional[int]):
-        """Mark box for loading onto elevator. Actual transfer handled by Simulator."""
-        if self.carried_box_id is not None and elevator_id is not None:
-            self.elevator_load_pending = (elevator_id, self.carried_box_id)
-
-    def _elevator_unload(self, elevator_id: Optional[int]):
-        """Mark request to unload from elevator. Actual transfer handled by Simulator."""
-        if elevator_id is not None:
-            self.elevator_unload_pending = elevator_id
+    def _enter_elevator(self, extra):
+        """Set pending elevator request. Actual boarding handled by ElevatorManager."""
+        if extra is not None:
+            self.elevator_pending = extra
 
     def assign_task(self, task_positions: List[Tuple[Tuple[int, int], AGVAction, Optional[int]]]):
         self.task_queue = deque(task_positions)
@@ -219,17 +214,15 @@ class AGV:
     def get_next_pos(self) -> Tuple[int, int]:
         return self.action_queue[0] if self.action_queue else self.grid_pos
 
-    def _execute_action(self, action: AGVAction, extra: Optional[int]):
+    def _execute_action(self, action: AGVAction, extra):
         if action == AGVAction.PICK:
             self._pick_box()
         elif action == AGVAction.PLACE:
             self._place_box()
         elif action == AGVAction.HANDOVER:
             self._handover_box(extra)
-        elif action == AGVAction.ELEVATOR_LOAD:
-            self._elevator_load(extra)
-        elif action == AGVAction.ELEVATOR_UNLOAD:
-            self._elevator_unload(extra)
+        elif action == AGVAction.ENTER_ELEVATOR:
+            self._enter_elevator(extra)
 
     def reset(self):
         self.grid_pos = self.init_grid_pos
@@ -241,8 +234,8 @@ class AGV:
         self.is_working = True
         self.direction = None
         self.last_completed_task_pos = self.init_grid_pos
-        self.elevator_load_pending = None
-        self.elevator_unload_pending = None
+        self.in_elevator = False
+        self.elevator_pending = None
 
     def _calculate_turn_time(self, current_direction: Direction,
                              target_direction: Optional[Direction]) -> int:

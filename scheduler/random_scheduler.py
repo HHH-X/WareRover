@@ -1,4 +1,3 @@
-# random_scheduler.py
 import random
 from typing import Dict, List, Set, Tuple
 
@@ -9,11 +8,11 @@ from utils.simulation_context import SimulationContext
 
 
 class RandomScheduler(BaseScheduler):
-    """
-    Random scheduler supporting same-floor and cross-floor orders.
-    Same-floor: PICK -> HANDOVER -> PLACE (as before).
-    Cross-floor: source AGV does PICK -> ELEVATOR_LOAD; destination AGV does ELEVATOR_UNLOAD -> HANDOVER.
-    Box auto-resets after cross-floor delivery (simplified).
+    """Random scheduler supporting same-floor and cross-floor orders.
+
+    Same-floor: PICK -> HANDOVER -> PLACE.
+    Cross-floor: single AGV rides elevator both ways:
+        PICK -> ENTER_ELEVATOR -> HANDOVER -> ENTER_ELEVATOR -> PLACE.
     """
 
     def __init__(self, ctx: SimulationContext):
@@ -42,7 +41,6 @@ class RandomScheduler(BaseScheduler):
         if not unprocessed_orders:
             return {}
 
-        # Separate same-floor and cross-floor orders
         same_floor_orders: List[Order] = []
         cross_floor_orders: List[Order] = []
         for order in unprocessed_orders:
@@ -51,10 +49,7 @@ class RandomScheduler(BaseScheduler):
             else:
                 same_floor_orders.append(order)
 
-        # Handle same-floor orders (original logic)
         self._assign_same_floor(idle_agv_ids, same_floor_orders, agv_task_map)
-
-        # Handle cross-floor orders
         self._assign_cross_floor(idle_agv_ids, cross_floor_orders, agv_task_map)
 
         return agv_task_map
@@ -71,7 +66,7 @@ class RandomScheduler(BaseScheduler):
 
         idle_agvs_by_size: Dict[int, List[int]] = {}
         for agv_id in idle_agv_ids:
-            if agv_id in {aid for tasks in agv_task_map.values() for aid in [agv_id] if aid in agv_task_map}:
+            if agv_id in agv_task_map:
                 continue
             size = self.agv_manager.get_agv_size(agv_id)
             idle_agvs_by_size.setdefault(size, []).append(agv_id)
@@ -89,7 +84,6 @@ class RandomScheduler(BaseScheduler):
                     break
                 agv_floor = self.agv_manager.get_agv_floor(agv_id)
 
-                # Find an order whose source_floor matches this AGV's floor
                 matched_order = None
                 for i, order in enumerate(available_orders):
                     if order.source_floor == agv_floor:
@@ -117,8 +111,7 @@ class RandomScheduler(BaseScheduler):
                 self.order_manager.mark_order_as_processing(order.order_id, agv_id)
 
     def _assign_cross_floor(self, idle_agv_ids, orders, agv_task_map):
-        """Assign cross-floor orders: source-floor AGV picks and loads elevator,
-        destination-floor AGV unloads and delivers."""
+        """Single AGV handles the entire cross-floor order by riding the elevator."""
         if not orders:
             return
 
@@ -126,39 +119,26 @@ class RandomScheduler(BaseScheduler):
             src_floor = order.source_floor
             dst_floor = order.target_floor
 
-            # Find elevator connecting the two floors
-            elev_id = self.elevator_manager.find_elevator_for_floors(src_floor, dst_floor)
+            # Find idle AGV on source floor with matching size
+            agv_id = None
+            for aid in idle_agv_ids:
+                if aid in agv_task_map:
+                    continue
+                agv = self.agv_manager.get_agv(aid)
+                if agv.floor_id == src_floor and agv.size == order.required_size:
+                    agv_id = aid
+                    break
+            if agv_id is None:
+                continue
+
+            agv_size = self.agv_manager.get_agv_size(agv_id)
+            elev_id = self.elevator_manager.find_elevator(src_floor, dst_floor, agv_size)
             if elev_id is None:
                 continue
             elev_pos = self.warehouse_map.get_elevator_position(elev_id)
             if elev_pos is None:
                 continue
 
-            # Find idle source-floor AGV
-            src_agv = None
-            for aid in idle_agv_ids:
-                if aid in agv_task_map:
-                    continue
-                agv = self.agv_manager.get_agv(aid)
-                if agv.floor_id == src_floor and agv.size == order.required_size:
-                    src_agv = aid
-                    break
-            if src_agv is None:
-                continue
-
-            # Find idle destination-floor AGV
-            dst_agv = None
-            for aid in idle_agv_ids:
-                if aid in agv_task_map or aid == src_agv:
-                    continue
-                agv = self.agv_manager.get_agv(aid)
-                if agv.floor_id == dst_floor and agv.size == order.required_size:
-                    dst_agv = aid
-                    break
-            if dst_agv is None:
-                continue
-
-            # Assign box
             src_grid = self.warehouse_map.get_floor(src_floor)
             box_ids = src_grid.get_boxes_by_goods(order.goods_id)
             if not box_ids:
@@ -167,24 +147,16 @@ class RandomScheduler(BaseScheduler):
             order.box_id = box_id
             box_pos = src_grid.get_box_position(box_id)
 
-            # Source AGV: PICK box -> go to elevator -> ELEVATOR_LOAD
-            src_tasks = [
-                (box_pos, AGVAction.PICK, box_id),
-                (elev_pos, AGVAction.ELEVATOR_LOAD, elev_id),
-            ]
-            agv_task_map[src_agv] = src_tasks
-
-            # Queue elevator transport
-            self.elevator_manager.request_transport(elev_id, box_id, src_floor, dst_floor, order.order_id)
-
-            # Destination AGV: go to elevator -> ELEVATOR_UNLOAD -> deliver -> HANDOVER
             dst_grid = self.warehouse_map.get_floor(dst_floor)
             receiver_pos = dst_grid.get_receiver_position(order.receiver_id)
-            dst_tasks = [
-                (elev_pos, AGVAction.ELEVATOR_UNLOAD, elev_id),
-                (receiver_pos, AGVAction.HANDOVER, order.order_id),
-            ]
-            agv_task_map[dst_agv] = dst_tasks
 
-            self.order_manager.mark_order_as_processing(order.order_id, src_agv)
+            tasks = [
+                (box_pos, AGVAction.PICK, box_id),
+                (elev_pos, AGVAction.ENTER_ELEVATOR, (elev_id, dst_floor)),
+                (receiver_pos, AGVAction.HANDOVER, order.order_id),
+                (elev_pos, AGVAction.ENTER_ELEVATOR, (elev_id, src_floor)),
+                (box_pos, AGVAction.PLACE, None),
+            ]
+            agv_task_map[agv_id] = tasks
+            self.order_manager.mark_order_as_processing(order.order_id, agv_id)
             orders.remove(order)

@@ -17,13 +17,13 @@ class AGVManager:
         )
         self.sim_config = ctx.system_config.sim_config
         self.logger = ctx.logger
-        wmap = ctx.warehouse_map
+        self.warehouse_map = ctx.warehouse_map
         order_manager = ctx.order_manager
 
         agv_list = []
-        for fid in wmap.all_floor_ids():
-            floor_grid = wmap.get_floor(fid)
-            agv_data = wmap.get_agv_data_for_floor(fid)
+        for fid in self.warehouse_map.all_floor_ids():
+            floor_grid = self.warehouse_map.get_floor(fid)
+            agv_data = self.warehouse_map.get_agv_data_for_floor(fid)
             for agv_entry in agv_data:
                 agv_id = agv_entry["agv_id"]
                 agv_size = agv_entry.get("size", 1)
@@ -157,6 +157,26 @@ class AGVManager:
                 result[aid] = list(agv.action_queue)
         return result
 
+    # ── Floor transitions (elevator) ──
+
+    def remove_agv_from_floor(self, agv_id: int):
+        """Remove AGV from its current floor set (when entering elevator)."""
+        floor_id = self.agv_floors[agv_id]
+        floor_set = self._floor_agv_ids.get(floor_id)
+        if floor_set:
+            floor_set.discard(agv_id)
+        self.idle_agvs.discard(agv_id)
+        self.need_rest_agvs.discard(agv_id)
+        self.need_replan_agvs.discard(agv_id)
+
+    def transfer_agv_to_floor(self, agv_id: int, new_floor_id: int):
+        """Move AGV to a new floor (when exiting elevator)."""
+        agv = self._agvs[agv_id]
+        agv.floor_id = new_floor_id
+        agv.map = self.warehouse_map.get_floor(new_floor_id)
+        self.agv_floors[agv_id] = new_floor_id
+        self._floor_agv_ids.setdefault(new_floor_id, set()).add(agv_id)
+
     # ── Mutations ──
 
     def increment_block_count(self, agv_id: int):
@@ -207,6 +227,8 @@ class AGVManager:
             replan_agvs = set(self.need_replan_agvs)
         for agv_id in replan_agvs:
             agv = self._agvs[agv_id]
+            if agv.in_elevator:
+                continue
             current = agv.grid_pos
             if agv.task_queue:
                 target = agv.task_queue[0][0]
@@ -227,8 +249,14 @@ class AGVManager:
             agv.is_working = is_working
 
     def reset_agvs(self):
+        # Rebuild floor tracking from initial state
+        self._floor_agv_ids.clear()
         for agv in self._agvs.values():
+            agv.floor_id = agv.init_floor_id
+            agv.map = self.warehouse_map.get_floor(agv.init_floor_id)
             agv.reset()
+            self.agv_floors[agv.id] = agv.init_floor_id
+            self._floor_agv_ids.setdefault(agv.init_floor_id, set()).add(agv.id)
         all_ids = set(self._agvs.keys())
         self.idle_agvs = all_ids.copy()
         self.need_rest_agvs = all_ids.copy()

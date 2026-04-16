@@ -25,10 +25,11 @@ class Elevator {
     this.mesh.add(shaft);
 
     // Platform (moves between floors)
-    const platGeo = new THREE.BoxGeometry(0.8, 0.1, 0.8);
-    const platMat = new THREE.MeshStandardMaterial({ color: 0xff8800, metalness: 0.5, roughness: 0.4 });
-    this.platform = new THREE.Mesh(platGeo, platMat);
-    this.platform.position.set(pos[0], baseY + 0.05, pos[1]);
+    const platGeo = new THREE.BoxGeometry(0.8, 0.15, 0.8);
+    this.platIdleMat = new THREE.MeshStandardMaterial({ color: 0xff8800, metalness: 0.5, roughness: 0.4 });
+    this.platActiveMat = new THREE.MeshStandardMaterial({ color: 0xff2200, metalness: 0.5, roughness: 0.4 });
+    this.platform = new THREE.Mesh(platGeo, this.platIdleMat);
+    this.platform.position.set(pos[0], baseY + 0.075, pos[1]);
     this.mesh.add(this.platform);
 
     // Floor indicator dots
@@ -41,15 +42,35 @@ class Elevator {
     }
 
     this.pos = pos;
-    this.currentY = baseY + 0.05;
+    this.targetY = baseY + 0.075;
+    this.lerpSpeed = 0.08;
   }
 
-  updateState(state, timer) {
-    // Could animate platform movement in the future
+  updateState(statusData) {
+    const state = statusData.state;
+    const currentFloor = statusData.current_floor;
+
+    if (currentFloor != null) {
+      this.targetY = currentFloor * this.floorHeight + 0.075;
+    }
+
     if (state === 'TRANSPORTING') {
-      this.platform.material.color.setHex(0xff4400);
+      this.platform.material = this.platActiveMat;
+      if (statusData.target_floor != null) {
+        this.targetY = statusData.target_floor * this.floorHeight + 0.075;
+      }
     } else {
-      this.platform.material.color.setHex(0xff8800);
+      this.platform.material = this.platIdleMat;
+    }
+  }
+
+  animate() {
+    const curY = this.platform.position.y;
+    const diff = this.targetY - curY;
+    if (Math.abs(diff) > 0.01) {
+      this.platform.position.y += diff * this.lerpSpeed;
+    } else {
+      this.platform.position.y = this.targetY;
     }
   }
 }

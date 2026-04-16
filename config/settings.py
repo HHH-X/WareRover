@@ -60,6 +60,11 @@ class SimConfig:
     agv_max_speed: float = 1      # Maximum AGV speed (cells per step)
     agv_turn_time_90: float = 0   # Time required for a 90-degree turn (seconds)
 
+    # ==================== Elevator ====================
+    elevator_travel_time_per_floor: int = 5
+    # Steps required for an elevator to traverse one floor (global default;
+    # per-elevator travel_time in map JSON overrides this)
+
     # ==================== Frontend visualization ====================
     cell_size: int = 40
     panel_width: int = 300

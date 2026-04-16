@@ -1,5 +1,3 @@
-# core/simulator.py
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -57,21 +55,4 @@ class Simulator:
 
         self.env.step()
         self.elevator_manager.step()
-        self._process_elevator_actions()
         self.clock.tick()
-
-    def _process_elevator_actions(self):
-        """Handle pending elevator load/unload actions from AGVs."""
-        for agv in self.agv_manager.all_agvs():
-            if agv.elevator_load_pending is not None:
-                elev_id, box_id = agv.elevator_load_pending
-                if self.elevator_manager.load_box(elev_id, box_id, agv.floor_id):
-                    agv.carried_box_id = None
-                agv.elevator_load_pending = None
-
-            if agv.elevator_unload_pending is not None:
-                elev_id = agv.elevator_unload_pending
-                box_id = self.elevator_manager.unload_box(elev_id, agv.floor_id)
-                if box_id is not None:
-                    agv.carried_box_id = box_id
-                agv.elevator_unload_pending = None

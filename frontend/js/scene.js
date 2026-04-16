@@ -205,6 +205,9 @@ function renderLoop(renderer, labelRenderer, scene, camera, controls) {
   function animate() {
     requestAnimationFrame(animate);
     controls.update();
+    if (window.sceneWorld) {
+      window.sceneWorld.elevators.forEach(elev => elev.animate());
+    }
     renderer.render(scene, camera);
     labelRenderer.render(scene, camera);
   }

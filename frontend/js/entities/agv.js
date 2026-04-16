@@ -41,7 +41,21 @@ class AGV {
     }
   }
 
-  // 显示或隐藏ID
+  setVisible(visible) {
+    this.mesh.visible = visible;
+  }
+
+  moveToFloor(newFloorId, world) {
+    if (this.floorId === newFloorId) return;
+
+    const oldGroup = world.floorGroups.get(this.floorId);
+    const newGroup = world.floorGroups.get(newFloorId);
+    if (oldGroup) oldGroup.remove(this.mesh);
+    if (newGroup) newGroup.add(this.mesh);
+    this.floorId = newFloorId;
+    this.mesh.position.y = 0.06;
+  }
+
   setLabelVisible(visible) {
     this.label.element.style.opacity = visible ? '1' : '0';
   }

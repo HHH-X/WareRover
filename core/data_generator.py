@@ -103,19 +103,26 @@ def generate_send_data(
         data['type'] = 'update'
 
         agv_pos = {}
-        for aid, pos in ctx.agv_manager.get_all_real_positions().items():
-            size = ctx.agv_manager.get_agv_size(aid)
-            center = agv_real_to_frontend(pos, size)
-            floor_id = ctx.agv_manager.get_agv_floor(aid)
-            agv_pos[str(aid)] = {"pos": center, "floor": floor_id}
+        for agv in ctx.agv_manager.all_agvs():
+            size = agv.size
+            center = agv_real_to_frontend(agv.real_pos, size)
+            floor_id = agv.floor_id
+            agv_pos[str(agv.id)] = {
+                "pos": center,
+                "floor": floor_id,
+                "in_elevator": agv.in_elevator,
+            }
         data['agvs'] = agv_pos
 
         carrying_status = ctx.agv_manager.get_carried_box_ids()
         boxes_on_agv = {}
         for agv_id, b_id in carrying_status.items():
             if b_id is not None:
+                agv = ctx.agv_manager.get_agv(agv_id)
+                if agv.in_elevator:
+                    continue
                 agv_info = agv_pos[str(agv_id)]
-                floor_id = ctx.agv_manager.get_agv_floor(agv_id)
+                floor_id = agv.floor_id
                 boxes_on_agv[str(b_id)] = {"pos": agv_info["pos"], "floor": floor_id}
 
         boxes_on_shelf = {}
@@ -146,9 +153,10 @@ def generate_send_data(
             for eid, elev in ctx.elevator_manager.elevators.items():
                 elev_status[str(eid)] = {
                     "state": elev.state.name,
-                    "current_box": elev.current_box_id,
+                    "current_floor": elev.current_floor,
+                    "agv_inside": elev.agv_id,
+                    "target_floor": elev.target_floor,
                     "timer": elev.timer,
-                    "pending_boxes": {str(f): b for f, b in elev.pending_boxes.items()},
                 }
             data['elevators'] = elev_status
 
