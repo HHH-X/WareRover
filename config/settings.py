@@ -64,6 +64,8 @@ class SimConfig:
     elevator_travel_time_per_floor: int = 5
     # Steps required for an elevator to traverse one floor (global default;
     # per-elevator travel_time in map JSON overrides this)
+    elevator_wait_timeout_steps: int = 10
+    # Steps to wait for target AGV at pickup floor before requeueing elevator task.
 
     # ==================== Frontend visualization ====================
     cell_size: int = 40

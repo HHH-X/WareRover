@@ -131,32 +131,9 @@ class RandomScheduler(BaseScheduler):
             if agv_id is None:
                 continue
 
-            agv_size = self.agv_manager.get_agv_size(agv_id)
-            elev_id = self.elevator_manager.find_elevator(src_floor, dst_floor, agv_size)
-            if elev_id is None:
+            tasks = self._build_cross_floor_tasks(agv_id, order)
+            if tasks is None:
                 continue
-            elev_pos = self.warehouse_map.get_elevator_position(elev_id)
-            if elev_pos is None:
-                continue
-
-            src_grid = self.warehouse_map.get_floor(src_floor)
-            box_ids = src_grid.get_boxes_by_goods(order.goods_id)
-            if not box_ids:
-                continue
-            box_id = random.choice(box_ids)
-            order.box_id = box_id
-            box_pos = src_grid.get_box_position(box_id)
-
-            dst_grid = self.warehouse_map.get_floor(dst_floor)
-            receiver_pos = dst_grid.get_receiver_position(order.receiver_id)
-
-            tasks = [
-                (box_pos, AGVAction.PICK, box_id),
-                (elev_pos, AGVAction.ENTER_ELEVATOR, (elev_id, dst_floor)),
-                (receiver_pos, AGVAction.HANDOVER, order.order_id),
-                (elev_pos, AGVAction.ENTER_ELEVATOR, (elev_id, src_floor)),
-                (box_pos, AGVAction.PLACE, None),
-            ]
             agv_task_map[agv_id] = tasks
             self.order_manager.mark_order_as_processing(order.order_id, agv_id)
             orders.remove(order)

@@ -57,7 +57,11 @@ class WarehouseMap:
         for ed in self.elevator_defs.values():
             for fid in ed.connected_floors:
                 floor_elevators[fid].append(
-                    {"elevator_id": ed.elevator_id, "position": list(ed.position)}
+                    {
+                        "elevator_id": ed.elevator_id,
+                        "position": list(ed.position),
+                        "size": ed.size,
+                    }
                 )
 
         # Create per-floor GridMap instances

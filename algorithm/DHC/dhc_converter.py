@@ -58,9 +58,9 @@ class DHCCompatibleConverter:
             goal_row, goal_col = goal_pos
             goal_positions[agv_id] = [goal_row, goal_col]
 
-            obs = (type_grid == CellType.OBSTACLE) | (type_grid == CellType.BOX)
+            obs = (type_grid == CellType.OBSTACLE) | (type_grid == CellType.SHELF)
 
-            if type_grid[goal_row, goal_col] == CellType.BOX:
+            if type_grid[goal_row, goal_col] == CellType.SHELF:
                 obs[goal_row, goal_col] = False
 
             personalized_obstacle_maps[agv_id] = obs
@@ -198,10 +198,11 @@ class DHCCompatibleConverter:
             next_col = col + dc
 
             can_walk = self.gridmap.is_walkable(
+                agv_id=agv_id,
                 agv_size=agv_size,
                 from_pos=(row, col),
                 to_pos=(next_row, next_col),
-                carrying_goods=carrying
+                carrying_goods=carrying,
             )
 
             if not can_walk:

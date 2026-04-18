@@ -143,4 +143,31 @@ class TAScheduler(BaseScheduler):
                     for original_order in orders:
                         self.order_manager.mark_order_as_processing(original_order.order_id, agv_id)
 
+        remaining_cross_floor_orders = [
+            o for o in self.order_manager.get_unprocessed_orders() if o.is_cross_floor
+        ]
+        self._assign_cross_floor(idle_agv_ids, remaining_cross_floor_orders, agv_task_map)
         return agv_task_map
+
+    def _assign_cross_floor(self, idle_agv_ids, orders, agv_task_map):
+        if not orders:
+            return
+
+        for order in list(orders):
+            src_floor = order.source_floor
+            agv_id = None
+            for aid in idle_agv_ids:
+                if aid in agv_task_map:
+                    continue
+                agv = self.agv_manager.get_agv(aid)
+                if agv.floor_id == src_floor and agv.size == order.required_size:
+                    agv_id = aid
+                    break
+            if agv_id is None:
+                continue
+
+            tasks = self._build_cross_floor_tasks(agv_id, order)
+            if tasks is None:
+                continue
+            agv_task_map[agv_id] = tasks
+            self.order_manager.mark_order_as_processing(order.order_id, agv_id)

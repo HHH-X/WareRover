@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import IntEnum
-from typing import Dict, List, Tuple, Optional, Set, TYPE_CHECKING
+from typing import Callable, Dict, List, Tuple, Optional, Set, TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
@@ -11,7 +11,8 @@ if TYPE_CHECKING:
 class CellType(IntEnum):
     FREE = 0
     OBSTACLE = 1
-    BOX = 2
+    SHELF = 2
+    ELEVATOR = 3
 
 
 class GridMap:
@@ -37,7 +38,8 @@ class GridMap:
         self.logger = logger
 
         self.type_grid = np.full((self.height, self.width), CellType.FREE, dtype=np.int8)
-        self.id_grid = np.full((self.height, self.width), -1, dtype=np.int32)
+        self.shelf_id_grid = np.full((self.height, self.width), -1, dtype=np.int32)
+        self.elevator_id_grid = np.full((self.height, self.width), -1, dtype=np.int32)
 
         self.box_positions: Dict[int, Tuple[int, int]] = {}
         self.box_sizes: Dict[int, int] = {}
@@ -62,8 +64,8 @@ class GridMap:
                 self.goods_id_set.add(gid)
             for dr in range(size):
                 for dc in range(size):
-                    self.type_grid[row + dr][col + dc] = CellType.BOX
-                    self.id_grid[row + dr][col + dc] = box_id
+                    self.type_grid[row + dr][col + dc] = CellType.SHELF
+                    self.shelf_id_grid[row + dr][col + dc] = box_id
 
         self.obstacles: Set[Tuple[int, int]] = set()
         for obs in floor_data.get("obstacles", []):
@@ -92,8 +94,17 @@ class GridMap:
             self.wait_zones_size[zid] = size
 
         self.elevator_positions: Dict[int, Tuple[int, int]] = {}
+        self.elevator_sizes: Dict[int, int] = {}
         for elev in floor_data.get("elevators", []):
-            self.elevator_positions[elev["elevator_id"]] = tuple(elev["position"])
+            elevator_id = elev["elevator_id"]
+            row, col = tuple(elev["position"])
+            size = elev.get("size", 1)
+            self.elevator_positions[elevator_id] = (row, col)
+            self.elevator_sizes[elevator_id] = size
+            for dr in range(size):
+                for dc in range(size):
+                    self.type_grid[row + dr][col + dc] = CellType.ELEVATOR
+                    self.elevator_id_grid[row + dr][col + dc] = elevator_id
 
         self.dynamic_occupied: Dict[str, list[Tuple[int, int]]] = {}
 
@@ -111,10 +122,12 @@ class GridMap:
         return False
 
     def is_walkable(self,
+                    agv_id: int,
                     agv_size: int,
                     to_pos: Tuple[int, int],
                     from_pos: Tuple[int, int],
-                    carrying_goods: bool) -> bool:
+                    carrying_goods: bool,
+                    can_enter_elevator: Optional[Callable[[int, int, int], bool]] = None) -> bool:
         r_from, c_from = from_pos
         r_to, c_to = to_pos
         dr, dc = r_to - r_from, c_to - c_from
@@ -146,9 +159,11 @@ class GridMap:
                 return False
 
         head_types = [self.type_grid[hr, hc] for (hr, hc) in head_positions]
-        head_ids = [self.id_grid[hr, hc] for (hr, hc) in head_positions]
+        head_shelf_ids = [self.shelf_id_grid[hr, hc] for (hr, hc) in head_positions]
+        head_elevator_ids = [self.elevator_id_grid[hr, hc] for (hr, hc) in head_positions]
         next_types = [self.type_grid[nr, nc] for (nr, nc) in next_positions]
-        next_ids = [self.id_grid[nr, nc] for (nr, nc) in next_positions]
+        next_shelf_ids = [self.shelf_id_grid[nr, nc] for (nr, nc) in next_positions]
+        next_elevator_ids = [self.elevator_id_grid[nr, nc] for (nr, nc) in next_positions]
 
         if any(t == CellType.OBSTACLE for t in head_types + next_types):
             return False
@@ -158,22 +173,39 @@ class GridMap:
                 if self.is_occupied(hr, hc):
                     return False
 
-        def classify_group(types, ids):
+        def classify_group(types, shelf_ids, elevator_ids):
             if all(t == CellType.FREE for t in types):
                 return ("empty", None)
-            if all(t == CellType.BOX for t in types):
-                first = ids[0]
-                if all(i == first for i in ids):
+            if all(t == CellType.SHELF for t in types):
+                first = shelf_ids[0]
+                if all(i == first for i in shelf_ids):
                     return ("shelf", first)
-                else:
-                    return ("mixed", None)
+                return ("mixed", None)
+            if all(t == CellType.ELEVATOR for t in types):
+                first = elevator_ids[0]
+                if first >= 0 and all(i == first for i in elevator_ids):
+                    return ("elevator", first)
+                return ("mixed", None)
             return ("mixed", None)
 
-        head_type, head_id = classify_group(head_types, head_ids)
-        next_type, next_id = classify_group(next_types, next_ids)
+        head_type, head_id = classify_group(head_types, head_shelf_ids, head_elevator_ids)
+        next_type, next_id = classify_group(next_types, next_shelf_ids, next_elevator_ids)
 
         if head_type == "mixed" or next_type == "mixed":
             return False
+
+        if next_type == "elevator":
+            if can_enter_elevator is None or next_id is None:
+                return False
+            if not can_enter_elevator(agv_id, next_id, self.floor_id):
+                return False
+
+        if head_type == "elevator":
+            if head_id is None:
+                return False
+            if next_type == "elevator":
+                return head_id == next_id
+            return True
 
         if carrying_goods:
             if head_type == "empty" and next_type == "empty":
@@ -199,9 +231,11 @@ class GridMap:
 
     def get_walkable_neighbors(
         self,
+        agv_id: int,
         agv_size: int,
         pos: Tuple[int, int],
-        carrying_goods: bool) -> List[Tuple[int, int]]:
+        carrying_goods: bool,
+        can_enter_elevator: Optional[Callable[[int, int, int], bool]] = None) -> List[Tuple[int, int]]:
         row, col = pos
         neighbors = []
         directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
@@ -211,16 +245,23 @@ class GridMap:
             if not (0 <= nr and nr + agv_size - 1 < self.height and
                     0 <= nc and nc + agv_size - 1 < self.width):
                 continue
-            if self.is_walkable(agv_size, (nr, nc), (row, col), carrying_goods):
+            if self.is_walkable(
+                agv_id=agv_id,
+                agv_size=agv_size,
+                to_pos=(nr, nc),
+                from_pos=(row, col),
+                carrying_goods=carrying_goods,
+                can_enter_elevator=can_enter_elevator,
+            ):
                 neighbors.append((nr, nc))
 
         return neighbors
 
     def pick_box_at(self, pos: Tuple[int, int]) -> Optional[int]:
         row, col = pos
-        if self.type_grid[row, col] != CellType.BOX:
+        if self.type_grid[row, col] != CellType.SHELF:
             return None
-        box_id = self.id_grid[row, col]
+        box_id = self.shelf_id_grid[row, col]
         expected_pos = self.box_positions.get(box_id)
         if expected_pos != pos:
             return None
@@ -264,6 +305,14 @@ class GridMap:
 
     def get_elevator_position(self, elevator_id: int) -> Optional[Tuple[int, int]]:
         return self.elevator_positions.get(elevator_id)
+
+    def get_elevator_cells(self, elevator_id: int) -> List[Tuple[int, int]]:
+        pos = self.elevator_positions.get(elevator_id)
+        if pos is None:
+            return []
+        row, col = pos
+        size = self.elevator_sizes.get(elevator_id, 1)
+        return [(row + dr, col + dc) for dr in range(size) for dc in range(size)]
 
     def reset_map(self):
         for box_id in self.box_status:

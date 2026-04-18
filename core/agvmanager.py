@@ -229,6 +229,9 @@ class AGVManager:
             agv = self._agvs[agv_id]
             if agv.in_elevator:
                 continue
+            if agv.elevator_pending is not None:
+                result[agv_id] = (agv.grid_pos, agv.grid_pos)
+                continue
             current = agv.grid_pos
             if agv.task_queue:
                 target = agv.task_queue[0][0]

@@ -53,7 +53,12 @@ async def simulator_loop(websocket, message_queue):
     ctx.warehouse_map = WarehouseMap(ctx)
     ctx.order_manager = OrderManager(ctx)
     ctx.agv_manager = AGVManager(ctx)
-    ctx.elevator_manager = ElevatorManager(ctx.warehouse_map, ctx.agv_manager, ctx.logger)
+    ctx.elevator_manager = ElevatorManager(
+        ctx.warehouse_map,
+        ctx.agv_manager,
+        ctx.logger,
+        wait_timeout_steps=ctx.system_config.sim_config.elevator_wait_timeout_steps,
+    )
     ctx.env = Env(ctx)
     ctx.fault_manager = FaultManager(ctx)
     ctx.scheduler = default_registry.build_scheduler(ctx)

@@ -24,6 +24,7 @@ class Env:
         self.agv_manager = ctx.agv_manager
         self.warehouse_map = ctx.warehouse_map
         self.order_manager = ctx.order_manager
+        self.elevator_manager = ctx.elevator_manager
 
     def _floor_map(self, agv_id: int):
         """Get the GridMap for this AGV's floor."""
@@ -58,22 +59,41 @@ class Env:
 
         return {
             'type_grid': floor_grid.type_grid,
-            'id_grid': floor_grid.id_grid,
+            'shelf_id_grid': floor_grid.shelf_id_grid,
+            'elevator_id_grid': floor_grid.elevator_id_grid,
             'carrying_status': carrying_status,
             'action_queues': action_queues,
             'current_grid_pos': current_grid_pos,
             'agv_sizes': agv_sizes,
         }
 
+    def _can_enter_elevator(self, agv_id: int, elevator_id: int, floor_id: int) -> bool:
+        if self.elevator_manager is None:
+            return False
+        return self.elevator_manager.can_agv_enter(agv_id, elevator_id, floor_id)
+
     def get_walkable_neighbors(self, agv_id: int, pos: Tuple[int, int],
                                carrying_goods: bool) -> List[Tuple[int, int]]:
         fmap = self._floor_map(agv_id)
-        return fmap.get_walkable_neighbors(self.agv_manager.get_agv_size(agv_id), pos, carrying_goods)
+        return fmap.get_walkable_neighbors(
+            agv_id=agv_id,
+            agv_size=self.agv_manager.get_agv_size(agv_id),
+            pos=pos,
+            carrying_goods=carrying_goods,
+            can_enter_elevator=self._can_enter_elevator,
+        )
 
     def is_walkable(self, agv_id: int, to_pos: Tuple[int, int],
                     from_pos: Tuple[int, int], carrying_goods: bool) -> bool:
         fmap = self._floor_map(agv_id)
-        return fmap.is_walkable(self.agv_manager.get_agv_size(agv_id), to_pos, from_pos, carrying_goods)
+        return fmap.is_walkable(
+            agv_id=agv_id,
+            agv_size=self.agv_manager.get_agv_size(agv_id),
+            to_pos=to_pos,
+            from_pos=from_pos,
+            carrying_goods=carrying_goods,
+            can_enter_elevator=self._can_enter_elevator,
+        )
 
     def step(self) -> Dict[int, StepInfo]:
         """Resolve conflicts per floor, then step all AGVs."""
@@ -158,7 +178,13 @@ class Env:
                     continue
 
                 walkable = floor_grid.is_walkable(
-                    self.agv_manager.get_agv_size(agv_id), tgt, cur, carrying)
+                    agv_id=agv_id,
+                    agv_size=self.agv_manager.get_agv_size(agv_id),
+                    to_pos=tgt,
+                    from_pos=cur,
+                    carrying_goods=carrying,
+                    can_enter_elevator=self._can_enter_elevator,
+                )
                 occ = self._get_next_occupied_positions(agv_id, cur, tgt)
                 has_vertex_conflict = any(
                     (cell in cur_vertex_dict and len(cur_vertex_dict[cell] - {agv_id}) > 0)

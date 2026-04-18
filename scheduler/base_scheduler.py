@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 import random
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 from typing import TYPE_CHECKING
 from core.agv import AGVAction
 from core.ordermanager import OrderManager, Order
@@ -47,3 +47,57 @@ class BaseScheduler(ABC):
 
     def reset(self) -> None:
         pass
+
+    def _build_cross_floor_tasks(
+        self,
+        agv_id: int,
+        order: Order,
+    ) -> Optional[List[Tuple[Tuple[int, int], AGVAction, object]]]:
+        src_floor = order.source_floor
+        dst_floor = order.target_floor
+        agv_size = self.ctx.agv_manager.get_agv_size(agv_id)
+
+        elev_id = self.ctx.elevator_manager.find_elevator(src_floor, dst_floor, agv_size)
+        if elev_id is None:
+            return None
+        elev_pos = self.ctx.warehouse_map.get_elevator_position(elev_id)
+        if elev_pos is None:
+            return None
+
+        src_grid = self.ctx.warehouse_map.get_floor(src_floor)
+        box_ids = src_grid.get_boxes_by_goods(order.goods_id)
+        if not box_ids:
+            return None
+        box_id = random.choice(box_ids)
+        order.box_id = box_id
+        box_pos = src_grid.get_box_position(box_id)
+        if box_pos is None:
+            return None
+
+        dst_grid = self.ctx.warehouse_map.get_floor(dst_floor)
+        receiver_pos = dst_grid.get_receiver_position(order.receiver_id)
+        if receiver_pos is None:
+            return None
+
+        outbound_ok = self.ctx.elevator_manager.enqueue_task(
+            elevator_id=elev_id,
+            agv_id=agv_id,
+            from_floor=src_floor,
+            to_floor=dst_floor,
+        )
+        return_ok = self.ctx.elevator_manager.enqueue_task(
+            elevator_id=elev_id,
+            agv_id=agv_id,
+            from_floor=dst_floor,
+            to_floor=src_floor,
+        )
+        if not outbound_ok or not return_ok:
+            return None
+
+        return [
+            (box_pos, AGVAction.PICK, box_id),
+            (elev_pos, AGVAction.ENTER_ELEVATOR, (elev_id, dst_floor)),
+            (receiver_pos, AGVAction.HANDOVER, order.order_id),
+            (elev_pos, AGVAction.ENTER_ELEVATOR, (elev_id, src_floor)),
+            (box_pos, AGVAction.PLACE, None),
+        ]
