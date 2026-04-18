@@ -8,15 +8,38 @@ import { Elevator } from './entities/elevator.js';
 import { FLOOR_HEIGHT } from './scene.js';
 import { updateMetrics } from './panel.js';
 import { updateOrderPanel } from './orderPanel.js';
+import { debugLog, debugWarn } from './debug.js';
 
 let ws = null;
 
 function connectWebSocket(world) {
   ws = new WebSocket("ws://localhost:8765");
 
+  ws.onopen = () => {
+    debugLog("[ws] open", { url: ws.url });
+  };
+
+  ws.onclose = (event) => {
+    debugWarn("[ws] close", {
+      code: event.code,
+      reason: event.reason,
+      wasClean: event.wasClean
+    });
+  };
+
+  ws.onerror = (event) => {
+    debugWarn("[ws] error", event);
+  };
+
   ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    console.log("get data: ", data);
+    let data;
+    try {
+      data = JSON.parse(event.data);
+    } catch (error) {
+      debugWarn("[ws] invalid json", event.data, error);
+      return;
+    }
+    debugLog("[ws] message", data.type || "unknown", data);
 
     if (data.type === "init") {
       const numFloors = data.num_floors || 1;
@@ -80,16 +103,27 @@ function connectWebSocket(world) {
       if (window.buildFloorToggles) {
         window.buildFloorToggles(numFloors);
       }
+
+      debugLog("[ws] init complete", {
+        floors: numFloors,
+        agvs: data.agvs ? Object.keys(data.agvs).length : 0,
+        elevators: data.elevators ? Object.keys(data.elevators).length : 0
+      });
     }
 
     if (data.type === "update") {
       // Update AGV positions and floor transitions
       if (data.agvs) {
+        let updated = 0;
+        let missing = 0;
         for (const key in data.agvs) {
           const agvData = data.agvs[key];
           const pos = agvData.pos || agvData;
           const agv = world.agvs.get(parseInt(key));
-          if (!agv) continue;
+          if (!agv) {
+            missing += 1;
+            continue;
+          }
 
           if (agvData.in_elevator) {
             agv.setVisible(false);
@@ -99,25 +133,43 @@ function connectWebSocket(world) {
               agv.moveToFloor(agvData.floor, world);
             }
             agv.update(pos);
+            updated += 1;
           }
         }
+        debugLog("[ws] update agvs", { received: Object.keys(data.agvs).length, updated, missing });
       }
 
       // Box updates
       if (data.boxes_on_agv) {
+        let updated = 0;
+        let missing = 0;
         for (const [boxId, boxData] of Object.entries(data.boxes_on_agv)) {
           const pos = boxData.pos || boxData;
           const box = world.boxes.get(parseInt(boxId));
-          if (box) box.update(pos, 0.55);
+          if (box) {
+            box.update(pos, 0.55);
+            updated += 1;
+          } else {
+            missing += 1;
+          }
         }
+        debugLog("[ws] update boxes_on_agv", { received: Object.keys(data.boxes_on_agv).length, updated, missing });
       }
 
       if (data.boxes_on_shelf) {
+        let updated = 0;
+        let missing = 0;
         for (const [boxId, boxData] of Object.entries(data.boxes_on_shelf)) {
           const pos = boxData.pos || boxData;
           const box = world.boxes.get(parseInt(boxId));
-          if (box) box.update(pos, 0.7);
+          if (box) {
+            box.update(pos, 0.7);
+            updated += 1;
+          } else {
+            missing += 1;
+          }
         }
+        debugLog("[ws] update boxes_on_shelf", { received: Object.keys(data.boxes_on_shelf).length, updated, missing });
       }
 
       // Safe paths
@@ -128,24 +180,30 @@ function connectWebSocket(world) {
           flatPaths[key] = pathData.path || pathData;
         }
         world.safePathRenderer.updatePaths(flatPaths);
+        debugLog("[ws] update safe_paths", { count: Object.keys(flatPaths).length });
       }
 
       // Elevator status
       if (data.elevators) {
+        let updated = 0;
         for (const [eid, eStatus] of Object.entries(data.elevators)) {
           const elev = world.elevators.get(parseInt(eid));
           if (elev) {
             elev.updateState(eStatus);
+            updated += 1;
           }
         }
+        debugLog("[ws] update elevators", { received: Object.keys(data.elevators).length, updated });
       }
 
       if (data.metrics) {
         updateMetrics(data.metrics);
+        debugLog("[ws] update metrics", data.metrics);
       }
 
       if (data.orders) {
         updateOrderPanel(data.orders);
+        debugLog("[ws] update orders", data.orders);
       }
     }
 

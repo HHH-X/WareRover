@@ -2,6 +2,10 @@ import { createScene, renderLoop } from './scene.js';
 import { initPanel } from './panel.js';
 import { initOrderPanel } from './orderPanel.js';
 import { connectWebSocket } from './websocket.js';
+import { initDebugFlag, debugLog } from './debug.js';
+
+const debugState = initDebugFlag();
+debugLog("[debug] enabled", debugState);
 
 // 创建场景
 const { scene, camera, renderer, world, controls, labelRenderer } = createScene();

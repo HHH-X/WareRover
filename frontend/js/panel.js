@@ -1,4 +1,5 @@
 import { ws } from './websocket.js';
+import { debugLog, debugWarn } from './debug.js';
 
 function initPanel() {
   const panel = document.getElementById('panel');
@@ -62,15 +63,24 @@ function initPanel() {
   const toggleBtn = document.getElementById('toggleBtn');
   const stepBtn = document.getElementById('stepBtn');
   toggleBtn.classList.add("paused");
-  toggleBtn.onclick = () => {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
+  function sendCommand(payload, source) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      debugWarn("[panel] command skipped: websocket not open", { source, payload });
+      return false;
+    }
+    ws.send(JSON.stringify(payload));
+    debugLog("[panel] command sent", { source, payload });
+    return true;
+  }
+
+  toggleBtn.onclick = () => {
     if (isPaused) {
-      ws.send(JSON.stringify({ cmd: "resume" }));
+      if (!sendCommand({ cmd: "resume" }, "toggleBtn.resume")) return;
       toggleBtn.textContent = "Pause";
       toggleBtn.classList.remove("paused");
     } else {
-      ws.send(JSON.stringify({ cmd: "pause" }));
+      if (!sendCommand({ cmd: "pause" }, "toggleBtn.pause")) return;
       toggleBtn.textContent = "Resume";
       toggleBtn.classList.add("paused");
     }
@@ -78,14 +88,13 @@ function initPanel() {
   };
 
   stepBtn.onclick = () => {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
     if (!isPaused) {
-      ws.send(JSON.stringify({ cmd: "pause" }));
+      if (!sendCommand({ cmd: "pause" }, "stepBtn.prePause")) return;
       toggleBtn.textContent = "Resume";
       toggleBtn.classList.add("paused");
       isPaused = true;
     }
-    ws.send(JSON.stringify({ cmd: "step" }));
+    sendCommand({ cmd: "step" }, "stepBtn.step");
   };
 
   // === 事故模拟 ===
@@ -94,40 +103,35 @@ function initPanel() {
 
   damageBtn.onclick = () => {
     const id = parseInt(document.getElementById('damageAgvId').value);
-    if (!isNaN(id) && ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ cmd: "damage", agv_id: id }));
+    if (!isNaN(id)) {
+      sendCommand({ cmd: "damage", agv_id: id }, "damageBtn");
     }
   };
 
   repairBtn.onclick = () => {
     const id = parseInt(document.getElementById('repairAgvId').value);
-    if (!isNaN(id) && ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ cmd: "repair", agv_id: id }));
+    if (!isNaN(id)) {
+      sendCommand({ cmd: "repair", agv_id: id }, "repairBtn");
     }
   };
 
   // === 停止模拟 ===
   const stopBtn = document.getElementById('stopBtn');
   stopBtn.onclick = () => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ cmd: "stop" }));
-    }
+    sendCommand({ cmd: "stop" }, "stopBtn");
   };
 
   // === 重置仿真按钮 ===
   const resetBtn = document.getElementById('resetBtn');
   resetBtn.onclick = () => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      console.log("发送 reset 命令");
-      ws.send(JSON.stringify({ cmd: "reset" }));
-      // 可选：给用户一点反馈（按钮变灰 1 秒）
-      resetBtn.disabled = true;
-      resetBtn.textContent = "Resetting...";
-      setTimeout(() => {
-        resetBtn.disabled = false;
-        resetBtn.textContent = "Reset";
-      }, 1500);
-    }
+    if (!sendCommand({ cmd: "reset" }, "resetBtn")) return;
+    // 可选：给用户一点反馈（按钮变灰 1 秒）
+    resetBtn.disabled = true;
+    resetBtn.textContent = "Resetting...";
+    setTimeout(() => {
+      resetBtn.disabled = false;
+      resetBtn.textContent = "Reset";
+    }, 1500);
   };
 
   // === 显示设置勾选框逻辑 ===
