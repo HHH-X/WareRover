@@ -3,14 +3,23 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Deque, Dict, Optional, TYPE_CHECKING
+from typing import Deque, Dict, Optional, TYPE_CHECKING, Tuple, List
 
 if TYPE_CHECKING:
     from core.agv import AGV
     from core.agvmanager import AGVManager
-    from core.warehouse_map import WarehouseMap, ElevatorDef
+    from core.warehouse_map import WarehouseMap
     from utils.logger import GlobalLogger
+    from utils.simulation_context import SimulationContext
 
+@dataclass
+class ElevatorDef:
+    """Static elevator definition from map JSON."""
+    elevator_id: int
+    position: Tuple[int, int]
+    connected_floors: List[int]
+    travel_time: int = 5
+    size: int = 1
 
 class ElevatorState(Enum):
     IDLE = auto()
@@ -69,17 +78,14 @@ class ElevatorManager:
 
     def __init__(
         self,
-        warehouse_map: WarehouseMap,
-        agv_manager: AGVManager,
-        logger: GlobalLogger,
-        wait_timeout_steps: int = 10,
+        ctx: SimulationContext
     ):
-        self.warehouse_map = warehouse_map
-        self.agv_manager = agv_manager
-        self.logger = logger
-        self.wait_timeout_steps = max(1, int(wait_timeout_steps))
+        self.warehouse_map = ctx.warehouse_map
+        self.agv_manager = ctx.agv_manager
+        self.logger = ctx.logger
+        self.wait_timeout_steps = max(1, int(ctx.system_config.sim_config.elevator_wait_timeout_steps))
         self.elevators: Dict[int, Elevator] = {}
-        for eid, edef in warehouse_map.elevator_defs.items():
+        for eid, edef in self.warehouse_map.elevator_defs.items():
             self.elevators[eid] = Elevator(edef)
 
     def step(self):

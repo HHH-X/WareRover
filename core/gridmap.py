@@ -6,6 +6,7 @@ import numpy as np
 
 if TYPE_CHECKING:
     from utils.logger import GlobalLogger
+    from utils.simulation_context import SimulationContext
 
 
 class CellType(IntEnum):
@@ -30,12 +31,12 @@ class GridMap:
         width: int,
         height: int,
         floor_data: dict,
-        logger: GlobalLogger,
+        ctx: SimulationContext,
     ):
         self.floor_id = floor_id
         self.width = width
         self.height = height
-        self.logger = logger
+        self.ctx = ctx
 
         self.type_grid = np.full((self.height, self.width), CellType.FREE, dtype=np.int8)
         self.shelf_id_grid = np.full((self.height, self.width), -1, dtype=np.int32)
@@ -123,11 +124,10 @@ class GridMap:
 
     def is_walkable(self,
                     agv_id: int,
-                    agv_size: int,
                     to_pos: Tuple[int, int],
                     from_pos: Tuple[int, int],
-                    carrying_goods: bool,
-                    can_enter_elevator: Optional[Callable[[int, int, int], bool]] = None) -> bool:
+                    carrying_goods: bool) -> bool:
+        agv_size =self.ctx.agv_manager.get_agv_size(agv_id)         
         r_from, c_from = from_pos
         r_to, c_to = to_pos
         dr, dc = r_to - r_from, c_to - c_from
@@ -195,22 +195,15 @@ class GridMap:
             return False
 
         if next_type == "elevator":
-            if can_enter_elevator is None or next_id is None:
+            if next_id is None:
                 return False
-            if not can_enter_elevator(agv_id, next_id, self.floor_id):
-                return False
-
-        if head_type == "elevator":
-            if head_id is None:
-                return False
-            if next_type == "elevator":
-                return head_id == next_id
-            return True
+            return self.ctx.elevator_manager.can_agv_enter(agv_id, next_id, self.floor_id)
+        
 
         if carrying_goods:
-            if head_type == "empty" and next_type == "empty":
+            if (head_type == "empty" or head_type == "elevator") and next_type == "empty":
                 return True
-            if head_type == "empty" and next_type == "shelf":
+            if (head_type == "empty" or head_type == "elevator") and next_type == "shelf":
                 return not self.box_status.get(next_id, True)
             if head_type == "shelf" and next_type == "empty":
                 return True
@@ -219,9 +212,9 @@ class GridMap:
             return False
 
         else:
-            if head_type == "empty" and next_type == "empty":
+            if (head_type == "empty" or head_type == "elevator") and next_type == "empty":
                 return True
-            if head_type == "empty" and next_type == "shelf":
+            if (head_type == "empty" or head_type == "elevator") and next_type == "shelf":
                 return True
             if head_type == "shelf" and next_type == "empty":
                 return True
@@ -232,26 +225,22 @@ class GridMap:
     def get_walkable_neighbors(
         self,
         agv_id: int,
-        agv_size: int,
         pos: Tuple[int, int],
-        carrying_goods: bool,
-        can_enter_elevator: Optional[Callable[[int, int, int], bool]] = None) -> List[Tuple[int, int]]:
+        carrying_goods: bool) -> List[Tuple[int, int]]:
         row, col = pos
         neighbors = []
         directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
         for dr, dc in directions:
             nr, nc = row + dr, col + dc
-            if not (0 <= nr and nr + agv_size - 1 < self.height and
-                    0 <= nc and nc + agv_size - 1 < self.width):
-                continue
+            # if not (0 <= nr and nr + agv_size - 1 < self.height and
+            #         0 <= nc and nc + agv_size - 1 < self.width):
+            #     continue
             if self.is_walkable(
                 agv_id=agv_id,
-                agv_size=agv_size,
                 to_pos=(nr, nc),
                 from_pos=(row, col),
                 carrying_goods=carrying_goods,
-                can_enter_elevator=can_enter_elevator,
             ):
                 neighbors.append((nr, nc))
 
@@ -318,4 +307,4 @@ class GridMap:
         for box_id in self.box_status:
             self.box_status[box_id] = True
         self.dynamic_occupied.clear()
-        self.logger.add_runtime_log(f"[GridMap F{self.floor_id}] Map has been reset.")
+        self.ctx.logger.add_runtime_log(f"[GridMap F{self.floor_id}] Map has been reset.")

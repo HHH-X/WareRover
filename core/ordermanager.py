@@ -63,7 +63,7 @@ class OrderManager:
                 if self.can_generate_more_orders():
                     order.order_id = self.next_order_id
                     order.created_step = current_step
-                    self._fill_floor_info(order)
+                    # self._fill_floor_info(order)
                     self.unprocessed_orders[self.next_order_id] = order
                     self.all_orders.append(order)
                     self.next_order_id += 1
@@ -83,15 +83,15 @@ class OrderManager:
                     f"Total orders: {len(self.all_orders)}")
         self.check_processing_timeouts()
 
-    def _fill_floor_info(self, order: Order):
-        """Determine source_floor (from goods/box) and target_floor (from receiver)."""
-        box_ids = self.warehouse_map.get_boxes_by_goods(order.goods_id)
-        if box_ids:
-            source_floor = self.warehouse_map.get_box_floor(box_ids[0])
-            order.source_floor = source_floor if source_floor is not None else 0
-        target_floor = self.warehouse_map.get_receiver_floor(order.receiver_id)
-        order.target_floor = target_floor if target_floor is not None else 0
-        order.is_cross_floor = order.source_floor != order.target_floor
+    # def _fill_floor_info(self, order: Order):
+    #     """Determine source_floor (from goods/box) and target_floor (from receiver)."""
+    #     box_ids = self.warehouse_map.get_boxes_by_goods(order.goods_id)
+    #     if box_ids:
+    #         source_floor = self.warehouse_map.get_box_floor(box_ids[0])
+    #         order.source_floor = source_floor if source_floor is not None else 0
+    #     target_floor = self.warehouse_map.get_receiver_floor(order.receiver_id)
+    #     order.target_floor = target_floor if target_floor is not None else 0
+    #     order.is_cross_floor = order.source_floor != order.target_floor
 
     def get_all_orders(self) -> List[Order]:
         return self.all_orders

@@ -67,20 +67,14 @@ class Env:
             'agv_sizes': agv_sizes,
         }
 
-    def _can_enter_elevator(self, agv_id: int, elevator_id: int, floor_id: int) -> bool:
-        if self.elevator_manager is None:
-            return False
-        return self.elevator_manager.can_agv_enter(agv_id, elevator_id, floor_id)
 
     def get_walkable_neighbors(self, agv_id: int, pos: Tuple[int, int],
                                carrying_goods: bool) -> List[Tuple[int, int]]:
         fmap = self._floor_map(agv_id)
         return fmap.get_walkable_neighbors(
             agv_id=agv_id,
-            agv_size=self.agv_manager.get_agv_size(agv_id),
             pos=pos,
             carrying_goods=carrying_goods,
-            can_enter_elevator=self._can_enter_elevator,
         )
 
     def is_walkable(self, agv_id: int, to_pos: Tuple[int, int],
@@ -88,11 +82,9 @@ class Env:
         fmap = self._floor_map(agv_id)
         return fmap.is_walkable(
             agv_id=agv_id,
-            agv_size=self.agv_manager.get_agv_size(agv_id),
             to_pos=to_pos,
             from_pos=from_pos,
             carrying_goods=carrying_goods,
-            can_enter_elevator=self._can_enter_elevator,
         )
 
     def step(self) -> Dict[int, StepInfo]:
@@ -179,11 +171,9 @@ class Env:
 
                 walkable = floor_grid.is_walkable(
                     agv_id=agv_id,
-                    agv_size=self.agv_manager.get_agv_size(agv_id),
                     to_pos=tgt,
                     from_pos=cur,
                     carrying_goods=carrying,
-                    can_enter_elevator=self._can_enter_elevator,
                 )
                 occ = self._get_next_occupied_positions(agv_id, cur, tgt)
                 has_vertex_conflict = any(

@@ -84,9 +84,11 @@ class TAScheduler(BaseScheduler):
         if self.order_manager.is_all_orders_completed() or not idle_agv_ids:
             return {}
 
+        unprocessed = self.order_manager.get_unprocessed_orders()
+        self._fill_orders_floor_info(unprocessed)
+
         # Only handle same-floor orders with TA; cross-floor falls back to simple assignment
-        same_floor_orders = [o for o in self.order_manager.get_unprocessed_orders()
-                             if not o.is_cross_floor]
+        same_floor_orders = [o for o in unprocessed if not o.is_cross_floor]
 
         size_to_orders = defaultdict(list)
         for order in same_floor_orders:

@@ -48,6 +48,36 @@ class BaseScheduler(ABC):
     def reset(self) -> None:
         pass
 
+    def _fill_orders_floor_info(self, orders: List[Order]) -> None:
+        """Set target_floor from receiver, source_floor from nearest box floor, and is_cross_floor."""
+        wm = self.ctx.warehouse_map
+        for order in orders:
+            tf = wm.get_receiver_floor(order.receiver_id)
+            order.target_floor = tf if tf is not None else 0
+
+            box_ids = wm.get_boxes_by_goods(order.goods_id)
+            if not box_ids:
+                order.source_floor = 0
+                order.is_cross_floor = order.source_floor != order.target_floor
+                continue
+
+            best: Optional[Tuple[int, int, int]] = None  # (distance, box_id, floor)
+            for bid in box_ids:
+                bf = wm.get_box_floor(bid)
+                if bf is None:
+                    continue
+                dist = abs(bf - order.target_floor)
+                cand = (dist, bid, bf)
+                if best is None or cand < best:
+                    best = cand
+            if best is None:
+                order.source_floor = 0
+            else:
+                order.source_floor = best[2]
+            order.is_cross_floor = order.source_floor != order.target_floor
+            if order.is_cross_floor:
+                print("Cross floor order: ", order.order_id)
+
     def _build_cross_floor_tasks(
         self,
         agv_id: int,

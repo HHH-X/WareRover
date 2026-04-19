@@ -3,21 +3,11 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple, Optional, Set, TYPE_CHECKING
-
+from core.elevator import ElevatorDef
 from core.gridmap import GridMap
 
 if TYPE_CHECKING:
     from utils.simulation_context import SimulationContext
-
-
-@dataclass
-class ElevatorDef:
-    """Static elevator definition from map JSON."""
-    elevator_id: int
-    position: Tuple[int, int]
-    connected_floors: List[int]
-    travel_time: int = 5
-    size: int = 1
 
 
 class WarehouseMap:
@@ -30,7 +20,7 @@ class WarehouseMap:
     def __init__(self, ctx: SimulationContext):
         assert ctx.system_config is not None
         sim_config = ctx.system_config.sim_config
-        self.logger = ctx.logger
+        self.ctx = ctx
 
         with open(sim_config.map_file, "r") as f:
             map_data = json.load(f)
@@ -70,7 +60,7 @@ class WarehouseMap:
             for floor_entry in map_data["floors"]:
                 fid = floor_entry["floor_id"]
                 floor_entry["elevators"] = floor_elevators.get(fid, [])
-                self.floors[fid] = GridMap(fid, self.width, self.height, floor_entry, self.logger)
+                self.floors[fid] = GridMap(fid, self.width, self.height, floor_entry, self.ctx)
         else:
             # Backward compatible: single-floor map
             floor_data = {
@@ -81,7 +71,7 @@ class WarehouseMap:
                 "obstacles": map_data.get("obstacles", []),
                 "elevators": floor_elevators.get(0, []),
             }
-            self.floors[0] = GridMap(0, self.width, self.height, floor_data, self.logger)
+            self.floors[0] = GridMap(0, self.width, self.height, floor_data, self.ctx)
 
         # Build cross-floor indexes
         self._box_floor: Dict[int, int] = {}

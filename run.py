@@ -53,12 +53,7 @@ async def simulator_loop(websocket, message_queue):
     ctx.warehouse_map = WarehouseMap(ctx)
     ctx.order_manager = OrderManager(ctx)
     ctx.agv_manager = AGVManager(ctx)
-    ctx.elevator_manager = ElevatorManager(
-        ctx.warehouse_map,
-        ctx.agv_manager,
-        ctx.logger,
-        wait_timeout_steps=ctx.system_config.sim_config.elevator_wait_timeout_steps,
-    )
+    ctx.elevator_manager = ElevatorManager(ctx)
     ctx.env = Env(ctx)
     ctx.fault_manager = FaultManager(ctx)
     ctx.scheduler = default_registry.build_scheduler(ctx)
@@ -170,7 +165,7 @@ async def main():
     http_port = 8000
     threading.Thread(target=start_http_server, args=(http_port,), daemon=True).start()
 
-    frontend_url = f"http://localhost:{http_port}/frontend/index.html"
+    frontend_url = f"http://localhost:{http_port}/frontend/index.html?debug=1"
     webbrowser.open(frontend_url)
     print(f"Opening browser at {frontend_url}")
 
