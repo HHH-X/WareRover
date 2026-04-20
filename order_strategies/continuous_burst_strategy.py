@@ -1,7 +1,8 @@
 from typing import List
 
 from core.order import Order
-from config.settings import SystemConfig, ContinuousBurstConfig
+from config.settings import SystemConfig
+from core.warehouse_map import WarehouseMap
 from order_strategies.order_generation_strategy import OrderGenerationStrategy
 from utils.logger import GlobalLogger
 
@@ -11,8 +12,8 @@ class ContinuousBurstStrategy(OrderGenerationStrategy):
     high-frequency large batches for a duration.
     """
 
-    def __init__(self, system_config: SystemConfig, logger: GlobalLogger):
-        super().__init__(system_config)
+    def __init__(self, system_config: SystemConfig, warehouse_map: WarehouseMap, logger: GlobalLogger):
+        super().__init__(system_config, warehouse_map)
         self.config = self.system_config.continuous_burst_config
         self.base_batch_size = self.config.base_batch_size
         self.base_interval = self.config.generation_interval_steps

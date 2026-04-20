@@ -195,11 +195,11 @@ class GridMap:
             return False
 
         if next_type == "elevator":
-            if next_id is None:
-                return False
-            return self.ctx.elevator_manager.can_agv_enter(agv_id, next_id, self.floor_id)
+            return True
         
-
+        if next_type == "empty":
+            return True
+        
         if carrying_goods:
             if (head_type == "empty" or head_type == "elevator") and next_type == "empty":
                 return True

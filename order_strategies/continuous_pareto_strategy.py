@@ -1,7 +1,8 @@
-from typing import List, Dict
+from typing import Dict, List
 
 from core.order import Order
-from config.settings import SystemConfig, ContinuousParetoConfig
+from config.settings import SystemConfig
+from core.warehouse_map import WarehouseMap
 from order_strategies.order_generation_strategy import OrderGenerationStrategy
 
 
@@ -11,24 +12,17 @@ class ContinuousParetoStrategy(OrderGenerationStrategy):
     Generates batches at fixed intervals; SKU choice is biased toward hot SKUs per size.
     """
 
-    def __init__(self, system_config: SystemConfig):
-        super().__init__(system_config)
+    def __init__(self, system_config: SystemConfig, warehouse_map: WarehouseMap):
+        super().__init__(system_config, warehouse_map)
         self.config = self.system_config.continuous_pareto_config
         self.next_generation_step = 0
-        self.all_goods_ids_by_size = self._prepare_all_goods_ids_by_size()
+        self.all_goods_ids_by_size = {
+            size: list(goods_ids)
+            for size, goods_ids in self._all_goods_ids_by_size.items()
+        }
         self.hot_goods_ids_by_size = self._prepare_hot_goods_by_size()
         if not any(self.all_goods_ids_by_size.values()):
             raise ValueError("Map has no goods; cannot generate orders.")
-
-    def _prepare_all_goods_ids_by_size(self) -> Dict[int, List[int]]:
-        """Collect all goods_id by size."""
-        goods_by_size = {}
-        for size, boxes in self._all_boxes_by_size.items():
-            ids = []
-            for box in boxes:
-                ids.extend(box.get("goods_ids", []))
-            goods_by_size[size] = list(set(ids))
-        return goods_by_size
 
     def _prepare_hot_goods_by_size(self) -> Dict[int, List[int]]:
         """Precompute hot SKUs per size."""
@@ -76,30 +70,14 @@ class ContinuousParetoStrategy(OrderGenerationStrategy):
         num_size1 = batch_size - num_size2
 
         for size, count in [(1, num_size1), (2, num_size2)]:
-            boxes = self._all_boxes_by_size.get(size, [])
-            receivers = self._all_receivers_by_size.get(size, [])
-
-            if not boxes or not receivers or count <= 0:
+            if count <= 0:
                 continue
 
             for _ in range(count):
                 goods_id = self._choose_goods_id(size)
-                candidate_boxes = [
-                    box for box in boxes
-                    if goods_id in box.get("goods_ids", [])
-                ]
-                if not candidate_boxes:
+                order = self._generate_single_order(size, preferred_goods_id=goods_id)
+                if order is None:
                     continue
-
-                box = self.rng.choice(candidate_boxes)
-                receiver = self.rng.choice(receivers)
-
-                order = Order(
-                    order_id=-1,
-                    goods_id=goods_id,
-                    receiver_id=receiver["receiver_id"],
-                    required_size=size
-                )
                 new_orders.append(order)
 
         self.next_generation_step = (

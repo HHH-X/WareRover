@@ -39,15 +39,15 @@ class OrderManager:
     def _create_strategy(self) -> OrderGenerationStrategy:
         mode = self.system_config.sim_config.order_mode
         if mode == "oneshot":
-            return OneShotStrategy(self.system_config)
+            return OneShotStrategy(self.system_config, self.warehouse_map)
         elif mode == "continuous_constant":
-            return ContinuousConstantStrategy(self.system_config)
+            return ContinuousConstantStrategy(self.system_config, self.warehouse_map)
         elif mode == "continuous_periodic":
-            return ContinuousPeriodicStrategy(self.system_config)
+            return ContinuousPeriodicStrategy(self.system_config, self.warehouse_map)
         elif mode == "continuous_pareto":
-            return ContinuousParetoStrategy(self.system_config)
+            return ContinuousParetoStrategy(self.system_config, self.warehouse_map)
         elif mode == "continuous_burst":
-            return ContinuousBurstStrategy(self.system_config, self.logger)
+            return ContinuousBurstStrategy(self.system_config, self.warehouse_map, self.logger)
         else:
             raise ValueError(f"Unknown order_mode: {mode}")
 

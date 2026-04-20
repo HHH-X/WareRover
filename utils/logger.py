@@ -23,6 +23,7 @@ class GlobalLogger:
         self._log_to_file = self.config.log_to_file
 
         self.total_agv_collisions = 0
+        self.total_agv_elevator_wait_blocks = 0
 
         # ---------- Order Panel Logs (separate from runtime logs) ----------
         self._order_generation_logs: List[Dict[str, Any]] = []
@@ -156,6 +157,12 @@ class GlobalLogger:
         """
         self.total_agv_collisions += 1
 
+    def record_agv_elevator_wait(self, agv_id: int):
+        """
+        Record an AGV blocked event due to elevator waiting.
+        """
+        self.total_agv_elevator_wait_blocks += 1
+
 
     # ================= Order Metrics =================
     def record_order_completed(self, order: Order):
@@ -246,6 +253,7 @@ class GlobalLogger:
             ),
             # ---------- Collision ----------
             "Total AGV Collisions": self.total_agv_collisions,
+            "Total AGV Elevator Wait Blocks": self.total_agv_elevator_wait_blocks,
             # ---------- Scheduler ----------
             "Scheduler Calls": scheduler["calls"],
             "Scheduler Total Time": scheduler["total_time"],

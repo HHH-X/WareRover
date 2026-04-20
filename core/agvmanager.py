@@ -33,6 +33,7 @@ class AGVManager:
                         f"AGV {agv_id} on floor {fid} has no matching wait_zone")
                 agv = AGV(
                     sim_config=self.sim_config,
+                    ctx=ctx,
                     agv_id=agv_id,
                     size=agv_size,
                     floor_id=fid,
@@ -47,6 +48,12 @@ class AGVManager:
         self.need_rest_agvs: Set[int] = set(self.idle_agvs)
         self.need_replan_agvs: Set[int] = set(self.idle_agvs)
         self.block_counts: Dict[int, int] = {agv.id: 0 for agv in agv_list}
+        self.block_reason_counts: Dict[str, Dict[int, int]] = {
+            "collision": {agv.id: 0 for agv in agv_list},
+            "elevator_wait": {agv.id: 0 for agv in agv_list},
+        }
+        self.elevator_wait_streaks: Dict[int, int] = {agv.id: 0 for agv in agv_list}
+        self._elevator_wait_blocked_this_step: Set[int] = set()
         self.agvs_by_size: Dict[int, Set[int]] = {}
         for agv in agv_list:
             self.agvs_by_size.setdefault(agv.size, set()).add(agv.id)
@@ -179,10 +186,18 @@ class AGVManager:
 
     # ── Mutations ──
 
-    def increment_block_count(self, agv_id: int):
+    def increment_block_count(self, agv_id: int, reason: str = "collision"):
         agv = self._agvs[agv_id]
         if agv.rest_target is None or agv.grid_pos != agv.rest_target:
+            if reason == "elevator_wait":
+                self.block_reason_counts["elevator_wait"][agv_id] += 1
+                self.elevator_wait_streaks[agv_id] += 1
+                self._elevator_wait_blocked_this_step.add(agv_id)
+                self.logger.record_agv_elevator_wait(agv_id)
+                return
+
             self.block_counts[agv_id] += 1
+            self.block_reason_counts["collision"][agv_id] += 1
             self.logger.record_agv_collision(agv_id)
 
     def reset_block_count(self, agv_id: int):
@@ -200,9 +215,21 @@ class AGVManager:
                 if agv.rest_target is None:
                     self.need_rest_agvs.add(agv_id)
 
+            if self.elevator_wait_streaks[agv_id] >= self.sim_config.agv_elevator_wait_timeout_steps:
+                self.need_replan_agvs.add(agv_id)
+                self.elevator_wait_streaks[agv_id] = 0
+                self.logger.add_runtime_log(
+                    f"[AGVManager] AGV {agv_id} elevator-wait timeout, forcing replan."
+                )
+
             if need_replan or self.block_counts[agv_id] >= 3:
                 self.need_replan_agvs.add(agv_id)
                 self.reset_block_count(agv_id)
+
+        for agv_id in self.all_agv_ids:
+            if agv_id not in self._elevator_wait_blocked_this_step:
+                self.elevator_wait_streaks[agv_id] = 0
+        self._elevator_wait_blocked_this_step.clear()
         return step_info_dict
 
     def assign_tasks(self, task_dict: Dict[int, List[Tuple[Tuple[int, int], AGVAction, int]]]):
@@ -265,4 +292,10 @@ class AGVManager:
         self.need_rest_agvs = all_ids.copy()
         self.need_replan_agvs = all_ids.copy()
         self.block_counts = {aid: 0 for aid in all_ids}
+        self.block_reason_counts = {
+            "collision": {aid: 0 for aid in all_ids},
+            "elevator_wait": {aid: 0 for aid in all_ids},
+        }
+        self.elevator_wait_streaks = {aid: 0 for aid in all_ids}
+        self._elevator_wait_blocked_this_step.clear()
         self.logger.add_runtime_log("[AGVManager] All AGVs have been reset to initial states.")

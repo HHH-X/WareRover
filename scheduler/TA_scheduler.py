@@ -85,7 +85,6 @@ class TAScheduler(BaseScheduler):
             return {}
 
         unprocessed = self.order_manager.get_unprocessed_orders()
-        self._fill_orders_floor_info(unprocessed)
 
         # Only handle same-floor orders with TA; cross-floor falls back to simple assignment
         same_floor_orders = [o for o in unprocessed if not o.is_cross_floor]

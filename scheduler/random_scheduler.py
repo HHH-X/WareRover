@@ -41,8 +41,6 @@ class RandomScheduler(BaseScheduler):
         if not unprocessed_orders:
             return {}
 
-        self._fill_orders_floor_info(unprocessed_orders)
-
         same_floor_orders: List[Order] = []
         cross_floor_orders: List[Order] = []
         for order in unprocessed_orders:

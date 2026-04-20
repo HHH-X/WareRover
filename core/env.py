@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, Tuple, Set, List, TYPE_CHECKING
 from core.agv import StepInfo
+from core.gridmap import CellType
 
 if TYPE_CHECKING:
     from utils.simulation_context import SimulationContext
@@ -198,11 +199,48 @@ class Env:
             if not changed:
                 for agv_id in in_center:
                     if final_next_pos[agv_id] != next_pos[agv_id]:
-                        self.agv_manager.increment_block_count(agv_id)
+                        self.agv_manager.increment_block_count(agv_id, reason="collision")
                         block_agvs.add(agv_id)
                 break
 
+        self._filter_elevator_entries_for_floor(
+            floor_id=floor_id,
+            floor_grid=floor_grid,
+            current_pos=current_pos,
+            final_next_pos=final_next_pos,
+        )
+
         return final_next_pos, block_agvs
+
+    def _filter_elevator_entries_for_floor(
+        self,
+        floor_id: int,
+        floor_grid,
+        current_pos: Dict[int, Tuple[int, int]],
+        final_next_pos: Dict[int, Tuple[int, int]],
+    ) -> None:
+        """Check elevator-entry permission after conflict-free next positions are produced."""
+        for agv_id, tgt in final_next_pos.items():
+            cur = current_pos[agv_id]
+            if tgt == cur:
+                continue
+
+            r, c = tgt
+            if floor_grid.type_grid[r, c] != CellType.ELEVATOR:
+                continue
+
+            elevator_id = int(floor_grid.elevator_id_grid[r, c])
+            if elevator_id < 0:
+                continue
+
+            can_enter = self.elevator_manager.can_agv_enter(
+                agv_id=agv_id,
+                elevator_id=elevator_id,
+                floor_id=floor_id,
+            )
+            if not can_enter:
+                self.agv_manager.increment_block_count(agv_id, reason="elevator_wait")
+                final_next_pos[agv_id] = cur
 
     def _get_next_occupied_positions(
         self, agv_id: int, cur: Tuple[int, int], tgt: Tuple[int, int]

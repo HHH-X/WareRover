@@ -1,12 +1,12 @@
 from order_strategies.order_generation_strategy import OrderGenerationStrategy
-from config.settings import SystemConfig, OneShotConfig
-from core.gridmap import GridMap
+from config.settings import SystemConfig
 from core.order import Order
 from typing import List
+from core.warehouse_map import WarehouseMap
 
 class OneShotStrategy(OrderGenerationStrategy):
-    def __init__(self, system_config: SystemConfig):
-        super().__init__(system_config)
+    def __init__(self, system_config: SystemConfig, warehouse_map: WarehouseMap):
+        super().__init__(system_config, warehouse_map)
         self.orders_to_generate = self.system_config.sim_config.total_orders_limit
         self.next_order_id = 0
         self.generated_in_first_step = False

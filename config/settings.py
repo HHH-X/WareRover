@@ -51,6 +51,8 @@ class SimConfig:
 
     order_seed: Optional[int] = None
     # Random seed for order generation; None means non-deterministic
+    cross_floor_order_ratio: float = 0.0
+    # Proportion of cross-floor orders among generated orders, range: 0.0 ~ 1.0
 
     # Map and simulation step configuration
     map_file: str = "config\maps\multi_floor_test.json"  # Default map file path
@@ -66,6 +68,8 @@ class SimConfig:
     # per-elevator travel_time in map JSON overrides this)
     elevator_wait_timeout_steps: int = 10
     # Steps to wait for target AGV at pickup floor before requeueing elevator task.
+    agv_elevator_wait_timeout_steps: int = 10
+    # Consecutive blocked steps while waiting for elevator before forcing replan.
 
     # ==================== Frontend visualization ====================
     cell_size: int = 40

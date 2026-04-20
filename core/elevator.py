@@ -6,7 +6,6 @@ from enum import Enum, auto
 from typing import Deque, Dict, Optional, TYPE_CHECKING, Tuple, List
 
 if TYPE_CHECKING:
-    from core.agv import AGV
     from core.agvmanager import AGVManager
     from core.warehouse_map import WarehouseMap
     from utils.logger import GlobalLogger
@@ -123,32 +122,14 @@ class ElevatorManager:
         task = elev.current_task
         if task is None:
             return False
-        if task.agv_id != agv_id or task.from_floor != floor_id:
+        if task.agv_id != agv_id:
+            return False
+        if task.from_floor != floor_id:
             return False
         if elev.current_floor != floor_id:
             return False
         agv = self.agv_manager.get_agv(agv_id)
-        if agv.floor_id != floor_id or agv.size > elev.size:
-            return False
-        if agv.elevator_pending == (elevator_id, task.to_floor):
-            return True
-        return self._is_agv_heading_to_elevator_task(agv, elevator_id)
-
-    def _is_agv_heading_to_elevator_task(self, agv: AGV, elevator_id: int) -> bool:
-        if not agv.task_queue:
-            return False
-        task_pos, action, extra = agv.task_queue[0]
-        if getattr(action, "name", None) != "ENTER_ELEVATOR":
-            return False
-        if not isinstance(extra, tuple) or len(extra) != 2:
-            return False
-        planned_eid, _ = extra
-        if planned_eid != elevator_id:
-            return False
-        elevator_pos = self.warehouse_map.get_elevator_position(elevator_id)
-        if elevator_pos is None:
-            return False
-        return task_pos == elevator_pos
+        return agv.floor_id == floor_id
 
     def _advance_state_machine(self):
         for elev in self.elevators.values():

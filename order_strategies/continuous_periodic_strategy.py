@@ -1,13 +1,13 @@
 import math
 from order_strategies.order_generation_strategy import OrderGenerationStrategy
-from config.settings import SystemConfig, ContinuousPeriodicConfig
-from core.gridmap import GridMap
+from config.settings import SystemConfig
 from core.order import Order
 from typing import List
+from core.warehouse_map import WarehouseMap
 
 class ContinuousPeriodicStrategy(OrderGenerationStrategy):
-    def __init__(self, system_config: SystemConfig):
-        super().__init__(system_config)
+    def __init__(self, system_config: SystemConfig, warehouse_map: WarehouseMap):
+        super().__init__(system_config, warehouse_map)
         self.next_generation_step = 0
 
     def _current_multiplier(self, current_step: int) -> float:

@@ -75,8 +75,8 @@ class BaseScheduler(ABC):
             else:
                 order.source_floor = best[2]
             order.is_cross_floor = order.source_floor != order.target_floor
-            if order.is_cross_floor:
-                print("Cross floor order: ", order.order_id)
+            # if order.is_cross_floor:
+            #     print("Cross floor order: ", order.order_id)
 
     def _build_cross_floor_tasks(
         self,
@@ -107,21 +107,6 @@ class BaseScheduler(ABC):
         dst_grid = self.ctx.warehouse_map.get_floor(dst_floor)
         receiver_pos = dst_grid.get_receiver_position(order.receiver_id)
         if receiver_pos is None:
-            return None
-
-        outbound_ok = self.ctx.elevator_manager.enqueue_task(
-            elevator_id=elev_id,
-            agv_id=agv_id,
-            from_floor=src_floor,
-            to_floor=dst_floor,
-        )
-        return_ok = self.ctx.elevator_manager.enqueue_task(
-            elevator_id=elev_id,
-            agv_id=agv_id,
-            from_floor=dst_floor,
-            to_floor=src_floor,
-        )
-        if not outbound_ok or not return_ok:
             return None
 
         return [

@@ -8,6 +8,7 @@ from config.settings import SimConfig
 
 if TYPE_CHECKING:
     from core.ordermanager import OrderManager
+    from utils.simulation_context import SimulationContext
 
 epsilon = 1e-4
 
@@ -42,6 +43,7 @@ class AGV:
     def __init__(
         self,
         sim_config: SimConfig,
+        ctx: SimulationContext,
         agv_id: int,
         size: int,
         floor_id: int,
@@ -50,6 +52,7 @@ class AGV:
         order_manager: OrderManager,
     ):
         self.id: int = agv_id
+        self.ctx = ctx
         self.size: int = size
         self.floor_id: int = floor_id
         self.init_floor_id: int = floor_id
@@ -110,12 +113,14 @@ class AGV:
                 task_pos, action, extra = self.task_queue.popleft()
                 self.last_completed_task_pos = task_pos
                 self._execute_action(action, extra)
+                self._maybe_enqueue_next_elevator_task()
                 replan_required = True
                 step_info = StepInfo.FINISH
         elif not self.action_queue and self.task_queue and self.grid_pos == self.task_queue[0][0]:
             task_pos, action, extra = self.task_queue.popleft()
             self.last_completed_task_pos = task_pos
             self._execute_action(action, extra)
+            self._maybe_enqueue_next_elevator_task()
             replan_required = True
             step_info = StepInfo.FINISH
         if not self.action_queue and not self.is_resting:
@@ -223,6 +228,25 @@ class AGV:
             self._handover_box(extra)
         elif action == AGVAction.ENTER_ELEVATOR:
             self._enter_elevator(extra)
+
+    def _maybe_enqueue_next_elevator_task(self):
+        if not self.task_queue:
+            return
+        _, action, extra = self.task_queue[0]
+        if action != AGVAction.ENTER_ELEVATOR:
+            return
+        if not isinstance(extra, tuple) or len(extra) != 2:
+            return
+        elevator_id, target_floor = extra
+        elevator_manager = self.ctx.elevator_manager
+        if elevator_manager is None:
+            return
+        elevator_manager.enqueue_task(
+            elevator_id=int(elevator_id),
+            agv_id=self.id,
+            from_floor=int(self.floor_id),
+            to_floor=int(target_floor),
+        )
 
     def reset(self):
         self.grid_pos = self.init_grid_pos
