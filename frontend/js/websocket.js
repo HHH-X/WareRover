@@ -12,6 +12,28 @@ import { debugLog, debugWarn } from './debug.js';
 
 let ws = null;
 
+function applyBoxUpdate(world, boxId, boxData, height) {
+  const box = world.boxes.get(parseInt(boxId));
+  if (!box) return false;
+
+  if (boxData.in_elevator) {
+    box.setVisible(false);
+    return true;
+  }
+
+  box.setVisible(true);
+  if (boxData.floor != null) {
+    const floorId = Number(boxData.floor);
+    if (Number.isFinite(floorId) && floorId !== box.floorId) {
+      box.moveToFloor(floorId, world);
+    }
+  }
+
+  const pos = boxData.pos || boxData;
+  box.update(pos, height);
+  return true;
+}
+
 function connectWebSocket(world) {
   ws = new WebSocket("ws://localhost:8765");
 
@@ -144,26 +166,21 @@ function connectWebSocket(world) {
         let updated = 0;
         let missing = 0;
         for (const [boxId, boxData] of Object.entries(data.boxes_on_agv)) {
-          const pos = boxData.pos || boxData;
-          const box = world.boxes.get(parseInt(boxId));
-          if (box) {
-            box.update(pos, 0.55);
+          if (applyBoxUpdate(world, boxId, boxData, 0.55)) {
             updated += 1;
           } else {
             missing += 1;
           }
         }
         debugLog("[ws] update boxes_on_agv", { received: Object.keys(data.boxes_on_agv).length, updated, missing });
+        debugLog("[ws] boxes_on_agv", data.boxes_on_agv);
       }
 
       if (data.boxes_on_shelf) {
         let updated = 0;
         let missing = 0;
         for (const [boxId, boxData] of Object.entries(data.boxes_on_shelf)) {
-          const pos = boxData.pos || boxData;
-          const box = world.boxes.get(parseInt(boxId));
-          if (box) {
-            box.update(pos, 0.7);
+          if (applyBoxUpdate(world, boxId, boxData, 0.7)) {
             updated += 1;
           } else {
             missing += 1;

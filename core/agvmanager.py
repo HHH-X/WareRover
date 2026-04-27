@@ -15,6 +15,7 @@ class AGVManager:
             and ctx.order_manager is not None
             and ctx.logger is not None
         )
+        self.ctx = ctx
         self.sim_config = ctx.system_config.sim_config
         self.logger = ctx.logger
         self.warehouse_map = ctx.warehouse_map
@@ -83,6 +84,12 @@ class AGVManager:
 
     def get_grid_position(self, agv_id: int) -> Tuple[int, int]:
         return self._agvs[agv_id].grid_pos
+
+    def get_agv_footprint_cells(self, agv_id: int) -> Set[Tuple[int, int]]:
+        agv = self._agvs[agv_id]
+        r, c = agv.grid_pos
+        s = agv.size
+        return {(r + dr, c + dc) for dr in range(s) for dc in range(s)}
 
     def get_real_position(self, agv_id: int) -> Tuple[float, float]:
         return self._agvs[agv_id].real_pos
@@ -256,7 +263,7 @@ class AGVManager:
             agv = self._agvs[agv_id]
             if agv.in_elevator:
                 continue
-            if agv.elevator_pending is not None:
+            if agv.is_elevator_phase("BOARDING_ELEVATOR"):
                 result[agv_id] = (agv.grid_pos, agv.grid_pos)
                 continue
             current = agv.grid_pos

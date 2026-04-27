@@ -119,11 +119,13 @@ def generate_send_data(
         for agv_id, b_id in carrying_status.items():
             if b_id is not None:
                 agv = ctx.agv_manager.get_agv(agv_id)
-                if agv.in_elevator:
-                    continue
                 agv_info = agv_pos[str(agv_id)]
                 floor_id = agv.floor_id
-                boxes_on_agv[str(b_id)] = {"pos": agv_info["pos"], "floor": floor_id}
+                boxes_on_agv[str(b_id)] = {
+                    "pos": agv_info["pos"],
+                    "floor": floor_id,
+                    "in_elevator": agv.in_elevator,
+                }
 
         boxes_on_shelf = {}
         for fid in wmap.all_floor_ids():
@@ -154,9 +156,13 @@ def generate_send_data(
                 elev_status[str(eid)] = {
                     "state": elev.state.name,
                     "current_floor": elev.current_floor,
+                    "display_floor": elev.display_floor,
+                    "from_floor": elev.move_from_floor,
                     "agv_inside": elev.agv_id,
                     "target_floor": elev.target_floor,
                     "timer": elev.timer,
+                    "travel_time_per_floor": elev.travel_time_per_floor,
+                    "moving_direction": elev.move_direction,
                 }
             data['elevators'] = elev_status
 

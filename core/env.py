@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Tuple, Set, List, TYPE_CHECKING
+from typing import Dict, Optional, Tuple, Set, List, TYPE_CHECKING
 from core.agv import StepInfo
 from core.gridmap import CellType
 
@@ -225,22 +225,89 @@ class Env:
             if tgt == cur:
                 continue
 
-            r, c = tgt
-            if floor_grid.type_grid[r, c] != CellType.ELEVATOR:
+            agv = self.agv_manager.get_agv(agv_id)
+            if agv.is_elevator_phase("BOARDING_ELEVATOR"):
                 continue
 
-            elevator_id = int(floor_grid.elevator_id_grid[r, c])
-            if elevator_id < 0:
+            elevator_id = self._get_elevator_entry_target(
+                agv_id=agv_id,
+                cur=cur,
+                tgt=tgt,
+                floor_grid=floor_grid,
+            )
+            if elevator_id is None:
                 continue
 
-            can_enter = self.elevator_manager.can_agv_enter(
+            # agv = self.agv_manager.get_agv(agv_id)
+            # if agv.is_elevator_phase("BOARDING_ELEVATOR"):
+            #     continue
+
+            if self.elevator_manager.start_boarding(
                 agv_id=agv_id,
                 elevator_id=elevator_id,
                 floor_id=floor_id,
-            )
-            if not can_enter:
-                self.agv_manager.increment_block_count(agv_id, reason="elevator_wait")
-                final_next_pos[agv_id] = cur
+            ):
+                # agv = self.ctx.agv_manager.get_agv(agv_id)
+                # agv.set_elevator_phase_name("IN_ELEVATOR")
+                continue
+
+            self.agv_manager.increment_block_count(agv_id, reason="elevator_wait")
+            final_next_pos[agv_id] = cur
+
+    def _get_elevator_entry_target(
+        self,
+        agv_id: int,
+        cur: Tuple[int, int],
+        tgt: Tuple[int, int],
+        floor_grid,
+    ) -> Optional[int]:
+        dr = tgt[0] - cur[0]
+        dc = tgt[1] - cur[1]
+        if abs(dr) + abs(dc) != 1:
+            return None
+
+        agv_size = self.agv_manager.get_agv_size(agv_id)
+        r_from, c_from = cur
+        if dc == 1:
+            head_positions = [(r_from + i, c_from + agv_size - 1) for i in range(agv_size)]
+        elif dc == -1:
+            head_positions = [(r_from + i, c_from) for i in range(agv_size)]
+        elif dr == 1:
+            head_positions = [(r_from + agv_size - 1, c_from + i) for i in range(agv_size)]
+        else:
+            head_positions = [(r_from, c_from + i) for i in range(agv_size)]
+        next_positions = [(hr + dr, hc + dc) for (hr, hc) in head_positions]
+
+        for row, col in head_positions + next_positions:
+            if not (0 <= row < floor_grid.height and 0 <= col < floor_grid.width):
+                return None
+
+        head_type, _ = self._classify_frontier_group(floor_grid, head_positions)
+        next_type, next_id = self._classify_frontier_group(floor_grid, next_positions)
+        if head_type == "mixed" or next_type == "mixed":
+            return None
+        if head_type == "elevator" or next_type != "elevator":
+            return None
+        return next_id
+
+    def _classify_frontier_group(self, floor_grid, positions: List[Tuple[int, int]]) -> Tuple[str, Optional[int]]:
+        types = [floor_grid.type_grid[r, c] for (r, c) in positions]
+        shelf_ids = [floor_grid.shelf_id_grid[r, c] for (r, c) in positions]
+        elevator_ids = [floor_grid.elevator_id_grid[r, c] for (r, c) in positions]
+
+        if all(t == CellType.FREE for t in types):
+            return ("empty", None)
+        if all(t == CellType.SHELF for t in types):
+            first = int(shelf_ids[0])
+            if all(int(i) == first for i in shelf_ids):
+                return ("shelf", first)
+            return ("mixed", None)
+        if all(t == CellType.ELEVATOR for t in types):
+            first = int(elevator_ids[0])
+            if first >= 0 and all(int(i) == first for i in elevator_ids):
+                return ("elevator", first)
+            return ("mixed", None)
+        return ("mixed", None)
 
     def _get_next_occupied_positions(
         self, agv_id: int, cur: Tuple[int, int], tgt: Tuple[int, int]

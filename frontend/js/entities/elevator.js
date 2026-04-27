@@ -11,6 +11,7 @@ class Elevator {
     const totalHeight = (numFloors) * floorHeight;
     const minFloor = Math.min(...floors);
     const baseY = minFloor * floorHeight;
+    this.platformOffset = 0.075;
 
     // Shaft frame (wireframe box)
     const shaftGeo = new THREE.BoxGeometry(0.9, totalHeight, 0.9);
@@ -29,7 +30,7 @@ class Elevator {
     this.platIdleMat = new THREE.MeshStandardMaterial({ color: 0xff8800, metalness: 0.5, roughness: 0.4 });
     this.platActiveMat = new THREE.MeshStandardMaterial({ color: 0xff2200, metalness: 0.5, roughness: 0.4 });
     this.platform = new THREE.Mesh(platGeo, this.platIdleMat);
-    this.platform.position.set(pos[0], baseY + 0.075, pos[1]);
+    this.platform.position.set(pos[0], baseY + this.platformOffset, pos[1]);
     this.mesh.add(this.platform);
 
     // Floor indicator dots
@@ -42,23 +43,20 @@ class Elevator {
     }
 
     this.pos = pos;
-    this.targetY = baseY + 0.075;
-    this.lerpSpeed = 0.08;
+    this.targetY = baseY + this.platformOffset;
+    this.lerpSpeed = 0.35;
   }
 
   updateState(statusData) {
     const state = statusData.state;
-    const currentFloor = statusData.current_floor;
+    const displayFloor = statusData.display_floor ?? statusData.current_floor;
 
-    if (currentFloor != null) {
-      this.targetY = currentFloor * this.floorHeight + 0.075;
+    if (displayFloor != null) {
+      this.targetY = displayFloor * this.floorHeight + this.platformOffset;
     }
 
-    if (state === 'TRANSPORTING') {
+    if (state === 'TRANSPORTING' || state === 'MOVING_TO_PICKUP') {
       this.platform.material = this.platActiveMat;
-      if (statusData.target_floor != null) {
-        this.targetY = statusData.target_floor * this.floorHeight + 0.075;
-      }
     } else {
       this.platform.material = this.platIdleMat;
     }

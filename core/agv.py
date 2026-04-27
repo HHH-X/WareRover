@@ -37,6 +37,12 @@ class StepInfo(Enum):
     OTHER = auto()
 
 
+class ElevatorPhase(Enum):
+    NORMAL = auto()
+    BOARDING_ELEVATOR = auto()
+    IN_ELEVATOR = auto()
+
+
 class AGV:
     """AGV entity. All grid positions use (row, col) convention."""
 
@@ -78,7 +84,7 @@ class AGV:
         self.last_completed_task_pos: Tuple[int, int] = init_grid_pos
 
         self.in_elevator: bool = False
-        self.elevator_pending: Optional[Tuple[int, int]] = None  # (elevator_id, target_floor)
+        self.elevator_phase: ElevatorPhase = ElevatorPhase.NORMAL
 
     @property
     def is_idle(self) -> bool:
@@ -202,9 +208,22 @@ class AGV:
         )
 
     def _enter_elevator(self, extra):
-        """Set pending elevator request. Actual boarding handled by ElevatorManager."""
-        if extra is not None:
-            self.elevator_pending = extra
+        if not isinstance(extra, tuple) or len(extra) != 2:
+            return
+        elevator_id, target_floor = int(extra[0]), int(extra[1])
+        elevator_manager = self.ctx.elevator_manager
+        if elevator_manager is None:
+            return
+        # agv = self.agv_manager.get_agv(agv_id)
+        self.set_elevator_phase_name("IN_ELEVATOR")
+        self.ctx.agv_manager.remove_agv_from_floor(self.id)
+
+        elevator_manager.mark_boarding_completed(
+            agv_id=self.id,
+            elevator_id=elevator_id,
+            target_floor=target_floor,
+            from_floor=int(self.floor_id),
+        )
 
     def assign_task(self, task_positions: List[Tuple[Tuple[int, int], AGVAction, Optional[int]]]):
         self.task_queue = deque(task_positions)
@@ -235,12 +254,8 @@ class AGV:
         _, action, extra = self.task_queue[0]
         if action != AGVAction.ENTER_ELEVATOR:
             return
-        if not isinstance(extra, tuple) or len(extra) != 2:
-            return
         elevator_id, target_floor = extra
         elevator_manager = self.ctx.elevator_manager
-        if elevator_manager is None:
-            return
         elevator_manager.enqueue_task(
             elevator_id=int(elevator_id),
             agv_id=self.id,
@@ -258,8 +273,17 @@ class AGV:
         self.is_working = True
         self.direction = None
         self.last_completed_task_pos = self.init_grid_pos
-        self.in_elevator = False
-        self.elevator_pending = None
+        self.set_elevator_phase(ElevatorPhase.NORMAL)
+
+    def set_elevator_phase(self, phase: ElevatorPhase):
+        self.elevator_phase = phase
+        self.in_elevator = phase == ElevatorPhase.IN_ELEVATOR
+
+    def set_elevator_phase_name(self, phase_name: str):
+        self.set_elevator_phase(ElevatorPhase[phase_name])
+
+    def is_elevator_phase(self, phase_name: str) -> bool:
+        return self.elevator_phase.name == phase_name
 
     def _calculate_turn_time(self, current_direction: Direction,
                              target_direction: Optional[Direction]) -> int:

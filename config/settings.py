@@ -51,7 +51,7 @@ class SimConfig:
 
     order_seed: Optional[int] = None
     # Random seed for order generation; None means non-deterministic
-    cross_floor_order_ratio: float = 0.0
+    cross_floor_order_ratio: float = 0.1
     # Proportion of cross-floor orders among generated orders, range: 0.0 ~ 1.0
 
     # Map and simulation step configuration
@@ -82,7 +82,7 @@ class SimConfig:
 
     # Whether to overwrite existing log files on reset; False means append
     log_overwrite: bool = True
-    log_to_console: bool = False
+    log_to_console: bool = True
 
 
 # ==================== Fault management configuration ====================

@@ -12,6 +12,7 @@ from utils.simulation_context import SimulationContext
 
 if TYPE_CHECKING:
     from planner.base_planner import BasePlanner
+    from core.elevator import ElevatorTask
 
 
 class BaseScheduler(ABC):
@@ -87,9 +88,10 @@ class BaseScheduler(ABC):
         dst_floor = order.target_floor
         agv_size = self.ctx.agv_manager.get_agv_size(agv_id)
 
-        elev_id = self.ctx.elevator_manager.find_elevator(src_floor, dst_floor, agv_size)
-        if elev_id is None:
+        elev_ids = self.ctx.elevator_manager.find_elevator(src_floor, dst_floor, agv_size)
+        if not elev_ids:
             return None
+        elev_id = elev_ids[0]
         elev_pos = self.ctx.warehouse_map.get_elevator_position(elev_id)
         if elev_pos is None:
             return None
