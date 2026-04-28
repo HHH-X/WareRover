@@ -31,7 +31,7 @@ class SimConfig:
 
     # ==================== Algorithm selection ====================
     scheduler_type: str = "random"
-    planner_type: str = "astar"
+    planner_type: str = "cbs_fw"
     force_replan_every_step: bool = False
     # Whether to force each decision-making AGV to replan its path at every step.
     # Automatically coupled with DHC when enabled.
@@ -51,7 +51,7 @@ class SimConfig:
 
     order_seed: Optional[int] = None
     # Random seed for order generation; None means non-deterministic
-    cross_floor_order_ratio: float = 0.1
+    cross_floor_order_ratio: float = 0.2
     # Proportion of cross-floor orders among generated orders, range: 0.0 ~ 1.0
 
     # Map and simulation step configuration
@@ -59,7 +59,8 @@ class SimConfig:
     max_steps: int = 1000
 
     time_step: float = 1.0        # Duration of each simulation step (seconds)
-    agv_max_speed: float = 1      # Maximum AGV speed (cells per step)
+    agv_max_speed: float = 0.5
+          # Maximum AGV speed (cells per step)
     agv_turn_time_90: float = 0   # Time required for a 90-degree turn (seconds)
 
     # ==================== Elevator ====================

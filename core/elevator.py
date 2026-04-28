@@ -213,6 +213,9 @@ class ElevatorManager:
         if not elev.task_queue:
             return
         elev.current_task = elev.task_queue.popleft()
+        self.logger.add_runtime_log(
+            f"[Elevator {elev.id}] New task: AGV {elev.current_task.agv_id} from F{elev.current_task.from_floor} to F{elev.current_task.to_floor}."
+        )
         elev.agv_id = None
         elev.target_floor = None
 

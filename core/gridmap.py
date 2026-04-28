@@ -195,7 +195,10 @@ class GridMap:
             return False
 
         if next_type == "elevator":
-            return True
+            if next_id == self.ctx.agv_manager.get_next_enter_elevator_id(agv_id):
+                return True
+            else:
+                return False
         
         if next_type == "empty":
             return True

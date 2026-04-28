@@ -22,6 +22,7 @@ class Env:
             and ctx.warehouse_map is not None
             and ctx.order_manager is not None
         )
+        self.ctx = ctx
         self.agv_manager = ctx.agv_manager
         self.warehouse_map = ctx.warehouse_map
         self.order_manager = ctx.order_manager
@@ -237,18 +238,18 @@ class Env:
             )
             if elevator_id is None:
                 continue
-
-            # agv = self.agv_manager.get_agv(agv_id)
-            # if agv.is_elevator_phase("BOARDING_ELEVATOR"):
-            #     continue
+            
+            if elevator_id != self.agv_manager.get_next_enter_elevator_id(agv_id):
+                self.agv_manager.increment_block_count(agv_id, reason="collision")
+                continue
 
             if self.elevator_manager.start_boarding(
                 agv_id=agv_id,
                 elevator_id=elevator_id,
                 floor_id=floor_id,
             ):
-                # agv = self.ctx.agv_manager.get_agv(agv_id)
-                # agv.set_elevator_phase_name("IN_ELEVATOR")
+                agv = self.ctx.agv_manager.get_agv(agv_id)
+                agv.set_elevator_phase_name("BOARDING_ELEVATOR")
                 continue
 
             self.agv_manager.increment_block_count(agv_id, reason="elevator_wait")
