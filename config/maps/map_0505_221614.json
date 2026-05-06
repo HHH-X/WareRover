@@ -1,0 +1,1565 @@
+{
+  "map": {
+    "width": 20,
+    "height": 15,
+    "floors": 3
+  },
+  "floors": [
+    {
+      "floor_id": 0,
+      "boxes": [
+        {
+          "position": [
+            3,
+            2
+          ],
+          "box_id": 0,
+          "goods_ids": [
+            0
+          ]
+        },
+        {
+          "position": [
+            3,
+            3
+          ],
+          "box_id": 1,
+          "goods_ids": [
+            1
+          ]
+        },
+        {
+          "position": [
+            3,
+            4
+          ],
+          "box_id": 2,
+          "goods_ids": [
+            2
+          ]
+        },
+        {
+          "position": [
+            3,
+            5
+          ],
+          "box_id": 3,
+          "goods_ids": [
+            3
+          ]
+        },
+        {
+          "position": [
+            4,
+            5
+          ],
+          "box_id": 4,
+          "goods_ids": [
+            4
+          ]
+        },
+        {
+          "position": [
+            4,
+            4
+          ],
+          "box_id": 5,
+          "goods_ids": [
+            5
+          ]
+        },
+        {
+          "position": [
+            4,
+            3
+          ],
+          "box_id": 6,
+          "goods_ids": [
+            6
+          ]
+        },
+        {
+          "position": [
+            4,
+            2
+          ],
+          "box_id": 7,
+          "goods_ids": [
+            7
+          ]
+        },
+        {
+          "position": [
+            3,
+            8
+          ],
+          "box_id": 8,
+          "goods_ids": [
+            8
+          ]
+        },
+        {
+          "position": [
+            3,
+            9
+          ],
+          "box_id": 9,
+          "goods_ids": [
+            9
+          ]
+        },
+        {
+          "position": [
+            3,
+            10
+          ],
+          "box_id": 10,
+          "goods_ids": [
+            10
+          ]
+        },
+        {
+          "position": [
+            4,
+            10
+          ],
+          "box_id": 11,
+          "goods_ids": [
+            11
+          ]
+        },
+        {
+          "position": [
+            4,
+            9
+          ],
+          "box_id": 12,
+          "goods_ids": [
+            12
+          ]
+        },
+        {
+          "position": [
+            4,
+            8
+          ],
+          "box_id": 13,
+          "goods_ids": [
+            13
+          ]
+        },
+        {
+          "position": [
+            7,
+            2
+          ],
+          "box_id": 14,
+          "goods_ids": [
+            14
+          ]
+        },
+        {
+          "position": [
+            7,
+            3
+          ],
+          "box_id": 15,
+          "goods_ids": [
+            15
+          ]
+        },
+        {
+          "position": [
+            7,
+            4
+          ],
+          "box_id": 16,
+          "goods_ids": [
+            16
+          ]
+        },
+        {
+          "position": [
+            7,
+            5
+          ],
+          "box_id": 17,
+          "goods_ids": [
+            17
+          ]
+        },
+        {
+          "position": [
+            8,
+            5
+          ],
+          "box_id": 18,
+          "goods_ids": [
+            18
+          ]
+        },
+        {
+          "position": [
+            8,
+            4
+          ],
+          "box_id": 19,
+          "goods_ids": [
+            19
+          ]
+        },
+        {
+          "position": [
+            8,
+            3
+          ],
+          "box_id": 20,
+          "goods_ids": [
+            20
+          ]
+        },
+        {
+          "position": [
+            8,
+            2
+          ],
+          "box_id": 21,
+          "goods_ids": [
+            21
+          ]
+        },
+        {
+          "position": [
+            7,
+            8
+          ],
+          "box_id": 22,
+          "goods_ids": [
+            22
+          ]
+        },
+        {
+          "position": [
+            7,
+            9
+          ],
+          "box_id": 23,
+          "goods_ids": [
+            23
+          ]
+        },
+        {
+          "position": [
+            7,
+            10
+          ],
+          "box_id": 24,
+          "goods_ids": [
+            24
+          ]
+        },
+        {
+          "position": [
+            8,
+            10
+          ],
+          "box_id": 25,
+          "goods_ids": [
+            25
+          ]
+        },
+        {
+          "position": [
+            8,
+            9
+          ],
+          "box_id": 26,
+          "goods_ids": [
+            26
+          ]
+        },
+        {
+          "position": [
+            8,
+            8
+          ],
+          "box_id": 27,
+          "goods_ids": [
+            27
+          ]
+        },
+        {
+          "position": [
+            4,
+            14
+          ],
+          "size": 2,
+          "box_id": 28,
+          "goods_ids": [
+            28
+          ]
+        },
+        {
+          "position": [
+            4,
+            16
+          ],
+          "size": 2,
+          "box_id": 29,
+          "goods_ids": [
+            29
+          ]
+        },
+        {
+          "position": [
+            8,
+            14
+          ],
+          "size": 2,
+          "box_id": 30,
+          "goods_ids": [
+            30
+          ]
+        },
+        {
+          "position": [
+            8,
+            16
+          ],
+          "size": 2,
+          "box_id": 31,
+          "goods_ids": [
+            31
+          ]
+        },
+        {
+          "position": [
+            3,
+            11
+          ],
+          "box_id": 32,
+          "goods_ids": [
+            32
+          ]
+        },
+        {
+          "position": [
+            4,
+            11
+          ],
+          "box_id": 33,
+          "goods_ids": [
+            33
+          ]
+        },
+        {
+          "position": [
+            7,
+            11
+          ],
+          "box_id": 34,
+          "goods_ids": [
+            34
+          ]
+        },
+        {
+          "position": [
+            8,
+            11
+          ],
+          "box_id": 35,
+          "goods_ids": [
+            35
+          ]
+        }
+      ],
+      "receivers": [
+        {
+          "position": [
+            13,
+            11
+          ],
+          "size": 2,
+          "receiver_id": 0
+        },
+        {
+          "position": [
+            13,
+            13
+          ],
+          "size": 2,
+          "receiver_id": 1
+        },
+        {
+          "position": [
+            14,
+            2
+          ],
+          "receiver_id": 2
+        },
+        {
+          "position": [
+            14,
+            4
+          ],
+          "receiver_id": 3
+        },
+        {
+          "position": [
+            14,
+            6
+          ],
+          "receiver_id": 4
+        },
+        {
+          "position": [
+            14,
+            8
+          ],
+          "receiver_id": 5
+        }
+      ],
+      "wait_zones": [
+        {
+          "position": [
+            0,
+            1
+          ],
+          "wait_zone_id": 0
+        },
+        {
+          "position": [
+            0,
+            3
+          ],
+          "wait_zone_id": 1
+        },
+        {
+          "position": [
+            0,
+            5
+          ],
+          "wait_zone_id": 2
+        },
+        {
+          "position": [
+            0,
+            7
+          ],
+          "wait_zone_id": 3
+        },
+        {
+          "position": [
+            0,
+            9
+          ],
+          "wait_zone_id": 4
+        },
+        {
+          "position": [
+            0,
+            11
+          ],
+          "wait_zone_id": 5
+        },
+        {
+          "position": [
+            0,
+            13
+          ],
+          "size": 2,
+          "wait_zone_id": 6
+        },
+        {
+          "position": [
+            0,
+            16
+          ],
+          "size": 2,
+          "wait_zone_id": 7
+        }
+      ],
+      "agvs": [
+        {
+          "agv_id": 0
+        },
+        {
+          "agv_id": 1
+        },
+        {
+          "agv_id": 2
+        },
+        {
+          "agv_id": 3
+        },
+        {
+          "agv_id": 4
+        },
+        {
+          "agv_id": 5
+        },
+        {
+          "agv_id": 6,
+          "size": 2
+        },
+        {
+          "agv_id": 7,
+          "size": 2
+        }
+      ],
+      "obstacles": []
+    },
+    {
+      "floor_id": 1,
+      "boxes": [
+        {
+          "position": [
+            3,
+            2
+          ],
+          "box_id": 36,
+          "goods_ids": [
+            36
+          ]
+        },
+        {
+          "position": [
+            3,
+            3
+          ],
+          "box_id": 37,
+          "goods_ids": [
+            37
+          ]
+        },
+        {
+          "position": [
+            3,
+            4
+          ],
+          "box_id": 38,
+          "goods_ids": [
+            38
+          ]
+        },
+        {
+          "position": [
+            3,
+            5
+          ],
+          "box_id": 39,
+          "goods_ids": [
+            39
+          ]
+        },
+        {
+          "position": [
+            4,
+            5
+          ],
+          "box_id": 40,
+          "goods_ids": [
+            40
+          ]
+        },
+        {
+          "position": [
+            4,
+            4
+          ],
+          "box_id": 41,
+          "goods_ids": [
+            41
+          ]
+        },
+        {
+          "position": [
+            4,
+            3
+          ],
+          "box_id": 42,
+          "goods_ids": [
+            42
+          ]
+        },
+        {
+          "position": [
+            4,
+            2
+          ],
+          "box_id": 43,
+          "goods_ids": [
+            43
+          ]
+        },
+        {
+          "position": [
+            3,
+            8
+          ],
+          "box_id": 44,
+          "goods_ids": [
+            44
+          ]
+        },
+        {
+          "position": [
+            3,
+            9
+          ],
+          "box_id": 45,
+          "goods_ids": [
+            45
+          ]
+        },
+        {
+          "position": [
+            3,
+            10
+          ],
+          "box_id": 46,
+          "goods_ids": [
+            46
+          ]
+        },
+        {
+          "position": [
+            4,
+            10
+          ],
+          "box_id": 47,
+          "goods_ids": [
+            47
+          ]
+        },
+        {
+          "position": [
+            4,
+            9
+          ],
+          "box_id": 48,
+          "goods_ids": [
+            48
+          ]
+        },
+        {
+          "position": [
+            4,
+            8
+          ],
+          "box_id": 49,
+          "goods_ids": [
+            49
+          ]
+        },
+        {
+          "position": [
+            3,
+            11
+          ],
+          "box_id": 50,
+          "goods_ids": [
+            50
+          ]
+        },
+        {
+          "position": [
+            4,
+            11
+          ],
+          "box_id": 51,
+          "goods_ids": [
+            51
+          ]
+        },
+        {
+          "position": [
+            7,
+            2
+          ],
+          "box_id": 52,
+          "goods_ids": [
+            52
+          ]
+        },
+        {
+          "position": [
+            7,
+            3
+          ],
+          "box_id": 53,
+          "goods_ids": [
+            53
+          ]
+        },
+        {
+          "position": [
+            7,
+            4
+          ],
+          "box_id": 54,
+          "goods_ids": [
+            54
+          ]
+        },
+        {
+          "position": [
+            7,
+            5
+          ],
+          "box_id": 55,
+          "goods_ids": [
+            55
+          ]
+        },
+        {
+          "position": [
+            8,
+            5
+          ],
+          "box_id": 56,
+          "goods_ids": [
+            56
+          ]
+        },
+        {
+          "position": [
+            8,
+            4
+          ],
+          "box_id": 57,
+          "goods_ids": [
+            57
+          ]
+        },
+        {
+          "position": [
+            8,
+            3
+          ],
+          "box_id": 58,
+          "goods_ids": [
+            58
+          ]
+        },
+        {
+          "position": [
+            8,
+            2
+          ],
+          "box_id": 59,
+          "goods_ids": [
+            59
+          ]
+        },
+        {
+          "position": [
+            7,
+            8
+          ],
+          "box_id": 60,
+          "goods_ids": [
+            60
+          ]
+        },
+        {
+          "position": [
+            7,
+            9
+          ],
+          "box_id": 61,
+          "goods_ids": [
+            61
+          ]
+        },
+        {
+          "position": [
+            7,
+            10
+          ],
+          "box_id": 62,
+          "goods_ids": [
+            62
+          ]
+        },
+        {
+          "position": [
+            7,
+            11
+          ],
+          "box_id": 63,
+          "goods_ids": [
+            63
+          ]
+        },
+        {
+          "position": [
+            8,
+            11
+          ],
+          "box_id": 64,
+          "goods_ids": [
+            64
+          ]
+        },
+        {
+          "position": [
+            8,
+            10
+          ],
+          "box_id": 65,
+          "goods_ids": [
+            65
+          ]
+        },
+        {
+          "position": [
+            8,
+            9
+          ],
+          "box_id": 66,
+          "goods_ids": [
+            66
+          ]
+        },
+        {
+          "position": [
+            8,
+            8
+          ],
+          "box_id": 67,
+          "goods_ids": [
+            67
+          ]
+        },
+        {
+          "position": [
+            4,
+            14
+          ],
+          "size": 2,
+          "box_id": 68,
+          "goods_ids": [
+            68
+          ]
+        },
+        {
+          "position": [
+            4,
+            16
+          ],
+          "size": 2,
+          "box_id": 69,
+          "goods_ids": [
+            69
+          ]
+        },
+        {
+          "position": [
+            8,
+            14
+          ],
+          "size": 2,
+          "box_id": 70,
+          "goods_ids": [
+            70
+          ]
+        },
+        {
+          "position": [
+            8,
+            16
+          ],
+          "size": 2,
+          "box_id": 71,
+          "goods_ids": [
+            71
+          ]
+        }
+      ],
+      "receivers": [
+        {
+          "position": [
+            14,
+            2
+          ],
+          "receiver_id": 6
+        },
+        {
+          "position": [
+            14,
+            4
+          ],
+          "receiver_id": 7
+        },
+        {
+          "position": [
+            14,
+            6
+          ],
+          "receiver_id": 8
+        },
+        {
+          "position": [
+            14,
+            8
+          ],
+          "receiver_id": 9
+        },
+        {
+          "position": [
+            13,
+            13
+          ],
+          "size": 2,
+          "receiver_id": 10
+        },
+        {
+          "position": [
+            13,
+            11
+          ],
+          "size": 2,
+          "receiver_id": 11
+        }
+      ],
+      "wait_zones": [
+        {
+          "position": [
+            0,
+            1
+          ],
+          "wait_zone_id": 8
+        },
+        {
+          "position": [
+            0,
+            3
+          ],
+          "wait_zone_id": 9
+        },
+        {
+          "position": [
+            0,
+            5
+          ],
+          "wait_zone_id": 10
+        },
+        {
+          "position": [
+            0,
+            7
+          ],
+          "wait_zone_id": 11
+        },
+        {
+          "position": [
+            0,
+            9
+          ],
+          "wait_zone_id": 12
+        },
+        {
+          "position": [
+            0,
+            11
+          ],
+          "wait_zone_id": 13
+        },
+        {
+          "position": [
+            0,
+            13
+          ],
+          "size": 2,
+          "wait_zone_id": 14
+        },
+        {
+          "position": [
+            0,
+            16
+          ],
+          "size": 2,
+          "wait_zone_id": 15
+        }
+      ],
+      "agvs": [
+        {
+          "agv_id": 8
+        },
+        {
+          "agv_id": 9
+        },
+        {
+          "agv_id": 10
+        },
+        {
+          "agv_id": 11
+        },
+        {
+          "agv_id": 12
+        },
+        {
+          "agv_id": 13
+        },
+        {
+          "agv_id": 14,
+          "size": 2
+        },
+        {
+          "agv_id": 15,
+          "size": 2
+        }
+      ],
+      "obstacles": []
+    },
+    {
+      "floor_id": 2,
+      "boxes": [
+        {
+          "position": [
+            3,
+            2
+          ],
+          "box_id": 72,
+          "goods_ids": [
+            72
+          ]
+        },
+        {
+          "position": [
+            3,
+            3
+          ],
+          "box_id": 73,
+          "goods_ids": [
+            73
+          ]
+        },
+        {
+          "position": [
+            3,
+            4
+          ],
+          "box_id": 74,
+          "goods_ids": [
+            74
+          ]
+        },
+        {
+          "position": [
+            3,
+            5
+          ],
+          "box_id": 75,
+          "goods_ids": [
+            75
+          ]
+        },
+        {
+          "position": [
+            4,
+            5
+          ],
+          "box_id": 76,
+          "goods_ids": [
+            76
+          ]
+        },
+        {
+          "position": [
+            4,
+            4
+          ],
+          "box_id": 77,
+          "goods_ids": [
+            77
+          ]
+        },
+        {
+          "position": [
+            4,
+            3
+          ],
+          "box_id": 78,
+          "goods_ids": [
+            78
+          ]
+        },
+        {
+          "position": [
+            4,
+            2
+          ],
+          "box_id": 79,
+          "goods_ids": [
+            79
+          ]
+        },
+        {
+          "position": [
+            3,
+            8
+          ],
+          "box_id": 80,
+          "goods_ids": [
+            80
+          ]
+        },
+        {
+          "position": [
+            3,
+            9
+          ],
+          "box_id": 81,
+          "goods_ids": [
+            81
+          ]
+        },
+        {
+          "position": [
+            3,
+            10
+          ],
+          "box_id": 82,
+          "goods_ids": [
+            82
+          ]
+        },
+        {
+          "position": [
+            3,
+            11
+          ],
+          "box_id": 83,
+          "goods_ids": [
+            83
+          ]
+        },
+        {
+          "position": [
+            4,
+            11
+          ],
+          "box_id": 84,
+          "goods_ids": [
+            84
+          ]
+        },
+        {
+          "position": [
+            4,
+            10
+          ],
+          "box_id": 85,
+          "goods_ids": [
+            85
+          ]
+        },
+        {
+          "position": [
+            4,
+            9
+          ],
+          "box_id": 86,
+          "goods_ids": [
+            86
+          ]
+        },
+        {
+          "position": [
+            4,
+            8
+          ],
+          "box_id": 87,
+          "goods_ids": [
+            87
+          ]
+        },
+        {
+          "position": [
+            7,
+            2
+          ],
+          "box_id": 88,
+          "goods_ids": [
+            88
+          ]
+        },
+        {
+          "position": [
+            7,
+            3
+          ],
+          "box_id": 89,
+          "goods_ids": [
+            89
+          ]
+        },
+        {
+          "position": [
+            7,
+            4
+          ],
+          "box_id": 90,
+          "goods_ids": [
+            90
+          ]
+        },
+        {
+          "position": [
+            7,
+            5
+          ],
+          "box_id": 91,
+          "goods_ids": [
+            91
+          ]
+        },
+        {
+          "position": [
+            8,
+            5
+          ],
+          "box_id": 92,
+          "goods_ids": [
+            92
+          ]
+        },
+        {
+          "position": [
+            8,
+            4
+          ],
+          "box_id": 93,
+          "goods_ids": [
+            93
+          ]
+        },
+        {
+          "position": [
+            8,
+            3
+          ],
+          "box_id": 94,
+          "goods_ids": [
+            94
+          ]
+        },
+        {
+          "position": [
+            8,
+            2
+          ],
+          "box_id": 95,
+          "goods_ids": [
+            95
+          ]
+        },
+        {
+          "position": [
+            7,
+            8
+          ],
+          "box_id": 96,
+          "goods_ids": [
+            96
+          ]
+        },
+        {
+          "position": [
+            7,
+            9
+          ],
+          "box_id": 97,
+          "goods_ids": [
+            97
+          ]
+        },
+        {
+          "position": [
+            7,
+            10
+          ],
+          "box_id": 98,
+          "goods_ids": [
+            98
+          ]
+        },
+        {
+          "position": [
+            7,
+            11
+          ],
+          "box_id": 99,
+          "goods_ids": [
+            99
+          ]
+        },
+        {
+          "position": [
+            8,
+            11
+          ],
+          "box_id": 100,
+          "goods_ids": [
+            100
+          ]
+        },
+        {
+          "position": [
+            8,
+            9
+          ],
+          "box_id": 101,
+          "goods_ids": [
+            101
+          ]
+        },
+        {
+          "position": [
+            8,
+            8
+          ],
+          "box_id": 102,
+          "goods_ids": [
+            102
+          ]
+        },
+        {
+          "position": [
+            8,
+            10
+          ],
+          "box_id": 103,
+          "goods_ids": [
+            103
+          ]
+        },
+        {
+          "position": [
+            4,
+            14
+          ],
+          "size": 2,
+          "box_id": 104,
+          "goods_ids": [
+            104
+          ]
+        },
+        {
+          "position": [
+            4,
+            16
+          ],
+          "size": 2,
+          "box_id": 105,
+          "goods_ids": [
+            105
+          ]
+        },
+        {
+          "position": [
+            8,
+            14
+          ],
+          "size": 2,
+          "box_id": 106,
+          "goods_ids": [
+            106
+          ]
+        },
+        {
+          "position": [
+            8,
+            16
+          ],
+          "size": 2,
+          "box_id": 107,
+          "goods_ids": [
+            107
+          ]
+        }
+      ],
+      "receivers": [
+        {
+          "position": [
+            14,
+            2
+          ],
+          "receiver_id": 12
+        },
+        {
+          "position": [
+            14,
+            4
+          ],
+          "receiver_id": 13
+        },
+        {
+          "position": [
+            14,
+            6
+          ],
+          "receiver_id": 14
+        },
+        {
+          "position": [
+            14,
+            8
+          ],
+          "receiver_id": 15
+        },
+        {
+          "position": [
+            13,
+            11
+          ],
+          "size": 2,
+          "receiver_id": 16
+        },
+        {
+          "position": [
+            13,
+            13
+          ],
+          "size": 2,
+          "receiver_id": 17
+        }
+      ],
+      "wait_zones": [
+        {
+          "position": [
+            0,
+            1
+          ],
+          "wait_zone_id": 16
+        },
+        {
+          "position": [
+            0,
+            3
+          ],
+          "wait_zone_id": 17
+        },
+        {
+          "position": [
+            0,
+            5
+          ],
+          "wait_zone_id": 18
+        },
+        {
+          "position": [
+            0,
+            7
+          ],
+          "wait_zone_id": 19
+        },
+        {
+          "position": [
+            0,
+            9
+          ],
+          "wait_zone_id": 20
+        },
+        {
+          "position": [
+            0,
+            11
+          ],
+          "wait_zone_id": 21
+        },
+        {
+          "position": [
+            0,
+            13
+          ],
+          "size": 2,
+          "wait_zone_id": 22
+        },
+        {
+          "position": [
+            0,
+            16
+          ],
+          "size": 2,
+          "wait_zone_id": 23
+        }
+      ],
+      "agvs": [
+        {
+          "agv_id": 16
+        },
+        {
+          "agv_id": 17
+        },
+        {
+          "agv_id": 18
+        },
+        {
+          "agv_id": 19
+        },
+        {
+          "agv_id": 20
+        },
+        {
+          "agv_id": 21
+        },
+        {
+          "agv_id": 22,
+          "size": 2
+        },
+        {
+          "agv_id": 23,
+          "size": 2
+        }
+      ],
+      "obstacles": []
+    }
+  ],
+  "elevators": [
+    {
+      "elevator_id": 0,
+      "position": [
+        13,
+        17
+      ],
+      "floors": [
+        0,
+        1,
+        2
+      ],
+      "travel_time": 8,
+      "size": 2
+    },
+    {
+      "elevator_id": 1,
+      "position": [
+        11,
+        0
+      ],
+      "floors": [
+        0,
+        1,
+        2
+      ],
+      "travel_time": 5,
+      "size": 1
+    },
+    {
+      "elevator_id": 2,
+      "position": [
+        12,
+        0
+      ],
+      "floors": [
+        0,
+        1,
+        2
+      ],
+      "travel_time": 5,
+      "size": 1
+    }
+  ]
+}

@@ -116,7 +116,7 @@ function connectWebSocket(world) {
         for (const eid in data.elevators) {
           const eData = data.elevators[eid];
           world.addElevator(new Elevator(
-            parseInt(eid), eData.pos, eData.floors || [0], FLOOR_HEIGHT
+            parseInt(eid), eData.pos, eData.floors || [0], FLOOR_HEIGHT, eData.size || 1
           ));
         }
       }

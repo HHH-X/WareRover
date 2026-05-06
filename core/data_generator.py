@@ -82,8 +82,10 @@ def generate_send_data(
 
         elevators_info = {}
         for eid, edef in wmap.elevator_defs.items():
+            size = edef.size
             elevators_info[str(eid)] = {
-                "pos": to_frontend_pos(edef.position),
+                "pos": to_frontend_pos(edef.position, size),
+                "size": size,
                 "floors": edef.connected_floors,
                 "travel_time": edef.travel_time,
             }

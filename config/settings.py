@@ -31,7 +31,7 @@ class SimConfig:
 
     # ==================== Algorithm selection ====================
     scheduler_type: str = "random"
-    planner_type: str = "cbs_fw"
+    planner_type: str = "astar"
     force_replan_every_step: bool = False
     # Whether to force each decision-making AGV to replan its path at every step.
     # Automatically coupled with DHC when enabled.
@@ -55,7 +55,7 @@ class SimConfig:
     # Proportion of cross-floor orders among generated orders, range: 0.0 ~ 1.0
 
     # Map and simulation step configuration
-    map_file: str = "config\maps\multi_floor_test.json"  # Default map file path
+    map_file: str = "config\maps\map_0505_221614.json"  # Default map file path
     max_steps: int = 1000
 
     time_step: float = 1.0        # Duration of each simulation step (seconds)

@@ -1,20 +1,21 @@
 import * as THREE from 'three';
 
 class Elevator {
-  constructor(id, pos, floors, floorHeight) {
+  constructor(id, pos, floors, floorHeight, size = 1) {
     this.id = id;
     this.floors = floors;
     this.floorHeight = floorHeight;
+    this.size = size;
     this.mesh = new THREE.Group();
 
-    const numFloors = floors.length;
-    const totalHeight = (numFloors) * floorHeight;
     const minFloor = Math.min(...floors);
+    const maxFloor = Math.max(...floors);
+    const totalHeight = (maxFloor - minFloor + 1) * floorHeight;
     const baseY = minFloor * floorHeight;
     this.platformOffset = 0.075;
 
     // Shaft frame (wireframe box)
-    const shaftGeo = new THREE.BoxGeometry(0.9, totalHeight, 0.9);
+    const shaftGeo = new THREE.BoxGeometry(size * 0.9, totalHeight, size * 0.9);
     const shaftMat = new THREE.MeshBasicMaterial({
       color: 0xffaa00,
       wireframe: true,
@@ -26,7 +27,7 @@ class Elevator {
     this.mesh.add(shaft);
 
     // Platform (moves between floors)
-    const platGeo = new THREE.BoxGeometry(0.8, 0.15, 0.8);
+    const platGeo = new THREE.BoxGeometry(size * 0.85, 0.15, size * 0.85);
     this.platIdleMat = new THREE.MeshStandardMaterial({ color: 0xff8800, metalness: 0.5, roughness: 0.4 });
     this.platActiveMat = new THREE.MeshStandardMaterial({ color: 0xff2200, metalness: 0.5, roughness: 0.4 });
     this.platform = new THREE.Mesh(platGeo, this.platIdleMat);
@@ -38,7 +39,7 @@ class Elevator {
       const dotGeo = new THREE.SphereGeometry(0.08, 8, 8);
       const dotMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
       const dot = new THREE.Mesh(dotGeo, dotMat);
-      dot.position.set(pos[0] + 0.5, f * floorHeight + 0.15, pos[1]);
+      dot.position.set(pos[0] + size / 2 + 0.15, f * floorHeight + 0.15, pos[1]);
       this.mesh.add(dot);
     }
 
