@@ -23,7 +23,8 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
         from core.agvmanager import AGVManager
         from core.env import Env
         from core.fault_manager import FaultManager
-        from core.gridmap import GridMap
+        from core.warehouse_map import WarehouseMap
+        from core.elevator import ElevatorManager
         from core.ordermanager import OrderManager
         from core.simulator import Simulator
         from planner.base_planner import BasePlanner
@@ -98,9 +99,10 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
             ctx.system_config = cfg
             ctx.logger = GlobalLogger(ctx)
             ctx.clock = SimulationClock(ctx)
-            ctx.grid_map = GridMap(ctx)
+            ctx.warehouse_map = WarehouseMap(ctx)
             ctx.order_manager = OrderManager(ctx)
             ctx.agv_manager = AGVManager(ctx)
+            ctx.elevator_manager = ElevatorManager(ctx)
             ctx.env = Env(ctx)
             ctx.fault_manager = FaultManager(ctx)
             ctx.scheduler = _registry.build_scheduler(ctx)
