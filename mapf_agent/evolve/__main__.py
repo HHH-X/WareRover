@@ -2,10 +2,10 @@
 
 Examples
 --------
-  python -m agent.evolve --target planner --source planner/astar_planner.py
-  python -m agent.evolve --target scheduler --source scheduler/TA_scheduler.py --iterations 20
-  python -m agent.evolve --target both --planner-source planner/astar_planner.py --scheduler-source scheduler/random_scheduler.py
-  python -m agent.evolve --list planner   # list available implementations
+  python -m mapf_agent.evolve --target planner --source planner/astar_planner.py
+  python -m mapf_agent.evolve --target scheduler --source scheduler/TA_scheduler.py --iterations 20
+  python -m mapf_agent.evolve --target both --planner-source planner/cbs_fw_planner.py --scheduler-source scheduler\TA_scheduler.py
+  python -m mapf_agent.evolve --list planner   # list available implementations
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ if str(_REPO_ROOT) not in sys.path:
 
 
 def _list_implementations(algo_type: str) -> None:
-    from agent.evolve.resolver import scan_implementations
+    from mapf_agent.evolve.resolver import scan_implementations
     impls = scan_implementations(algo_type)
     if not impls:
         print(f"未找到任何 {algo_type} 实现。")
@@ -65,7 +65,7 @@ def main() -> None:
         _list_implementations(args.list)
         return
 
-    from agent.evolve.core import EvolveRequest, OptimizationTarget, run_evolution
+    from mapf_agent.evolve.core import EvolveRequest, OptimizationTarget, run_evolution
 
     target = OptimizationTarget(args.target)
 

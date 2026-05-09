@@ -63,7 +63,10 @@ def map_gen_node(state: AgentState) -> Dict:
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     w, h = result["map"]["width"], result["map"]["height"]
-    n_agv = len(result.get("agvs", []))
+    if "floors" in result:
+        n_agv = sum(len(f.get("agvs", [])) for f in result["floors"])
+    else:
+        n_agv = len(result.get("agvs", []))
     filename = f"map_{w}_{h}_{n_agv}agv_{timestamp}.json"
     out_path = output_dir("maps") / filename
     out_path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MAPF Agent</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">WareRover</p>
+          <h1>MAPF Agent</h1>
+          <p class="subtitle">
+            用自然语言生成地图、调整配置、生成算法并运行可视化仿真。
+          </p>
+        </div>
+        <div class="hero-actions">
+          <button id="simulator-button" class="secondary-button" type="button">打开仿真可视化</button>
+          <button id="reset-button" type="button">重置会话</button>
+          <button id="stop-button" class="danger-button" type="button">停止退出</button>
+        </div>
+      </section>
+
+      <section class="layout">
+        <section class="chat-card">
+          <div id="messages" class="messages" aria-live="polite"></div>
+          <form id="chat-form" class="composer">
+            <textarea
+              id="message-input"
+              rows="3"
+              placeholder="例如：生成一个 20x15、4 台 AGV 的地图，并运行仿真"
+            ></textarea>
+            <button id="send-button" type="submit">发送</button>
+          </form>
+        </section>
+
+        <aside class="side-panel">
+          <section class="panel-card">
+            <h2>运行状态</h2>
+            <dl class="status-list">
+              <div>
+                <dt>连接</dt>
+                <dd id="connection-status">连接中</dd>
+              </div>
+              <div>
+                <dt>当前任务</dt>
+                <dd id="current-task">尚未开始</dd>
+              </div>
+              <div>
+                <dt>进度</dt>
+                <dd id="progress-text">0 / 0</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="panel-card">
+            <h2>产物</h2>
+            <div id="artifacts" class="empty">暂无产物</div>
+          </section>
+
+          <section class="panel-card">
+            <h2>仿真指标</h2>
+            <div id="metrics" class="empty">暂无指标</div>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

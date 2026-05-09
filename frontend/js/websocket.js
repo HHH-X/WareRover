@@ -12,6 +12,11 @@ import { debugLog, debugWarn } from './debug.js';
 
 let ws = null;
 
+function resolveWebSocketUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("ws") || "ws://localhost:8765";
+}
+
 function applyBoxUpdate(world, boxId, boxData, height) {
   const box = world.boxes.get(parseInt(boxId));
   if (!box) return false;
@@ -35,7 +40,7 @@ function applyBoxUpdate(world, boxId, boxData, height) {
 }
 
 function connectWebSocket(world) {
-  ws = new WebSocket("ws://localhost:8765");
+  ws = new WebSocket(resolveWebSocketUrl());
 
   ws.onopen = () => {
     debugLog("[ws] open", { url: ws.url });

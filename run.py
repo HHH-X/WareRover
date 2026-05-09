@@ -84,6 +84,7 @@ async def simulator_loop(websocket, message_queue):
 
             if not STATE["paused"] or STATE["step_trigger"]:
                 ctx.simulator.step()
+                ctx.fault_manager.step()
                 STATE["step_trigger"] = False
                 step_data = generate_send_data(
                     ctx,
@@ -165,7 +166,7 @@ async def main():
     http_port = 8000
     threading.Thread(target=start_http_server, args=(http_port,), daemon=True).start()
 
-    frontend_url = f"http://localhost:{http_port}/frontend/index.html?debug=1"
+    frontend_url = f"http://localhost:{http_port}/frontend/index.html"
     webbrowser.open(frontend_url)
     print(f"Opening browser at {frontend_url}")
 

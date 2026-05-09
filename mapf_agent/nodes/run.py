@@ -8,6 +8,7 @@ from typing import Dict
 from config.settings import SystemConfig
 from mapf_agent.run_sim import run_simulation
 from mapf_agent.state import AgentState
+from mapf_agent.visualizer import get_active_visualizer
 from utils.algorithm_registry import default_registry
 
 
@@ -33,7 +34,10 @@ def run_node(state: AgentState) -> Dict:
 
     print(f"[仿真运行] 开始仿真 (最大步数: {config.sim_config.max_steps})...")
     try:
-        metrics = run_simulation(config=config)
+        visualizer = get_active_visualizer()
+        if visualizer:
+            print("[仿真运行] 已连接 Agent 可视化服务")
+        metrics = run_simulation(config=config, visualizer=visualizer)
     except Exception as exc:
         print("[仿真运行] 仿真异常终止")
         return {"error": f"仿真运行失败: {exc}"}

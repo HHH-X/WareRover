@@ -14,8 +14,11 @@ required:
   - "收货台(receiver)数量"
 
 notes: |
-  - 如果用户未指定障碍物，则不生成障碍物
-  - 如果未指定等待区数量，默认等于 AGV 数量
+  - 若为多楼层地图：使用顶层字段 map（含 width、height、floors）、floors（每层一层对象）、elevators（跨层电梯列表）；每层内含 boxes、receivers、wait_zones、agvs、obstacles（可为空数组）
+  - map.floors（楼层数）必须与 floors 数组长度一致；每层必须有唯一的 floor_id
+  - 电梯 elevator：elevator_id、position [row,col]、floors（服务的楼层编号列表）、travel_time、size（与可进入该电梯的 AGV 的 size 一致）
+  - 如果用户未指定障碍物，则不生成障碍物（或每层 obstacles 为空数组）
+  - 如果未指定等待区数量，默认等于 AGV 数量；每台 AGV 需要一条 wait_zone_id 等于该 agv_id 的等待区（仿真器用其作为初始格）
   - goods_ids 可以随机分配，每个box至少有1个goods_id
   - 所有实体的位置不能重叠
   - 实体不能放在地图边界之外

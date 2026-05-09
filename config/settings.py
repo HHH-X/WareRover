@@ -30,8 +30,8 @@ class SimConfig:
     """Simulation configuration parameters"""
 
     # ==================== Algorithm selection ====================
-    scheduler_type: str = "random"
-    planner_type: str = "astar"
+    scheduler_type: str = "TA"
+    planner_type: str = "cbs_fw"
     force_replan_every_step: bool = False
     # Whether to force each decision-making AGV to replan its path at every step.
     # Automatically coupled with DHC when enabled.
@@ -55,8 +55,8 @@ class SimConfig:
     # Proportion of cross-floor orders among generated orders, range: 0.0 ~ 1.0
 
     # Map and simulation step configuration
-    map_file: str = "config\maps\map_0505_221614.json"  # Default map file path
-    max_steps: int = 1000
+    map_file: str = "config\maps\map_25_20_het.json"  # Default map file path
+    max_steps: int = 3000
 
     time_step: float = 1.0        # Duration of each simulation step (seconds)
     agv_max_speed: float = 0.5
@@ -83,13 +83,13 @@ class SimConfig:
 
     # Whether to overwrite existing log files on reset; False means append
     log_overwrite: bool = True
-    log_to_console: bool = True
+    log_to_console: bool = False
 
 
 # ==================== Fault management configuration ====================
 @dataclass
 class FaultConfig:
-    enable_faults: bool = True
+    enable_faults: bool = False
 
     # Fault probability per AGV per step
     fault_prob: float = 0.01

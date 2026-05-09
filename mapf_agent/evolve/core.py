@@ -176,7 +176,7 @@ def run_evolution(request: EvolveRequest) -> EvolveResult:
         encoding="utf-8",
     )
 
-    from agent.evolve.evaluator_template import build_evaluator_code
+    from mapf_agent.evolve.evaluator_template import build_evaluator_code
     eval_path.write_text(build_evaluator_code(request, target), encoding="utf-8")
 
     if request.config_path:

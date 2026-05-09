@@ -1,28 +1,11 @@
 """REPL entry: python -m mapf_agent"""
 from __future__ import annotations
 
-from langgraph.types import Command
-
-from mapf_agent.graph import build_graph
-
-THREAD = {"configurable": {"thread_id": "session-1"}}
-
-
-def _get_interrupt_question(graph, config: dict) -> str | None:
-    """Check if the graph is paused on an interrupt and return the question."""
-    snapshot = graph.get_state(config)
-    if not snapshot.next:
-        return None
-    for task in snapshot.tasks:
-        if hasattr(task, "interrupts") and task.interrupts:
-            val = task.interrupts[0].value
-            if isinstance(val, dict):
-                return val.get("question", "")
-    return None
+from mapf_agent.session import AgentSession
 
 
 def main() -> None:
-    graph = build_graph()
+    session = AgentSession(thread_id="session-1")
     print("MAPF Agent Ready. 输入指令开始操作，输入 quit 退出。\n")
 
     while True:
@@ -35,21 +18,18 @@ def main() -> None:
         if not user_input:
             continue
 
-        graph.invoke({"user_input": user_input}, THREAD)
+        state = session.submit(user_input)
 
-        while True:
-            question = _get_interrupt_question(graph, THREAD)
-            if question is None:
-                break
+        while state.get("waiting_for_input"):
+            question = state.get("question", "")
             print(f"\n[需要补充信息] {question}")
             try:
                 answer = input(">> ").strip()
             except (EOFError, KeyboardInterrupt):
                 break
-            graph.invoke(Command(resume=answer), THREAD)
+            state = session.resume(answer)
 
-        snapshot = graph.get_state(THREAD)
-        response = snapshot.values.get("response", "")
+        response = state.get("response", "")
         if response:
             print(f"\n{response}")
 

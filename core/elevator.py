@@ -366,7 +366,7 @@ class ElevatorManager:
         """Find suitable elevators, sorted by queue length."""
         candidates: List[Tuple[int, int]] = []
         for eid, elev in self.elevators.items():
-            if elev.size < agv_size:
+            if elev.size != agv_size:
                 continue
             if from_floor not in elev.connected_floors or to_floor not in elev.connected_floors:
                 continue

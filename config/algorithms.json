@@ -1,0 +1,11 @@
+{
+  "planners": {
+    "astar": "planner.astar_planner:AStarPlanner",
+    "cbs_fw": "planner.cbs_fw_planner:FixedWindowCBSPlanner",
+    "dhc": "planner.dhc_planner:DHCPlanner"
+  },
+  "schedulers": {
+    "random": "scheduler.random_scheduler:RandomScheduler",
+    "ta": "scheduler.TA_scheduler:TAScheduler"
+  }
+}

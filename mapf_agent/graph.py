@@ -85,8 +85,9 @@ def respond_node(state: AgentState) -> Dict:
             parts.append(f"生成算法 ({kind}): {path}")
     if state.get("run_metrics"):
         m = state["run_metrics"]
+        success_rate = m.get("task_success_rate", m.get("Task Success Rate", "N/A"))
         parts.append(f"仿真完成 — 步数: {m.get('sim_steps')}, "
-                      f"完成率: {m.get('task_success_rate', 'N/A')}")
+                      f"完成率: {success_rate}")
     if state.get("optimize_result"):
         r = state["optimize_result"]
         parts.append(f"优化完成 — 最佳分数: {r.get('best_score', 'N/A')}")

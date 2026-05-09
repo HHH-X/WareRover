@@ -1,74 +1,228 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "required": ["map", "boxes", "receivers", "wait_zones", "agvs"],
-  "properties": {
-    "map": {
+  "title": "WareRover MAPF map",
+  "description": "仿真器地图 JSON。多层与电梯使用 multiFloorMap；单层旧格式使用 legacySingleFloorMap（与仿真器 WarehouseMap 兼容）。坐标均为 [row, col]，row 纵向向下递增，col 横向向右递增。",
+  "oneOf": [
+    { "$ref": "#/definitions/multiFloorMap" },
+    { "$ref": "#/definitions/legacySingleFloorMap" }
+  ],
+  "definitions": {
+    "coordinate": {
+      "type": "array",
+      "description": "格子坐标 [row, col]",
+      "items": { "type": "integer", "minimum": 0 },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "mapMetaLegacy": {
       "type": "object",
       "required": ["width", "height"],
       "properties": {
-        "width": {"type": "integer", "minimum": 3},
-        "height": {"type": "integer", "minimum": 3}
-      }
+        "width": { "type": "integer", "minimum": 3 },
+        "height": { "type": "integer", "minimum": 3 },
+        "floors": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "单层地图通常为 1；省略时仿真器按 1 处理。"
+        }
+      },
+      "additionalProperties": false
     },
-    "boxes": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["box_id", "position", "goods_ids", "size"],
-        "properties": {
-          "box_id": {"type": "integer", "minimum": 0},
-          "position": {
-            "type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2
+    "mapMetaMulti": {
+      "type": "object",
+      "required": ["width", "height", "floors"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 3 },
+        "height": { "type": "integer", "minimum": 3 },
+        "floors": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "楼层数；应与顶层 floors 数组长度一致。"
+        }
+      },
+      "additionalProperties": false
+    },
+    "boxEntry": {
+      "type": "object",
+      "required": ["box_id", "position", "goods_ids"],
+      "properties": {
+        "box_id": { "type": "integer", "minimum": 0 },
+        "position": { "$ref": "#/definitions/coordinate" },
+        "goods_ids": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 }
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "占位边长（正方形）；省略默认为 1。"
+        }
+      },
+      "additionalProperties": false
+    },
+    "receiverEntry": {
+      "type": "object",
+      "required": ["receiver_id", "position"],
+      "properties": {
+        "receiver_id": { "type": "integer", "minimum": 0 },
+        "position": { "$ref": "#/definitions/coordinate" },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "省略默认为 1。"
+        }
+      },
+      "additionalProperties": false
+    },
+    "waitZoneEntry": {
+      "type": "object",
+      "required": ["wait_zone_id", "position"],
+      "properties": {
+        "wait_zone_id": { "type": "integer", "minimum": 0 },
+        "position": { "$ref": "#/definitions/coordinate" },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "省略默认为 1。仿真器中每台 AGV 使用 wait_zone_id == agv_id 的等待区作为初始格。"
+        }
+      },
+      "additionalProperties": false
+    },
+    "agvEntry": {
+      "type": "object",
+      "required": ["agv_id"],
+      "properties": {
+        "agv_id": { "type": "integer", "minimum": 0 },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "AGV 占位边长；省略默认为 1。须与可服务的电梯 size 一致。"
+        }
+      },
+      "additionalProperties": false
+    },
+    "obstacleEntry": {
+      "description": "障碍物：二元数组 [row,col]，或带 position 的对象",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        {
+          "type": "object",
+          "required": ["position"],
+          "properties": {
+            "position": { "$ref": "#/definitions/coordinate" }
           },
-          "goods_ids": {"type": "array", "items": {"type": "integer"}},
-          "size": {"type": "integer", "minimum": 1}
+          "additionalProperties": false
+        }
+      ]
+    },
+    "elevatorEntry": {
+      "type": "object",
+      "required": ["elevator_id", "position", "floors"],
+      "properties": {
+        "elevator_id": { "type": "integer", "minimum": 0 },
+        "position": { "$ref": "#/definitions/coordinate" },
+        "floors": {
+          "type": "array",
+          "description": "该电梯服务的楼层编号列表（与 floor_id 对应）；顺序表示连通关系，通常包含所有需要跨层的楼层。",
+          "items": { "type": "integer", "minimum": 0 },
+          "minItems": 1
+        },
+        "travel_time": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "跨一层耗时（仿真步数）；省略时使用系统配置默认值。"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "轿厢可容纳的 AGV 占位尺寸；省略默认为 1。AGV 的 size 须与此一致才能使用该电梯。"
+        }
+      },
+      "additionalProperties": false
+    },
+    "floorEntry": {
+      "type": "object",
+      "required": ["floor_id", "boxes", "receivers", "wait_zones", "agvs"],
+      "properties": {
+        "floor_id": { "type": "integer", "minimum": 0 },
+        "boxes": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/boxEntry" }
+        },
+        "receivers": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/receiverEntry" }
+        },
+        "wait_zones": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/waitZoneEntry" }
+        },
+        "agvs": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/agvEntry" }
+        },
+        "obstacles": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/obstacleEntry" },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "multiFloorMap": {
+      "type": "object",
+      "required": ["map", "floors"],
+      "additionalProperties": false,
+      "properties": {
+        "map": { "$ref": "#/definitions/mapMetaMulti" },
+        "floors": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/floorEntry" }
+        },
+        "elevators": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/elevatorEntry" },
+          "description": "跨层电梯定义；无电梯的多层场景可为空数组。"
         }
       }
     },
-    "receivers": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["receiver_id", "position", "size"],
-        "properties": {
-          "receiver_id": {"type": "integer", "minimum": 0},
-          "position": {
-            "type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2
-          },
-          "size": {"type": "integer", "minimum": 1}
+    "legacySingleFloorMap": {
+      "type": "object",
+      "required": ["map", "boxes", "receivers", "wait_zones", "agvs"],
+      "additionalProperties": false,
+      "properties": {
+        "map": { "$ref": "#/definitions/mapMetaLegacy" },
+        "boxes": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/boxEntry" }
+        },
+        "receivers": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/receiverEntry" }
+        },
+        "wait_zones": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/waitZoneEntry" }
+        },
+        "agvs": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/agvEntry" }
+        },
+        "obstacles": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/obstacleEntry" }
+        },
+        "elevators": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/elevatorEntry" },
+          "description": "单层旧格式中一般不含电梯；若仅声明跨层结构请使用 multiFloorMap。"
         }
-      }
-    },
-    "wait_zones": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["wait_zone_id", "position", "size"],
-        "properties": {
-          "wait_zone_id": {"type": "integer", "minimum": 0},
-          "position": {
-            "type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2
-          },
-          "size": {"type": "integer", "minimum": 1}
-        }
-      }
-    },
-    "agvs": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["agv_id", "size"],
-        "properties": {
-          "agv_id": {"type": "integer", "minimum": 0},
-          "size": {"type": "integer", "minimum": 1}
-        }
-      }
-    },
-    "obstacles": {
-      "type": "array",
-      "items": {
-        "type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2
       }
     }
   }
