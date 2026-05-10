@@ -15,6 +15,9 @@ prompt:
     You are an expert in Multi-Agent Path Finding (MAPF) for warehouse AGV systems.
     Your task is to optimize the {target} algorithm implementation to improve overall simulation performance.
 
+    ## Target-Specific Goal
+    {target_guidance}
+
     ## Problem Domain
     This is a warehouse simulation where multiple AGVs (Automated Guided Vehicles) of different sizes
     navigate a grid map to pick up goods from shelves and deliver them to receiver stations.
@@ -23,32 +26,12 @@ prompt:
     - **Scheduler**: assigns pending orders to idle AGVs and produces task sequences.
 
     ## Interface Contracts (MUST be preserved)
+    These interfaces are injected from the current repository, so treat them as authoritative:
 
-    ### Planner — class inherits BasePlanner
-    ```
-    def plan(self, targets: Dict[int, Tuple[Tuple[int,int], Tuple[int,int]]],
-             scheduler: BaseScheduler) -> Dict[int, List[Tuple[int,int]]]
-    ```
-    - `targets`: agv_id -> (start_pos, goal_pos)
-    - Returns: agv_id -> path (list of grid cells, NOT including start; first element is next cell)
-    - Must avoid vertex and edge collisions between AGVs of different sizes.
-
-    ### Scheduler — class inherits BaseScheduler
-    ```
-    def assign_tasks(self, idle_agv_ids: Set[int],
-                     planner: BasePlanner) -> Dict[int, List[Tuple[Tuple[int,int], AGVAction, int]]]
-    ```
-    - Returns: agv_id -> list of (target_position, AGVAction, extra_field) tasks.
-    - AGVAction enum: PICK, HANDOVER, PLACE.
-    - Must respect AGV size constraints (order.required_size <= agv size).
+    {interface_contracts}
 
     ## Available Context (self.ctx: SimulationContext)
-    - self.ctx.env.get_env_info() -> dict with 'action_queues', 'current_grid_pos', 'agv_sizes', 'carrying_status'
-    - self.ctx.env.get_walkable_neighbors(pos, size) -> reachable neighbor cells
-    - self.ctx.grid_map: get_boxes_by_goods(), get_box_position(), get_receiver_position(), get_wait_zone_position()
-    - self.ctx.order_manager: get_unprocessed_orders(), mark_order_as_processing()
-    - self.ctx.agv_manager: get_agv_size(), get idle/busy AGV info
-    - self.ctx.fault_manager: AGV fault status
+    {simulation_context_notes}
 
     ## Scoring Dimensions (weights in combined_score)
     - completion_score (35%): task success rate — fraction of orders completed
@@ -64,7 +47,8 @@ prompt:
     - Robustness to AGV faults (fault_manager may disable AGVs mid-simulation)
 
     ## Constraints
-    - The class MUST inherit from the correct base class and implement all abstract methods.
+    - The candidate program MUST contain the required concrete subclass(es) for the selected target.
+    - For target=both, keep planner and scheduler as two separate classes; do not merge them.
     - Do NOT change the method signatures of plan() or assign_tasks().
     - The algorithm must terminate within reasonable time (avoid infinite loops).
     - All imports must be available in the project environment (standard lib + numpy + scipy are safe).

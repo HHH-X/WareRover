@@ -1,13 +1,13 @@
 """Core evolution pipeline: build artifacts and invoke OpenEvolve."""
 from __future__ import annotations
 
-import re
+import ast
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Optional, Sequence, Union
 
 from mapf_agent.paths import output_dir
 
@@ -63,43 +63,92 @@ def _strip_markers(code: str) -> str:
     return code.replace("# EVOLVE-BLOCK-START", "").replace("# EVOLVE-BLOCK-END", "").strip()
 
 
-def _split_scaffold(code: str) -> Tuple[str, str]:
-    """Split algorithm source into (scaffold, body).
+def _base_name(base: ast.expr) -> str:
+    if isinstance(base, ast.Name):
+        return base.id
+    if isinstance(base, ast.Attribute):
+        return base.attr
+    if isinstance(base, ast.Subscript):
+        return _base_name(base.value)
+    return ""
 
-    *scaffold* = imports + module-level constants + class definition + ``__init__``
-    *body*     = remaining methods that should be placed inside EVOLVE-BLOCK
 
-    Falls back to ("", full_code) when the structure cannot be parsed reliably.
+def _node_start_lineno(node: ast.AST) -> int:
+    decorators = getattr(node, "decorator_list", None) or []
+    if decorators:
+        return min(getattr(d, "lineno", getattr(node, "lineno", 1)) for d in decorators)
+    return getattr(node, "lineno", 1)
+
+
+def _find_candidate_class(tree: ast.Module, expected_base: str) -> Optional[ast.ClassDef]:
+    classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
+    for cls in classes:
+        if any(_base_name(base) == expected_base for base in cls.bases):
+            return cls
+    return classes[0] if classes else None
+
+
+def _first_method_after_init(cls: ast.ClassDef) -> Optional[ast.AST]:
+    init_node: Optional[ast.AST] = None
+    for node in cls.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "__init__":
+            init_node = node
+            break
+
+    if init_node is not None:
+        init_end = getattr(init_node, "end_lineno", init_node.lineno)
+        candidates = [
+            node
+            for node in cls.body
+            if _node_start_lineno(node) > init_end
+        ]
+        return min(candidates, key=_node_start_lineno) if candidates else None
+
+    methods = [
+        node
+        for node in cls.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name != "__init__"
+    ]
+    return min(methods, key=_node_start_lineno) if methods else None
+
+
+def _render_evolvable_source(label: str, code: str, expected_base: str) -> str:
+    """Render one algorithm source with a class-local EVOLVE-BLOCK.
+
+    Imports, constants, class declaration, and ``__init__`` stay outside the
+    block.  The remaining class body is evolved in place.  If parsing fails,
+    the whole source is still made evolvable, but as an isolated top-level
+    block so multiple components cannot collapse into the same class scope.
     """
     clean = _strip_markers(code)
-    lines = clean.split("\n")
+    try:
+        tree = ast.parse(clean)
+    except SyntaxError:
+        return f"# -------- {label} Candidate --------\n# EVOLVE-BLOCK-START\n{clean}\n# EVOLVE-BLOCK-END"
 
-    # Locate the class definition
-    class_idx: Optional[int] = None
-    for i, line in enumerate(lines):
-        if re.match(r"^class\s+\w+", line):
-            class_idx = i
-            break
-    if class_idx is None:
-        return "", clean
+    cls = _find_candidate_class(tree, expected_base)
+    if cls is None or getattr(cls, "end_lineno", None) is None:
+        return f"# -------- {label} Candidate --------\n# EVOLVE-BLOCK-START\n{clean}\n# EVOLVE-BLOCK-END"
 
-    # Walk past __init__ to find the first non-__init__ method
-    seen_init = False
-    split_idx: Optional[int] = None
-    for i in range(class_idx + 1, len(lines)):
-        if re.match(r"^\s{4}def\s+__init__\s*\(", lines[i]):
-            seen_init = True
-            continue
-        if seen_init and re.match(r"^\s{4}def\s+(?!__init__)\w+", lines[i]):
-            split_idx = i
-            break
+    lines = clean.splitlines()
+    split_node = _first_method_after_init(cls)
+    split_idx = (_node_start_lineno(split_node) - 1) if split_node is not None else cls.end_lineno
+    class_end_idx = cls.end_lineno
 
-    if split_idx is None:
-        return "", clean
+    before = "\n".join(lines[:split_idx]).rstrip()
+    evolvable = "\n".join(lines[split_idx:class_end_idx]).rstrip()
+    after = "\n".join(lines[class_end_idx:]).strip()
 
-    scaffold = "\n".join(lines[:split_idx])
-    body = "\n".join(lines[split_idx:])
-    return scaffold, body
+    rendered = [f"# -------- {label} candidate --------", before]
+    rendered.append("    # EVOLVE-BLOCK-START")
+    if evolvable:
+        rendered.append(evolvable)
+    else:
+        rendered.append("    pass")
+    rendered.append("    # EVOLVE-BLOCK-END")
+    if after:
+        rendered.append(after)
+    return "\n".join(part for part in rendered if part != "")
 
 
 def _build_initial_program(
@@ -115,34 +164,87 @@ def _build_initial_program(
     """
     sources = []
     if target in (OptimizationTarget.PLANNER, OptimizationTarget.BOTH):
-        sources.append(("Planner", planner_code))
+        sources.append(("Planner", planner_code, "BasePlanner"))
     if target in (OptimizationTarget.SCHEDULER, OptimizationTarget.BOTH):
-        sources.append(("Scheduler", scheduler_code))
+        sources.append(("Scheduler", scheduler_code, "BaseScheduler"))
 
-    scaffolds = []
-    bodies = []
-    for label, code in sources:
-        scaffold, body = _split_scaffold(code)
-        if scaffold:
-            scaffolds.append(f"# -------- {label} scaffold --------\n{scaffold}")
-            bodies.append(f"    # -------- {label} methods --------\n{body}")
-        else:
-            bodies.append(f"# -------- {label} Candidate --------\n{_strip_markers(code)}")
+    program = "\n\n".join(
+        _render_evolvable_source(label, code, expected_base)
+        for label, code, expected_base in sources
+    ) + "\n"
+    compile(program, "initial_program.py", "exec")
+    return program
 
+
+def _read_repo_file(relative_path: str) -> str:
+    return (_REPO_ROOT / relative_path).read_text(encoding="utf-8").strip()
+
+
+def _interface_contracts(target: OptimizationTarget) -> str:
     parts = []
-    if scaffolds:
-        parts.append("\n\n".join(scaffolds))
-    parts.append("")
-    parts.append("    # EVOLVE-BLOCK-START")
-    parts.extend(bodies)
-    parts.append("    # EVOLVE-BLOCK-END")
-    return "\n\n".join(parts) + "\n"
+    if target in (OptimizationTarget.PLANNER, OptimizationTarget.BOTH):
+        parts.append(
+            "### Planner base interface\n"
+            "```python\n"
+            f"{_read_repo_file('planner/base_planner.py')}\n"
+            "```"
+        )
+    if target in (OptimizationTarget.SCHEDULER, OptimizationTarget.BOTH):
+        parts.append(
+            "### Scheduler base interface\n"
+            "```python\n"
+            f"{_read_repo_file('scheduler/base_scheduler.py')}\n"
+            "```"
+        )
+    return "\n\n".join(parts)
+
+
+def _target_guidance(target: OptimizationTarget) -> str:
+    if target == OptimizationTarget.PLANNER:
+        return (
+            "Optimize the planner implementation only. Keep exactly one concrete BasePlanner "
+            "subclass in the program and focus on path quality, conflict avoidance, deadlock "
+            "reduction, and planner runtime."
+        )
+    if target == OptimizationTarget.SCHEDULER:
+        return (
+            "Optimize the scheduler implementation only. Keep exactly one concrete BaseScheduler "
+            "subclass in the program and focus on assigning feasible orders to idle AGVs, reducing "
+            "travel, improving completion rate, and handling cross-floor tasks."
+        )
+    return (
+        "Optimize the planner and scheduler together. Keep one concrete BasePlanner subclass and "
+        "one concrete BaseScheduler subclass as separate classes. Improve their interaction without "
+        "merging classes or changing either public method signature."
+    )
+
+
+def _simulation_context_notes() -> str:
+    return """- `self.ctx.env` exposes current AGV positions, action queues, carrying status, and walkable-neighbor queries.
+- `self.ctx.warehouse_map` exposes boxes, receivers, wait zones, floors, and elevator positions.
+- `self.ctx.order_manager` exposes unprocessed orders, processing markers, and completion status.
+- `self.ctx.agv_manager` exposes AGV size, floor, grid position, and AGV objects.
+- `self.ctx.elevator_manager` exposes cross-floor elevator lookup.
+- `self.ctx.fault_manager` may make AGVs unavailable during simulation.
+- AGV size matters: a size-2 AGV occupies a 2x2 footprint and needs size-compatible paths/tasks."""
+
+
+def _indent_block(text: str, spaces: int = 4) -> str:
+    prefix = " " * spaces
+    return "\n".join(prefix + line if line else prefix for line in text.splitlines())
 
 
 def _load_default_config(target: OptimizationTarget) -> str:
     tpl_path = _PKG_DIR / "default_config.yaml"
     tpl = tpl_path.read_text(encoding="utf-8")
-    return tpl.replace("{target}", target.value)
+    tpl = tpl.replace("{target}", target.value)
+    tpl = tpl.replace("    {target_guidance}", _indent_block(_target_guidance(target)))
+    tpl = tpl.replace("    {interface_contracts}", _indent_block(_interface_contracts(target)))
+    tpl = tpl.replace(
+        "    {simulation_context_notes}",
+        _indent_block(_simulation_context_notes()),
+    )
+    return tpl
 
 
 # ---------------------------------------------------------------------------

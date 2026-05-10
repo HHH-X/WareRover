@@ -5,7 +5,7 @@ import textwrap
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from agent.evolve.core import EvolveRequest, OptimizationTarget
+    from mapf_agent.evolve.core import EvolveRequest, OptimizationTarget
 
 
 def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> str:
@@ -45,19 +45,35 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
 
         def _load_module(path: str):
             spec = importlib.util.spec_from_file_location("candidate", path)
+            if spec is None or spec.loader is None:
+                raise RuntimeError(f"Cannot load candidate module from {{path}}")
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
             return mod
 
         def _pick_subclass(mod, base, kind):
-            for v in mod.__dict__.values():
-                if isinstance(v, type) and issubclass(v, base) and v is not base:
-                    if v.__module__ == mod.__name__:
-                        return v
-            for v in mod.__dict__.values():
-                if isinstance(v, type) and issubclass(v, base) and v is not base:
-                    return v
-            raise RuntimeError(f"No {{kind}} subclass found")
+            candidates = [
+                v for v in mod.__dict__.values()
+                if isinstance(v, type)
+                and issubclass(v, base)
+                and v is not base
+                and v.__module__ == mod.__name__
+            ]
+            if not candidates:
+                imported = [
+                    v.__name__ for v in mod.__dict__.values()
+                    if isinstance(v, type) and issubclass(v, base) and v is not base
+                ]
+                suffix = f"; imported candidates: {{imported}}" if imported else ""
+                raise RuntimeError(f"No local {{kind}} subclass found in candidate module{{suffix}}")
+            if len(candidates) == 1:
+                return candidates[0]
+
+            name_matches = [c for c in candidates if kind.lower() in c.__name__.lower()]
+            if len(name_matches) == 1:
+                return name_matches[0]
+            names = [c.__name__ for c in candidates]
+            raise RuntimeError(f"Ambiguous {{kind}} subclasses in candidate module: {{names}}")
 
         def _register_candidate(program_path):
             mod = _load_module(program_path)
