@@ -30,8 +30,8 @@ class SimConfig:
     """Simulation configuration parameters"""
 
     # ==================== Algorithm selection ====================
-    scheduler_type: str = "TA"
-    planner_type: str = "cbs_fw"
+    scheduler_type: str = "ta"
+    planner_type: str = "astar"
     force_replan_every_step: bool = False
     # Whether to force each decision-making AGV to replan its path at every step.
     # Automatically coupled with DHC when enabled.
@@ -42,8 +42,10 @@ class SimConfig:
     order_mode: str = "oneshot"  # Order generation mode
     total_orders_limit: int = 150
 
-    size2_ratio: float = 0.2
+    size2_ratio: float = 0
     # Proportion of size-2 orders among all orders, range: 0.0 ~ 1.0
+    cross_floor_order_ratio: float = 0
+    # Proportion of cross-floor orders among generated orders, range: 0.0 ~ 1.0
 
     order_processing_timeout: int = 30
     # Order processing timeout in seconds.
@@ -51,11 +53,9 @@ class SimConfig:
 
     order_seed: Optional[int] = None
     # Random seed for order generation; None means non-deterministic
-    cross_floor_order_ratio: float = 0.2
-    # Proportion of cross-floor orders among generated orders, range: 0.0 ~ 1.0
 
     # Map and simulation step configuration
-    map_file: str = "config\maps\map_25_20_het.json"  # Default map file path
+    map_file: str = "config\maps\map_20_15_32.json"  # Default map file path
     max_steps: int = 3000
 
     time_step: float = 1.0        # Duration of each simulation step (seconds)
@@ -77,7 +77,7 @@ class SimConfig:
     panel_width: int = 300
 
     # ==================== Logging ====================
-    log_to_file: bool = True
+    log_to_file: bool = False
     log_dir: str = "logs"
     log_file_name: str = "simulation.log"
 

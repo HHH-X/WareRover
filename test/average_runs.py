@@ -1,5 +1,6 @@
 """
 Script to run run_single_episode 20 times with different seeds and compute average metrics.
+python -m test.average_runs
 """
 import sys
 sys.path.append('..')  # Add parent directory to path

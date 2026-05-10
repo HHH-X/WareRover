@@ -129,21 +129,51 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
             m = ctx.logger.get_final_metrics(ctx.clock.now())
             return {{"finished": bool(ctx.order_manager.is_all_orders_completed()),
                      "task_success_rate": float(m.get("Task Success Rate", 0.0)),
-                     "sim_steps": float(m.get("Sim Steps", ctx.clock.now())),
-                     "planner_avg_time": float(m.get("Planner Avg Time", 0.0))}}
+                     "avg_task_time": float(m.get("Avg Task Time", 0.0)),
+                     "throughput": float(m.get("Throughput", 0.0)),
+                     "total_agv_collisions": float(m.get("Total AGV Collisions", 0.0)),
+                     "max_steps": float(cfg.sim_config.max_steps),
+                     "total_orders_limit": float(cfg.sim_config.total_orders_limit)}}
+
+        def _clamp01(value):
+            return min(max(float(value), 0.0), 1.0)
 
         def _compute_scores(results):
-            comp = sum(r["task_success_rate"] for r in results)/len(results)
-            mk = sum(r["sim_steps"] for r in results)/len(results)
-            pt_t = sum(r["planner_avg_time"] for r in results)/len(results)
-            stab = sum(1.0 if r["finished"] else 0.0 for r in results)/len(results)
-            cs = min(max(comp,0),1)
-            ms = 1.0/(1.0+max(mk,0))
-            ts = 1.0/(1.0+max(pt_t*1e3,0))
-            ss = min(max(stab,0),1)
-            combined = 0.35*cs + 0.35*ms + 0.20*ts + 0.10*ss
-            return {{"combined_score":combined,"completion_score":cs,"makespan_score":ms,
-                     "time_score":ts,"stability_score":ss}}
+            n = len(results)
+            task_success_rate = sum(r["task_success_rate"] for r in results) / n
+            avg_task_time = sum(r["avg_task_time"] for r in results) / n
+            throughput = sum(r["throughput"] for r in results) / n
+            total_agv_collisions = sum(r["total_agv_collisions"] for r in results) / n
+            max_steps = max(sum(r["max_steps"] for r in results) / n, 1.0)
+            total_orders_limit = max(sum(r["total_orders_limit"] for r in results) / n, 1.0)
+
+            success_score = _clamp01(task_success_rate)
+            task_time_scale = max(max_steps / 3.0, 1.0)
+            throughput_scale = max(total_orders_limit / max_steps, 1e-9)
+            collision_scale = max(2.0 * total_orders_limit, 1.0)
+
+            task_time_score = 1.0 / (1.0 + max(avg_task_time, 0.0) / task_time_scale)
+            throughput_score = max(throughput, 0.0) / (max(throughput, 0.0) + throughput_scale)
+            collision_score = 1.0 / (1.0 + max(total_agv_collisions, 0.0) / collision_scale)
+
+            task_time_score *= success_score
+            throughput_score *= success_score
+
+            combined = (
+                0.40 * success_score
+                + 0.25 * throughput_score
+                + 0.20 * task_time_score
+                + 0.15 * collision_score
+            )
+            return {{"combined_score": combined,
+                     "success_score": success_score,
+                     "task_time_score": task_time_score,
+                     "throughput_score": throughput_score,
+                     "collision_score": collision_score,
+                     "task_success_rate": task_success_rate,
+                     "avg_task_time": avg_task_time,
+                     "throughput": throughput,
+                     "total_agv_collisions": total_agv_collisions}}
 
         # ── cascade stage 1: quick single-seed validation ──
 
