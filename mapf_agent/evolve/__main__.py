@@ -3,8 +3,8 @@
 Examples
 --------
   python -m mapf_agent.evolve --target planner --source planner/astar_planner.py
-  python -m mapf_agent.evolve --target scheduler --source scheduler/TA_scheduler.py --iterations 20
-  python -m mapf_agent.evolve --target both --planner-source planner/cbs_fw_planner.py --scheduler-source scheduler\TA_scheduler.py
+  python -m mapf_agent.evolve --target scheduler --source scheduler/TA_scheduler.py --iterations 100
+  python -m mapf_agent.evolve --target both --planner-source planner/cbs_fw_planner.py --scheduler-source scheduler\TA_scheduler.py --iterations 100
   python -m mapf_agent.evolve --list planner   # list available implementations
 """
 from __future__ import annotations

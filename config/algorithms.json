@@ -2,10 +2,13 @@
   "planners": {
     "astar": "planner.astar_planner:AStarPlanner",
     "cbs_fw": "planner.cbs_fw_planner:FixedWindowCBSPlanner",
-    "dhc": "planner.dhc_planner:DHCPlanner"
+    "dhc": "planner.dhc_planner:DHCPlanner",
+    "cbs-both-100":"output.evolve.evolve_both_20260510_210747_56d194.openevolve_output.best.best_program:FixedWindowCBSPlanner"
   },
   "schedulers": {
     "random": "scheduler.random_scheduler:RandomScheduler",
-    "ta": "scheduler.TA_scheduler:TAScheduler"
+    "ta": "scheduler.TA_scheduler:TAScheduler",
+    "ta-100":"output.evolve.evolve_scheduler_20260510_210043_520df8.openevolve_output.best.best_program:TAScheduler",
+    "ta-both-100":"output.evolve.evolve_both_20260510_210747_56d194.openevolve_output.best.best_program:TAScheduler"
   }
 }

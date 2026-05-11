@@ -127,6 +127,7 @@ textarea:disabled {
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
+  align-items: start;
   gap: 20px;
 }
 
@@ -140,13 +141,18 @@ textarea:disabled {
 
 .chat-card {
   display: flex;
-  min-height: 680px;
+  height: 680px;
+  max-height: calc(100vh - 180px);
+  min-height: 420px;
+  overflow: hidden;
   flex-direction: column;
 }
 
 .messages {
   flex: 1;
-  overflow: auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 22px;
 }
 
@@ -156,6 +162,7 @@ textarea:disabled {
   margin-bottom: 12px;
   border-radius: 16px;
   padding: 12px 14px;
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 
@@ -199,7 +206,7 @@ textarea:disabled {
 
 textarea {
   width: 100%;
-  resize: vertical;
+  resize: none;
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 12px;
@@ -301,6 +308,7 @@ code {
   }
 
   .chat-card {
-    min-height: 560px;
+    height: 560px;
+    max-height: calc(100vh - 180px);
   }
 }

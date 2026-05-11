@@ -2,7 +2,12 @@
 from __future__ import annotations
 
 import ast
+import json
+import os
+import subprocess
+import sys
 import uuid
+from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -247,6 +252,80 @@ def _load_default_config(target: OptimizationTarget) -> str:
     return tpl
 
 
+def _run_openevolve_worker(
+    init_path: Path,
+    eval_path: Path,
+    cfg_path: Path,
+    out_dir: Path,
+    result_path: Path,
+    iterations: Optional[int],
+) -> Dict[str, Any]:
+    env = os.environ.copy()
+    pythonpath = [str(_REPO_ROOT), str(_REPO_ROOT / "openevolve")]
+    if env.get("PYTHONPATH"):
+        pythonpath.append(env["PYTHONPATH"])
+    env["PYTHONPATH"] = os.pathsep.join(pythonpath)
+    env.setdefault("PYTHONUTF8", "1")
+
+    cmd = [
+        sys.executable,
+        "-m",
+        "mapf_agent.evolve.worker",
+        "--initial-program",
+        str(init_path),
+        "--evaluator",
+        str(eval_path),
+        "--config",
+        str(cfg_path),
+        "--output-dir",
+        str(out_dir),
+        "--result-json",
+        str(result_path),
+    ]
+    if iterations is not None:
+        cmd.extend(["--iterations", str(iterations)])
+
+    print("[算法优化] OpenEvolve 子进程已启动")
+    process = subprocess.Popen(
+        cmd,
+        cwd=str(_REPO_ROOT),
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        bufsize=1,
+    )
+
+    last_lines: deque[str] = deque(maxlen=40)
+    if process.stdout is not None:
+        for raw_line in process.stdout:
+            line = raw_line.rstrip("\r\n")
+            if line:
+                print(line)
+                last_lines.append(line)
+
+    return_code = process.wait()
+    if not result_path.exists():
+        details = "\n".join(last_lines)
+        raise RuntimeError(
+            f"OpenEvolve 子进程未生成结果文件，退出码: {return_code}"
+            + (f"\n最近日志:\n{details}" if details else "")
+        )
+
+    payload = json.loads(result_path.read_text(encoding="utf-8"))
+    if return_code != 0 or payload.get("error"):
+        message = payload.get("error") or f"退出码: {return_code}"
+        traceback_text = payload.get("traceback", "")
+        raise RuntimeError(
+            f"OpenEvolve 子进程失败: {message}"
+            + (f"\n{traceback_text}" if traceback_text else "")
+        )
+
+    return payload
+
+
 # ---------------------------------------------------------------------------
 # Public entry
 # ---------------------------------------------------------------------------
@@ -272,6 +351,7 @@ def run_evolution(request: EvolveRequest) -> EvolveResult:
     eval_path = run_dir / "evaluator.py"
     cfg_path = run_dir / "config.yaml"
     out_dir = run_dir / "openevolve_output"
+    result_path = run_dir / "openevolve_result.json"
 
     init_path.write_text(
         _build_initial_program(target, planner_code, scheduler_code),
@@ -287,9 +367,6 @@ def run_evolution(request: EvolveRequest) -> EvolveResult:
         cfg_text = _load_default_config(target)
     cfg_path.write_text(cfg_text, encoding="utf-8")
 
-    import os
-    import sys
-
     from utils.api_key import load_api_key
     os.environ["OPENAI_API_KEY"] = load_api_key()
 
@@ -299,21 +376,19 @@ def run_evolution(request: EvolveRequest) -> EvolveResult:
     if str(oe_src) not in sys.path:
         sys.path.insert(0, str(oe_src))
 
-    from openevolve.api import run_evolution as oe_run
-
-    evo = oe_run(
-        initial_program=str(init_path),
-        evaluator=str(eval_path),
-        config=str(cfg_path),
+    evo = _run_openevolve_worker(
+        init_path=init_path,
+        eval_path=eval_path,
+        cfg_path=cfg_path,
+        out_dir=out_dir,
+        result_path=result_path,
         iterations=request.iterations,
-        output_dir=str(out_dir),
-        cleanup=False,
     )
 
     return EvolveResult(
         run_dir=str(run_dir),
-        output_dir=evo.output_dir,
-        best_score=float(evo.best_score),
-        best_metrics=dict(evo.metrics or {}),
-        best_code=evo.best_code or "",
+        output_dir=evo.get("output_dir"),
+        best_score=float(evo.get("best_score", 0.0)),
+        best_metrics=dict(evo.get("best_metrics") or {}),
+        best_code=evo.get("best_code") or "",
     )

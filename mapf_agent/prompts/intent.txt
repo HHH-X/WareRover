@@ -45,7 +45,8 @@
       "type": "optimize",
       "detail": "用户关于优化的完整描述，包括想要优化什么、如何优化、优化目标等",
       "algo_type": "planner 或 scheduler 或 both",
-      "optimize_source": "用户提及的算法来源描述（如 'astar'、'已有的TA调度器'、'generated' 表示刚生成的，留空表示未明确指定）"
+      "optimize_source": "用户提及的算法来源描述（如 'astar'、'已有的TA调度器'、'generated' 表示刚生成的，留空表示未明确指定）",
+      "iterations": "用户明确指定的迭代次数，整数；未指定时省略"
     },
     {
       "type": "run",
@@ -63,3 +64,4 @@
 - optimize 意图中，detail 字段应尽可能完整地保留用户关于优化的描述（优化什么算法、来源、优化目标等）
 - optimize 意图中，algo_type 支持 "planner"、"scheduler" 或 "both"（同时优化两者）
 - optimize_source 只需要记录用户的原始描述，不需要转为精确文件路径。如果用户没有明确指定来源且之前有 codegen 意图，则设为 "generated"
+- iterations 只在用户明确说出“迭代10轮/100次/iterations=20”等次数时输出，值必须是整数

@@ -111,7 +111,7 @@ def _llm_resolve(
     hint: str,
     implementations: List[Dict[str, str]],
 ) -> str:
-    from agent.llm import chat_json
+    from mapf_agent.llm import chat_json
 
     prompt_tpl = _PROMPT_PATH.read_text(encoding="utf-8")
     impl_list = _format_impl_list(implementations)

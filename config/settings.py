@@ -30,8 +30,8 @@ class SimConfig:
     """Simulation configuration parameters"""
 
     # ==================== Algorithm selection ====================
-    scheduler_type: str = "ta"
-    planner_type: str = "astar"
+    scheduler_type: str = "ta-both-100"
+    planner_type: str = "cbs-both-100"
     force_replan_every_step: bool = False
     # Whether to force each decision-making AGV to replan its path at every step.
     # Automatically coupled with DHC when enabled.

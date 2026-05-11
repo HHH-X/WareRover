@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import re
+import traceback
 from typing import Dict
 
 from mapf_agent.evolve.core import EvolveRequest, OptimizationTarget, run_evolution
@@ -27,6 +29,32 @@ _TARGET_LABELS = {
     OptimizationTarget.SCHEDULER: "任务调度器",
     OptimizationTarget.BOTH: "路径规划器 + 任务调度器",
 }
+
+
+def _parse_iterations(intent: Dict) -> int | None:
+    raw_value = intent.get("iterations")
+    if isinstance(raw_value, int) and raw_value > 0:
+        return raw_value
+    if isinstance(raw_value, str) and raw_value.isdigit():
+        value = int(raw_value)
+        return value if value > 0 else None
+
+    text = " ".join(
+        str(intent.get(key, ""))
+        for key in ("detail", "optimize_source")
+        if intent.get(key)
+    )
+    patterns = (
+        r"(?:迭代|进化|优化)\s*(?:次数|轮数)?\s*[:：=为]?\s*(\d+)\s*(?:轮|次|代)?",
+        r"(?:iterations?|iters?)\s*[:：=]?\s*(\d+)",
+        r"(\d+)\s*(?:轮|次|代)\s*(?:迭代|进化|优化)?",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if match:
+            value = int(match.group(1))
+            return value if value > 0 else None
+    return None
 
 
 def optimize_node(state: AgentState) -> Dict:
@@ -58,14 +86,18 @@ def optimize_node(state: AgentState) -> Dict:
         target=target,
         planner_source=planner_path,
         scheduler_source=scheduler_path,
+        iterations=_parse_iterations(intent),
         system_config_json=_serialize_system_config(state),
     )
 
     print("[算法优化] 开始进化优化，这可能需要较长时间...")
+    if req.iterations:
+        print(f"[算法优化] 迭代次数: {req.iterations}")
     try:
         result = run_evolution(req)
     except Exception as exc:
         print("[算法优化] 优化异常终止")
+        traceback.print_exc()
         return {"error": f"优化运行失败: {exc}"}
 
     print(f"[算法优化] 完成 — 最佳分数: {result.best_score}")
