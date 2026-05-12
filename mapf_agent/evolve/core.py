@@ -225,13 +225,11 @@ def _target_guidance(target: OptimizationTarget) -> str:
 
 
 def _simulation_context_notes() -> str:
-    return """- `self.ctx.env` exposes current AGV positions, action queues, carrying status, and walkable-neighbor queries.
-- `self.ctx.warehouse_map` exposes boxes, receivers, wait zones, floors, and elevator positions.
-- `self.ctx.order_manager` exposes unprocessed orders, processing markers, and completion status.
-- `self.ctx.agv_manager` exposes AGV size, floor, grid position, and AGV objects.
-- `self.ctx.elevator_manager` exposes cross-floor elevator lookup.
-- `self.ctx.fault_manager` may make AGVs unavailable during simulation.
-- AGV size matters: a size-2 AGV occupies a 2x2 footprint and needs size-compatible paths/tasks."""
+    notes_path = _PKG_DIR / "simulation_context_notes.md"
+    notes = notes_path.read_text(encoding="utf-8").strip()
+    if not notes:
+        raise ValueError(f"Simulation context notes file is empty: {notes_path}")
+    return notes
 
 
 def _indent_block(text: str, spaces: int = 4) -> str:
