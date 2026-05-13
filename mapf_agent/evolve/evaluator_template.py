@@ -169,11 +169,7 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
                      "success_score": success_score,
                      "task_time_score": task_time_score,
                      "throughput_score": throughput_score,
-                     "collision_score": collision_score,
-                     "task_success_rate": task_success_rate,
-                     "avg_task_time": avg_task_time,
-                     "throughput": throughput,
-                     "total_agv_collisions": total_agv_collisions}}
+                     "collision_score": collision_score}}
 
         # ── cascade stage 1: quick single-seed validation ──
 
