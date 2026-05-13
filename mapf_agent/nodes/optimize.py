@@ -104,6 +104,7 @@ def optimize_node(state: AgentState) -> Dict:
     return {
         "optimize_result": {
             "run_dir": result.run_dir,
+            "output_dir": result.output_dir,
             "best_score": result.best_score,
             "best_metrics": result.best_metrics,
             "best_code_preview": result.best_code[:500] if result.best_code else "",

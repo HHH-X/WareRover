@@ -6,6 +6,7 @@
     artifacts: document.getElementById("artifacts"),
     connectionStatus: document.getElementById("connection-status"),
     currentTask: document.getElementById("current-task"),
+    evolveVisualizerButton: document.getElementById("evolve-visualizer-button"),
     form: document.getElementById("chat-form"),
     input: document.getElementById("message-input"),
     messages: document.getElementById("messages"),
@@ -20,6 +21,7 @@
   let socket = null;
   let waitingForInput = false;
   let running = false;
+  let pendingEvolveVisualizerWindow = null;
   let pendingSimulatorWindow = null;
   let shuttingDown = false;
 
@@ -60,9 +62,15 @@
       appendMessage("agent", message.message || "仿真可视化页面已打开。");
       return;
     }
+    if (message.type === "evolve_visualizer") {
+      openEvolveVisualizerWindow(message.url);
+      appendMessage("agent", message.message || "优化进度可视化页面已打开。");
+      return;
+    }
     if (message.type === "error") {
       setBusy(false);
       closePendingSimulatorWindow();
+      closePendingEvolveVisualizerWindow();
       appendMessage("error", message.error || "请求失败");
       return;
     }
@@ -198,6 +206,11 @@
     sendPayload({ type: "launch_simulator" });
   });
 
+  elements.evolveVisualizerButton.addEventListener("click", () => {
+    pendingEvolveVisualizerWindow = window.open("about:blank", "mapf-agent-evolve-visualizer");
+    sendPayload({ type: "launch_evolve_visualizer" });
+  });
+
   elements.stopButton.addEventListener("click", () => {
     if (shuttingDown) {
       return;
@@ -235,11 +248,31 @@
     window.open(url, "warerover-simulator");
   }
 
+  function openEvolveVisualizerWindow(url) {
+    if (!url) {
+      return;
+    }
+    if (pendingEvolveVisualizerWindow && !pendingEvolveVisualizerWindow.closed) {
+      pendingEvolveVisualizerWindow.location.href = url;
+      pendingEvolveVisualizerWindow.focus();
+      pendingEvolveVisualizerWindow = null;
+      return;
+    }
+    window.open(url, "mapf-agent-evolve-visualizer");
+  }
+
   function closePendingSimulatorWindow() {
     if (pendingSimulatorWindow && !pendingSimulatorWindow.closed) {
       pendingSimulatorWindow.close();
     }
     pendingSimulatorWindow = null;
+  }
+
+  function closePendingEvolveVisualizerWindow() {
+    if (pendingEvolveVisualizerWindow && !pendingEvolveVisualizerWindow.closed) {
+      pendingEvolveVisualizerWindow.close();
+    }
+    pendingEvolveVisualizerWindow = null;
   }
 
   function formatBoolean(value) {

@@ -14,6 +14,7 @@ from http.server import SimpleHTTPRequestHandler
 from socketserver import TCPServer
 from typing import Any, Awaitable, Callable, TextIO
 
+from mapf_agent.evolve_visualizer import EvolveVisualizerHub
 from mapf_agent.paths import PROJECT_ROOT
 from mapf_agent.session import AgentSession
 from mapf_agent.visualizer import VisualizerHub, set_active_visualizer
@@ -22,6 +23,7 @@ from mapf_agent.visualizer import VisualizerHub, set_active_visualizer
 DEFAULT_HTTP_PORT = 8010
 DEFAULT_WS_PORT = 8766
 _VISUALIZER_HUB = VisualizerHub()
+_EVOLVE_VISUALIZER_HUB = EvolveVisualizerHub()
 set_active_visualizer(_VISUALIZER_HUB)
 _SHUTDOWN_EVENT: asyncio.Event | None = None
 
@@ -130,7 +132,12 @@ def _launch_simulator_sync() -> dict[str, Any]:
     return _VISUALIZER_HUB.open()
 
 
+def _launch_evolve_visualizer_sync() -> dict[str, Any]:
+    return _EVOLVE_VISUALIZER_HUB.open()
+
+
 def _request_shutdown(force: bool = False) -> None:
+    _EVOLVE_VISUALIZER_HUB.stop()
     if _SHUTDOWN_EVENT is not None:
         _SHUTDOWN_EVENT.set()
     if force:
@@ -182,6 +189,11 @@ async def ws_handler(websocket: Any, *_: Any) -> None:
             if message_type == "launch_simulator":
                 result = await asyncio.to_thread(_launch_simulator_sync)
                 await send("simulator", **result)
+                continue
+
+            if message_type == "launch_evolve_visualizer":
+                result = await asyncio.to_thread(_launch_evolve_visualizer_sync)
+                await send("evolve_visualizer", **result)
                 continue
 
             if message_type not in {"start", "resume", "reset"}:
