@@ -42,9 +42,9 @@ class SimConfig:
     order_mode: str = "oneshot"  # Order generation mode
     total_orders_limit: int = 150
 
-    size2_ratio: float = 0.4
+    size2_ratio: float = 0
     # Proportion of size-2 orders among all orders, range: 0.0 ~ 1.0
-    cross_floor_order_ratio: float = 0
+    cross_floor_order_ratio: float = 0.2
     # Proportion of cross-floor orders among generated orders, range: 0.0 ~ 1.0
 
     order_processing_timeout: int = 30
@@ -55,7 +55,7 @@ class SimConfig:
     # Random seed for order generation; None means non-deterministic
 
     # Map and simulation step configuration
-    map_file: str = "config\maps\map_25_20_het.json"  # Default map file path
+    map_file: str = "config\maps\map_20_15_2floor.json"  # Default map file path
     max_steps: int = 3000
 
     time_step: float = 1.0        # Duration of each simulation step (seconds)
