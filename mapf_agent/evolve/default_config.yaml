@@ -21,9 +21,10 @@ prompt:
     ## Problem Domain
     This is a warehouse simulation where multiple AGVs (Automated Guided Vehicles) of different sizes
     navigate a grid map to pick up goods from shelves and deliver them to receiver stations.
-    The system has two core algorithm components:
+    The system has two core algorithm components and one optimizable layout surface:
     - **Planner**: computes collision-free paths for multiple AGVs simultaneously.
     - **Scheduler**: assigns pending orders to idle AGVs and produces task sequences.
+    - **Layout generator**: creates constrained map JSON data for the fixed planner/scheduler.
 
     ## Interface Contracts (MUST be preserved)
     These interfaces are injected from the current repository, so treat them as authoritative:
@@ -43,6 +44,9 @@ prompt:
     just because the partial tasks look fast.
 
     ## Optimization Directions
+    For target=layout, improve spatial organization: keep required counts and sizes exact, avoid
+    unreachable shelves/receivers/wait zones, reduce bottlenecks around elevators and narrow corridors,
+    and use compact helper logic instead of hand-writing long JSON literals.
     - Improve conflict resolution (fewer collisions, deadlocks, and replanning cycles)
     - Better heuristics (distance, congestion-aware cost functions)
     - Smarter task assignment (higher throughput, lower average task completion time, balanced workload)
@@ -50,13 +54,15 @@ prompt:
     - Robustness to AGV faults (fault_manager may disable AGVs mid-simulation)
 
     ## Constraints
-    - The candidate program MUST contain the required concrete subclass(es) for the selected target.
+    - For target=planner/scheduler/both, the candidate program MUST contain the required concrete subclass(es).
+    - For target=layout, the candidate program MUST define `generate_map(constraints: dict) -> dict`.
     - For target=both, keep planner and scheduler as two separate classes; do not merge them.
-    - Do NOT change the method signatures of plan() or assign_tasks().
+    - Do NOT change the public method/function signatures required by the selected target.
     - The algorithm must terminate within reasonable time (avoid infinite loops).
     - All imports must be available in the project environment (standard lib + numpy + scipy are safe).
   num_top_programs: 3
   use_template_stochasticity: true
+  include_artifacts: true
 database:
   population_size: 30
   archive_size: 10
@@ -69,5 +75,6 @@ evaluator:
   cascade_evaluation: true
   cascade_thresholds: [0.01]
   parallel_evaluations: 2
+  enable_artifacts: true
 diff_based_evolution: true
 max_code_length: 60000

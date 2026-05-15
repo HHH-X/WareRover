@@ -25,6 +25,7 @@ class OptimizationTarget(str, Enum):
     PLANNER = "planner"
     SCHEDULER = "scheduler"
     BOTH = "both"
+    LAYOUT = "layout"
 
 
 @dataclass
@@ -32,13 +33,14 @@ class EvolveRequest:
     target: OptimizationTarget
     planner_source: Optional[CodeSource] = None
     scheduler_source: Optional[CodeSource] = None
-    baseline_planner_type: str = "astar"
-    baseline_scheduler_type: str = "random"
+    layout_source: Optional[CodeSource] = None
+    layout_constraints: Optional[CodeSource] = None
     config_path: Optional[CodeSource] = None
     iterations: Optional[int] = None
     output_root: Optional[CodeSource] = None
     seeds: Sequence[int] = (42, 43, 44)
     system_config_json: Optional[str] = None
+    layout_constraints_json: Optional[str] = None
 
 
 @dataclass
@@ -160,6 +162,7 @@ def _build_initial_program(
     target: OptimizationTarget,
     planner_code: str,
     scheduler_code: str,
+    layout_code: str = "",
 ) -> str:
     """Build the initial_program.py that OpenEvolve will evolve.
 
@@ -167,6 +170,11 @@ def _build_initial_program(
     the EVOLVE-BLOCK so the LLM cannot accidentally break them.  Only the core
     algorithm methods live inside the block.
     """
+    if target == OptimizationTarget.LAYOUT:
+        from mapf_agent.evolve.layout import build_layout_initial_program
+
+        return build_layout_initial_program(layout_code)
+
     sources = []
     if target in (OptimizationTarget.PLANNER, OptimizationTarget.BOTH):
         sources.append(("Planner", planner_code, "BasePlanner"))
@@ -186,6 +194,18 @@ def _read_repo_file(relative_path: str) -> str:
 
 
 def _interface_contracts(target: OptimizationTarget) -> str:
+    if target == OptimizationTarget.LAYOUT:
+        return (
+            "### Layout generator interface\n"
+            "```python\n"
+            "def generate_map(constraints: dict) -> dict:\n"
+            "    \"\"\"Return a WareRover map JSON-compatible dictionary.\"\"\"\n"
+            "```\n\n"
+            "The evaluator calls only `generate_map(constraints)`. Keep this function name and "
+            "signature stable. Helper functions are allowed, but the returned object must satisfy "
+            "`mapf_agent/schema/map_schema.json` and the normalized layout constraints."
+        )
+
     parts = []
     if target in (OptimizationTarget.PLANNER, OptimizationTarget.BOTH):
         parts.append(
@@ -216,6 +236,14 @@ def _target_guidance(target: OptimizationTarget) -> str:
             "Optimize the scheduler implementation only. Keep exactly one concrete BaseScheduler "
             "subclass in the program and focus on assigning feasible orders to idle AGVs, reducing "
             "travel, improving completion rate, and handling cross-floor tasks."
+        )
+    if target == OptimizationTarget.LAYOUT:
+        return (
+            "Optimize a Python map layout generator. The candidate program must expose "
+            "`generate_map(constraints: dict) -> dict`. Use loops and helper functions to place "
+            "boxes, receivers, wait zones, AGVs, elevators, and obstacles so the generated map "
+            "satisfies all hard constraints and improves simulation metrics with the fixed planner "
+            "and scheduler configured by the evaluator."
         )
     return (
         "Optimize the planner and scheduler together. Keep one concrete BasePlanner subclass and "
@@ -335,9 +363,21 @@ def run_evolution(request: EvolveRequest) -> EvolveResult:
         raise ValueError("planner_source is required for planner/both optimization")
     if target in (OptimizationTarget.SCHEDULER, OptimizationTarget.BOTH) and not request.scheduler_source:
         raise ValueError("scheduler_source is required for scheduler/both optimization")
+    if target == OptimizationTarget.LAYOUT and not request.layout_constraints:
+        raise ValueError("layout_constraints is required for layout optimization")
 
     planner_code = _read_source(request.planner_source, "planner") if request.planner_source else ""
     scheduler_code = _read_source(request.scheduler_source, "scheduler") if request.scheduler_source else ""
+    layout_code = _read_source(request.layout_source, "layout") if request.layout_source else ""
+
+    if target == OptimizationTarget.LAYOUT:
+        from mapf_agent.evolve.layout import load_layout_constraints
+
+        request.layout_constraints_json = json.dumps(
+            load_layout_constraints(request.layout_constraints),
+            ensure_ascii=False,
+            sort_keys=True,
+        )
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_id = f"evolve_{target.value}_{ts}_{uuid.uuid4().hex[:6]}"
@@ -352,7 +392,7 @@ def run_evolution(request: EvolveRequest) -> EvolveResult:
     result_path = run_dir / "openevolve_result.json"
 
     init_path.write_text(
-        _build_initial_program(target, planner_code, scheduler_code),
+        _build_initial_program(target, planner_code, scheduler_code, layout_code),
         encoding="utf-8",
     )
 

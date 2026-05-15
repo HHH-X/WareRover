@@ -1,0 +1,36 @@
+map:
+  width: 12
+  height: 10
+  floors: 2
+
+agvs:
+  - size: 1
+    count: 4
+  - size: 2
+    count: 2
+
+boxes:
+  - size: 1
+    count: 12
+
+receivers:
+  - size: 1
+    count: 8
+
+wait_zones:
+  per_agv: true
+
+elevators:
+  - size: 1
+    count: 1
+    fixed_positions:
+      - [5, 5]
+  - size: 2
+    count: 1
+    fixed: false
+
+simulation:
+  planner_type: astar
+  scheduler_type: ta
+  max_steps: 3000
+  total_orders_limit: 150

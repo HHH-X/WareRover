@@ -30,8 +30,8 @@ class SimConfig:
     """Simulation configuration parameters"""
 
     # ==================== Algorithm selection ====================
-    scheduler_type: str = "ta-both-100"
-    planner_type: str = "cbs-both-100"
+    scheduler_type: str = "ta"
+    planner_type: str = "astar"
     force_replan_every_step: bool = False
     # Whether to force each decision-making AGV to replan its path at every step.
     # Automatically coupled with DHC when enabled.
@@ -42,7 +42,7 @@ class SimConfig:
     order_mode: str = "oneshot"  # Order generation mode
     total_orders_limit: int = 150
 
-    size2_ratio: float = 0
+    size2_ratio: float = 0.4
     # Proportion of size-2 orders among all orders, range: 0.0 ~ 1.0
     cross_floor_order_ratio: float = 0
     # Proportion of cross-floor orders among generated orders, range: 0.0 ~ 1.0
@@ -55,7 +55,7 @@ class SimConfig:
     # Random seed for order generation; None means non-deterministic
 
     # Map and simulation step configuration
-    map_file: str = "config\maps\map_20_15_32.json"  # Default map file path
+    map_file: str = "config\maps\map_evolved_example.json"  # Default map file path
     max_steps: int = 3000
 
     time_step: float = 1.0        # Duration of each simulation step (seconds)

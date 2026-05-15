@@ -5,6 +5,7 @@ Examples
   python -m mapf_agent.evolve --target planner --source planner/astar_planner.py
   python -m mapf_agent.evolve --target scheduler --source scheduler/TA_scheduler.py --iterations 100
   python -m mapf_agent.evolve --target both --planner-source planner/cbs_fw_planner.py --scheduler-source scheduler\TA_scheduler.py --iterations 100
+  python -m mapf_agent.evolve --target layout --layout-constraints config/layout_constraints/example.yaml --iterations 100
   python -m mapf_agent.evolve --list planner   # list available implementations
 """
 from __future__ import annotations
@@ -43,7 +44,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--target", "-t",
-        choices=["planner", "scheduler", "both"],
+        choices=["planner", "scheduler", "both", "layout"],
         default="planner",
         help="优化目标类型 (默认: planner)",
     )
@@ -53,11 +54,10 @@ def main() -> None:
     )
     parser.add_argument("--planner-source", help="Planner 源文件（target=both 时使用）")
     parser.add_argument("--scheduler-source", help="Scheduler 源文件（target=both 时使用）")
+    parser.add_argument("--layout-constraints", help="地图布局优化约束 YAML/JSON 文件（target=layout 时使用）")
     parser.add_argument("--config", "-c", help="OpenEvolve 配置 YAML 路径")
     parser.add_argument("--iterations", "-n", type=int, help="迭代次数")
     parser.add_argument("--output", "-o", default=None, help="输出根目录 (默认: output/evolve/)")
-    parser.add_argument("--baseline-planner", default="astar", help="基线 planner 类型")
-    parser.add_argument("--baseline-scheduler", default="random", help="基线 scheduler 类型")
 
     args = parser.parse_args()
 
@@ -71,6 +71,7 @@ def main() -> None:
 
     planner_src = None
     scheduler_src = None
+    layout_src = None
     if target == OptimizationTarget.BOTH:
         planner_src = args.planner_source
         scheduler_src = args.scheduler_source
@@ -80,17 +81,21 @@ def main() -> None:
         planner_src = args.source
         if not planner_src:
             parser.error("请通过 --source 指定 planner 源文件")
-    else:
+    elif target == OptimizationTarget.SCHEDULER:
         scheduler_src = args.source
         if not scheduler_src:
             parser.error("请通过 --source 指定 scheduler 源文件")
+    else:
+        layout_src = args.source
+        if not args.layout_constraints:
+            parser.error("target=layout 时需要提供 --layout-constraints")
 
     req = EvolveRequest(
         target=target,
         planner_source=planner_src,
         scheduler_source=scheduler_src,
-        baseline_planner_type=args.baseline_planner,
-        baseline_scheduler_type=args.baseline_scheduler,
+        layout_source=layout_src,
+        layout_constraints=args.layout_constraints,
         config_path=args.config,
         iterations=args.iterations,
         output_root=args.output,
