@@ -4,11 +4,12 @@ from __future__ import annotations
 import ast
 import json
 import os
+import shlex
 import subprocess
 import sys
 import uuid
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -41,6 +42,8 @@ class EvolveRequest:
     seeds: Sequence[int] = (42, 43, 44)
     system_config_json: Optional[str] = None
     layout_constraints_json: Optional[str] = None
+    # CLI entry: ``sys.argv``; programmatic callers leave None (manifest marks non-cli)
+    launch_argv: Optional[Sequence[str]] = None
 
 
 @dataclass
@@ -352,6 +355,26 @@ def _run_openevolve_worker(
     return payload
 
 
+def _write_run_manifest(run_dir: Path, launch_argv: Optional[Sequence[str]]) -> None:
+    from config.settings import SystemConfig
+
+    invocation: Dict[str, Any]
+    if launch_argv is None:
+        invocation = {"source": "non_cli"}
+    else:
+        argv_list = list(launch_argv)
+        invocation = {
+            "argv": argv_list,
+            "command_line": shlex.join(argv_list),
+            "python_executable": sys.executable,
+        }
+    payload = {"invocation": invocation, "settings": asdict(SystemConfig())}
+    (run_dir / "run_manifest.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, default=str) + "\n",
+        encoding="utf-8",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Public entry
 # ---------------------------------------------------------------------------
@@ -404,6 +427,7 @@ def run_evolution(request: EvolveRequest) -> EvolveResult:
     else:
         cfg_text = _load_default_config(target)
     cfg_path.write_text(cfg_text, encoding="utf-8")
+    _write_run_manifest(run_dir, request.launch_argv)
 
     from utils.api_key import load_api_key
     os.environ["OPENAI_API_KEY"] = load_api_key()

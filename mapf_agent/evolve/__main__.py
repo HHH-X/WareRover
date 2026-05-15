@@ -99,6 +99,7 @@ def main() -> None:
         config_path=args.config,
         iterations=args.iterations,
         output_root=args.output,
+        launch_argv=sys.argv,
     )
 
     print(f"开始优化: target={target.value}")
