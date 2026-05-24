@@ -1,4 +1,5 @@
 # run.py
+import argparse
 import asyncio
 import json
 import os
@@ -31,6 +32,33 @@ STATE = {
 RUNNING = True
 NEED_RESET = False
 
+MAX_SEED = 2**32 - 1
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Random seed for this simulation. If omitted, a random seed is generated.",
+    )
+    return parser.parse_args()
+
+
+def resolve_seed(seed):
+    if seed is not None:
+        return seed
+    return random.SystemRandom().randint(0, MAX_SEED)
+
+
+def apply_seed(ctx, seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    ctx.system_config.sim_config.order_seed = seed
+    ctx.system_config.fault_config.fault_seed = seed
+
+
 def start_http_server(port=18000):
     """Start local HTTP server (avoids file:// CORS issues)."""
     os.chdir(os.path.abspath("."))
@@ -40,13 +68,14 @@ def start_http_server(port=18000):
         httpd.serve_forever()
 
 
-async def simulator_loop(websocket, message_queue):
+async def simulator_loop(websocket, message_queue, seed):
     global RUNNING
     global NEED_RESET
-    print("Simulation begin")
+    print(f"Simulation begin with seed={seed}")
 
     ctx = SimulationContext()
     ctx.system_config = SystemConfig()
+    apply_seed(ctx, seed)
 
     ctx.logger = GlobalLogger(ctx)
     ctx.clock = SimulationClock(ctx)
@@ -111,10 +140,10 @@ async def simulator_loop(websocket, message_queue):
     print("Simulation loop ended.")
 
 
-async def ws_handler(websocket):
+async def ws_handler(websocket, seed):
     global RUNNING
     message_queue = asyncio.Queue()
-    sim_task = asyncio.create_task(simulator_loop(websocket, message_queue))
+    sim_task = asyncio.create_task(simulator_loop(websocket, message_queue, seed))
 
     try:
         async for message in websocket:
@@ -163,6 +192,10 @@ async def ws_handler(websocket):
 async def main():
     """Start visualization: HTTP server + WebSocket + open browser."""
     global RUNNING
+    args = parse_args()
+    seed = resolve_seed(args.seed)
+    print(f"Using simulation seed: {seed}")
+
     http_port = 8000
     threading.Thread(target=start_http_server, args=(http_port,), daemon=True).start()
 
@@ -171,7 +204,10 @@ async def main():
     print(f"Opening browser at {frontend_url}")
 
     ws_port = 8765
-    async with websockets.serve(ws_handler, "localhost", ws_port):
+    async def handler(websocket):
+        await ws_handler(websocket, seed)
+
+    async with websockets.serve(handler, "localhost", ws_port):
         print(f"WebSocket server running at ws://localhost:{ws_port}")
         while RUNNING:
             await asyncio.sleep(0.5)

@@ -19,7 +19,7 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
 
     return textwrap.dedent(f"""\
         from __future__ import annotations
-        import importlib.util, json, random, traceback
+        import importlib.util, json, os, random, subprocess, sys, tempfile, traceback
         from typing import Any, Dict, Type
         import numpy as np
         from config.settings import SystemConfig
@@ -41,6 +41,7 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
         SEEDS = {seeds!r}
         _SYS_CFG_JSON = {sys_cfg_json!r}
         _STAGE1_MAX_STEPS = 200
+        _SIM_TIMEOUT_SECONDS = 240
 
         _registry = AlgorithmRegistry()
 
@@ -83,6 +84,65 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
             if TARGET in ("scheduler", "both"):
                 _registry.register_scheduler("{scheduler_reg}", _pick_subclass(mod, BaseScheduler, "scheduler"))
 
+        def _timeout_result(seed, max_steps, reason="timeout"):
+            try:
+                cfg = _make_config(seed, max_steps)
+                limit = float(cfg.sim_config.max_steps)
+                total_orders_limit = float(cfg.sim_config.total_orders_limit)
+            except Exception:
+                limit = float(max_steps if max_steps is not None else SystemConfig().sim_config.max_steps)
+                total_orders_limit = float(SystemConfig().sim_config.total_orders_limit)
+            return {{"finished": False,
+                     "timeout": True,
+                     "error": str(reason),
+                     "seed": int(seed),
+                     "task_success_rate": 0.0,
+                     "avg_task_time": limit,
+                     "throughput": 0.0,
+                     "total_agv_collisions": total_orders_limit,
+                     "max_steps": limit,
+                     "sim_steps": limit,
+                     "total_orders_limit": total_orders_limit}}
+
+        def _run_single_child(program_path, seed, max_steps=None):
+            request = {{"program_path": program_path, "seed": int(seed), "max_steps": max_steps}}
+            in_file = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8")
+            out_file = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8")
+            try:
+                json.dump(request, in_file)
+                in_file.close()
+                out_file.close()
+                env = os.environ.copy()
+                env["PYTHONPATH"] = os.pathsep.join(
+                    [os.getcwd()] + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else [])
+                )
+                completed = subprocess.run(
+                    [sys.executable, os.path.abspath(__file__), "--run-single-child", in_file.name, out_file.name],
+                    cwd=os.getcwd(),
+                    env=env,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=_SIM_TIMEOUT_SECONDS,
+                )
+                if completed.returncode != 0:
+                    stderr = (completed.stderr or completed.stdout or "").strip()
+                    return _timeout_result(seed, max_steps, stderr or f"child exited with {{completed.returncode}}")
+                with open(out_file.name, "r", encoding="utf-8") as handle:
+                    return json.load(handle)
+            except subprocess.TimeoutExpired:
+                return _timeout_result(seed, max_steps)
+            except Exception as exc:
+                return _timeout_result(seed, max_steps, exc)
+            finally:
+                for path in (in_file.name, out_file.name):
+                    try:
+                        os.unlink(path)
+                    except OSError:
+                        pass
+
         def _make_config(seed, max_steps=None):
             if _SYS_CFG_JSON:
                 cfg = SystemConfig()
@@ -102,7 +162,8 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
                 cfg.sim_config.max_steps = max_steps
             return cfg
 
-        def _run_single(seed, max_steps=None):
+        def _run_single_impl(program_path, seed, max_steps=None):
+            _register_candidate(program_path)
             random.seed(seed); np.random.seed(seed)
             cfg = _make_config(seed, max_steps)
             if TARGET == "planner":
@@ -129,18 +190,46 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
                 ctx.simulator.step(); ctx.fault_manager.step()
             m = ctx.logger.get_final_metrics(ctx.clock.now())
             return {{"finished": bool(ctx.order_manager.is_all_orders_completed()),
+                     "timeout": False,
+                     "seed": int(seed),
                      "task_success_rate": float(m.get("Task Success Rate", 0.0)),
                      "avg_task_time": float(m.get("Avg Task Time", 0.0)),
                      "throughput": float(m.get("Throughput", 0.0)),
                      "total_agv_collisions": float(m.get("Total AGV Collisions", 0.0)),
                      "max_steps": float(cfg.sim_config.max_steps),
+                     "sim_steps": float(ctx.clock.now()),
                      "total_orders_limit": float(cfg.sim_config.total_orders_limit)}}
+
+        def _run_single(program_path, seed, max_steps=None):
+            return _run_single_child(program_path, seed, max_steps=max_steps)
+
+        def _child_entry():
+            if len(sys.argv) != 4 or sys.argv[1] != "--run-single-child":
+                raise SystemExit("usage: evaluator.py --run-single-child INPUT_JSON OUTPUT_JSON")
+            with open(sys.argv[2], "r", encoding="utf-8") as handle:
+                request = json.load(handle)
+            try:
+                result = _run_single_impl(
+                    request["program_path"],
+                    int(request["seed"]),
+                    max_steps=request.get("max_steps"),
+                )
+            except Exception as exc:
+                traceback.print_exc()
+                result = _timeout_result(request.get("seed", 0), request.get("max_steps"), exc)
+                result["timeout"] = False
+            with open(sys.argv[3], "w", encoding="utf-8") as handle:
+                json.dump(result, handle, ensure_ascii=False)
 
         def _clamp01(value):
             return min(max(float(value), 0.0), 1.0)
 
         def _compute_scores(results):
             n = len(results)
+            timed_out_runs = sum(1 for r in results if r.get("timeout"))
+            failed_runs = sum(1 for r in results if r.get("timeout") or r.get("error"))
+            timeout_rate = timed_out_runs / n
+            failure_rate = failed_runs / n
             task_success_rate = sum(r["task_success_rate"] for r in results) / n
             avg_task_time = sum(r["avg_task_time"] for r in results) / n
             throughput = sum(r["throughput"] for r in results) / n
@@ -165,19 +254,21 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
                 + 0.25 * throughput_score
                 + 0.20 * task_time_score
                 + 0.15 * collision_score
-            )
+            ) * (1.0 - failure_rate)
             return {{"combined_score": combined,
                      "success_score": success_score,
                      "task_time_score": task_time_score,
                      "throughput_score": throughput_score,
-                     "collision_score": collision_score}}
+                     "collision_score": collision_score,
+                     "timeout_rate": timeout_rate,
+                     "timed_out_runs": float(timed_out_runs),
+                     "failure_rate": failure_rate}}
 
         # ── cascade stage 1: quick single-seed validation ──
 
         def evaluate_stage1(program_path: str):
             try:
-                _register_candidate(program_path)
-                r = _run_single(SEEDS[0], max_steps=_STAGE1_MAX_STEPS)
+                r = _run_single(program_path, SEEDS[0], max_steps=_STAGE1_MAX_STEPS)
                 return _compute_scores([r])
             except Exception as e:
                 print(f"Stage-1 failed: {{e}}")
@@ -191,13 +282,15 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
 
         def evaluate(program_path: str):
             try:
-                _register_candidate(program_path)
-                results = [_run_single(s) for s in SEEDS]
+                results = [_run_single(program_path, s) for s in SEEDS]
                 return _compute_scores(results)
             except Exception as e:
                 print(f"Evaluation failed: {{e}}")
                 traceback.print_exc()
                 return {{"combined_score":0.0,"error":str(e)}}
+
+        if __name__ == "__main__":
+            _child_entry()
     """)
 
 
@@ -208,7 +301,7 @@ def build_layout_evaluator_code(req: "EvolveRequest") -> str:
 
     return textwrap.dedent(f"""\
         from __future__ import annotations
-        import importlib.util, json, os, random, tempfile, traceback
+        import importlib.util, json, os, random, subprocess, sys, tempfile, traceback
         from typing import Any, Dict, List
         import numpy as np
         from config.settings import SystemConfig
@@ -230,6 +323,7 @@ def build_layout_evaluator_code(req: "EvolveRequest") -> str:
         CONSTRAINTS = json.loads({constraints_json!r})
         _SYS_CFG_JSON = {sys_cfg_json!r}
         _STAGE1_MAX_STEPS = 200
+        _SIM_TIMEOUT_SECONDS = 180
 
         def _load_module(path: str):
             spec = importlib.util.spec_from_file_location("candidate_layout", path)
@@ -294,13 +388,78 @@ def build_layout_evaluator_code(req: "EvolveRequest") -> str:
                 ]
             return result
 
+        def _timeout_result(seed, max_steps, reason="timeout"):
+            try:
+                cfg = _make_config(seed, "", max_steps)
+                limit = float(cfg.sim_config.max_steps)
+                total_orders_limit = float(cfg.sim_config.total_orders_limit)
+            except Exception:
+                limit = float(max_steps if max_steps is not None else SystemConfig().sim_config.max_steps)
+                total_orders_limit = float(SystemConfig().sim_config.total_orders_limit)
+            return {{"finished": False,
+                     "timeout": True,
+                     "error": str(reason),
+                     "seed": int(seed),
+                     "task_success_rate": 0.0,
+                     "avg_task_time": limit,
+                     "throughput": 0.0,
+                     "total_agv_collisions": total_orders_limit,
+                     "total_agv_elevator_wait_blocks": total_orders_limit,
+                     "max_steps": limit,
+                     "sim_steps": limit,
+                     "total_orders_limit": total_orders_limit}}
+
+        def _run_single_child(seed, map_data: Dict[str, Any], max_steps=None, collect_artifacts: bool = False):
+            request = {{
+                "seed": int(seed),
+                "map_data": map_data,
+                "max_steps": max_steps,
+                "collect_artifacts": bool(collect_artifacts),
+            }}
+            in_file = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8")
+            out_file = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8")
+            try:
+                json.dump(request, in_file, ensure_ascii=False)
+                in_file.close()
+                out_file.close()
+                env = os.environ.copy()
+                env["PYTHONPATH"] = os.pathsep.join(
+                    [os.getcwd()] + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else [])
+                )
+                completed = subprocess.run(
+                    [sys.executable, os.path.abspath(__file__), "--run-single-child", in_file.name, out_file.name],
+                    cwd=os.getcwd(),
+                    env=env,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=_SIM_TIMEOUT_SECONDS,
+                )
+                if completed.returncode != 0:
+                    stderr = (completed.stderr or completed.stdout or "").strip()
+                    return _timeout_result(seed, max_steps, stderr or f"child exited with {{completed.returncode}}")
+                with open(out_file.name, "r", encoding="utf-8") as handle:
+                    return json.load(handle)
+            except subprocess.TimeoutExpired:
+                return _timeout_result(seed, max_steps)
+            except Exception as exc:
+                return _timeout_result(seed, max_steps, exc)
+            finally:
+                for path in (in_file.name, out_file.name):
+                    try:
+                        os.unlink(path)
+                    except OSError:
+                        pass
+
         def _observe_heatmap(ctx, heatmap: Dict[str, Dict[str, int]]) -> None:
             for agv_id, pos in ctx.agv_manager.get_all_current_pos().items():
                 floor_id = str(ctx.agv_manager.get_agv_floor(agv_id))
                 key = f"{{int(pos[0])}},{{int(pos[1])}}"
                 heatmap.setdefault(floor_id, {{}})[key] = heatmap.setdefault(floor_id, {{}}).get(key, 0) + 1
 
-        def _run_single(seed, map_data: Dict[str, Any], max_steps=None, collect_artifacts: bool = False):
+        def _run_single_impl(seed, map_data: Dict[str, Any], max_steps=None, collect_artifacts: bool = False):
             random.seed(seed); np.random.seed(seed)
             map_file = _write_temp_map(map_data)
             heatmap: Dict[str, Dict[str, int]] = {{}}
@@ -327,6 +486,8 @@ def build_layout_evaluator_code(req: "EvolveRequest") -> str:
                     _observe_heatmap(ctx, heatmap)
                 m = ctx.logger.get_final_metrics(ctx.clock.now())
                 result = {{"finished": bool(ctx.order_manager.is_all_orders_completed()),
+                         "timeout": False,
+                         "seed": int(seed),
                          "task_success_rate": float(m.get("Task Success Rate", 0.0)),
                          "avg_task_time": float(m.get("Avg Task Time", 0.0)),
                          "throughput": float(m.get("Throughput", 0.0)),
@@ -352,11 +513,42 @@ def build_layout_evaluator_code(req: "EvolveRequest") -> str:
                 except OSError:
                     pass
 
+        def _run_single(seed, map_data: Dict[str, Any], max_steps=None, collect_artifacts: bool = False):
+            return _run_single_child(
+                seed,
+                map_data,
+                max_steps=max_steps,
+                collect_artifacts=collect_artifacts,
+            )
+
+        def _child_entry():
+            if len(sys.argv) != 4 or sys.argv[1] != "--run-single-child":
+                raise SystemExit("usage: evaluator.py --run-single-child INPUT_JSON OUTPUT_JSON")
+            with open(sys.argv[2], "r", encoding="utf-8") as handle:
+                request = json.load(handle)
+            try:
+                result = _run_single_impl(
+                    int(request["seed"]),
+                    request["map_data"],
+                    max_steps=request.get("max_steps"),
+                    collect_artifacts=bool(request.get("collect_artifacts")),
+                )
+            except Exception as exc:
+                traceback.print_exc()
+                result = _timeout_result(request.get("seed", 0), request.get("max_steps"), exc)
+                result["timeout"] = False
+            with open(sys.argv[3], "w", encoding="utf-8") as handle:
+                json.dump(result, handle, ensure_ascii=False)
+
         def _clamp01(value):
             return min(max(float(value), 0.0), 1.0)
 
         def _compute_scores(results, validation):
             n = len(results)
+            timed_out_runs = sum(1 for r in results if r.get("timeout"))
+            failed_runs = sum(1 for r in results if r.get("timeout") or r.get("error"))
+            timeout_rate = timed_out_runs / n
+            failure_rate = failed_runs / n
             task_success_rate = sum(r["task_success_rate"] for r in results) / n
             avg_task_time = sum(r["avg_task_time"] for r in results) / n
             throughput = sum(r["throughput"] for r in results) / n
@@ -386,14 +578,17 @@ def build_layout_evaluator_code(req: "EvolveRequest") -> str:
                 + 0.15 * congestion_score
                 + 0.10 * reachability_score
                 + 0.05 * validity_score
-            )
+            ) * (1.0 - failure_rate)
             return {{"combined_score": combined,
                      "validity_score": validity_score,
                      "reachability_score": reachability_score,
                      "success_score": success_score,
                      "task_time_score": task_time_score,
                      "throughput_score": throughput_score,
-                     "congestion_score": congestion_score}}
+                     "congestion_score": congestion_score,
+                     "timeout_rate": timeout_rate,
+                     "timed_out_runs": float(timed_out_runs),
+                     "failure_rate": failure_rate}}
 
         def _invalid_result(validation, stage: str):
             return EvaluationResult(
@@ -453,4 +648,7 @@ def build_layout_evaluator_code(req: "EvolveRequest") -> str:
                 traceback.print_exc()
                 return EvaluationResult(metrics={{"combined_score":0.0,"error":0.0}},
                                         artifacts={{"stderr": str(e), "traceback": traceback.format_exc()}})
+
+        if __name__ == "__main__":
+            _child_entry()
     """)
