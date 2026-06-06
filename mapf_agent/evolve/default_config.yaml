@@ -1,11 +1,11 @@
 max_iterations: 10
 checkpoint_interval: 5
 llm:
-  primary_model: "DeepSeek-V3.2"
-  primary_model_weight: 0.8
-  secondary_model: "DeepSeek-V3.2"
-  secondary_model_weight: 0.2
-  api_base: "https://api.modelarts-maas.com/v1"
+  primary_model: {llm_primary_model}
+  primary_model_weight: {llm_primary_weight}
+  secondary_model: {llm_secondary_model}
+  secondary_model_weight: {llm_secondary_weight}
+  api_base: {llm_api_base}
   api_key: "${OPENAI_API_KEY}"
   temperature: 0.7
   max_tokens: 10000
@@ -35,13 +35,14 @@ prompt:
     {simulation_context_notes}
 
     ## Scoring Dimensions (weights in combined_score)
-    Metrics come from ctx.logger.get_final_metrics(ctx.clock.now()) and are normalized to 0..1.
-    - success_score (40%): Task Success Rate — fraction of orders completed; higher is better.
-    - throughput_score (25%): Throughput normalized against total_orders_limit / max_steps; higher is better.
-    - task_time_score (20%): Avg Task Time normalized against max_steps / 3; lower is better.
-    - collision_score (15%): Total AGV Collisions normalized against 2 * total_orders_limit; lower is better.
-    Efficiency scores are gated by Task Success Rate, so completing very few tasks cannot earn a high score
-    just because the partial tasks look fast.
+    The evaluator runs many randomized simulation episodes with a hard wall-clock timeout per episode.
+    A run is successful only if all orders finish before timeout and without evaluator errors.
+    - success_score (55% for algorithm targets): Success ratio across episodes; higher means fewer deadlocks and better robustness.
+    - task_time_score (20%): Avg Task Time averaged over successful runs only; lower is better.
+    - throughput_score (15%): Throughput averaged over successful runs only; higher is better.
+    - collision_score (10%): Total AGV Collisions averaged over successful runs only; lower is better.
+    Performance scores are averaged over successful runs only; robustness is captured solely by success_score
+    (55% weight) without double-penalizing the performance terms.
 
     ## Optimization Directions
     For target=layout, improve spatial organization: keep required counts and sizes exact, avoid
@@ -71,8 +72,8 @@ database:
   exploitation_ratio: 0.7
   similarity_threshold: 0.99
 evaluator:
-  timeout: 180
-  cascade_evaluation: true
+  timeout: 360
+  cascade_evaluation: false
   cascade_thresholds: [0.01]
   parallel_evaluations: 2
   enable_artifacts: true

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import re
 import traceback
 from typing import Dict
 
@@ -30,29 +29,32 @@ _TARGET_LABELS = {
     OptimizationTarget.BOTH: "路径规划器 + 任务调度器",
 }
 
+DEFAULT_EVALUATION_RUNS = 80
+DEFAULT_EVALUATION_WORKERS = 8
+DEFAULT_SIMULATION_TIMEOUT_SECONDS = 20.0
 
-def _parse_iterations(intent: Dict) -> int | None:
-    raw_value = intent.get("iterations")
-    if isinstance(raw_value, int) and raw_value > 0:
-        return raw_value
-    if isinstance(raw_value, str) and raw_value.isdigit():
-        value = int(raw_value)
-        return value if value > 0 else None
 
-    text = " ".join(
-        str(intent.get(key, ""))
-        for key in ("detail", "optimize_source")
-        if intent.get(key)
-    )
-    patterns = (
-        r"(?:迭代|进化|优化)\s*(?:次数|轮数)?\s*[:：=为]?\s*(\d+)\s*(?:轮|次|代)?",
-        r"(?:iterations?|iters?)\s*[:：=]?\s*(\d+)",
-        r"(\d+)\s*(?:轮|次|代)\s*(?:迭代|进化|优化)?",
-    )
-    for pattern in patterns:
-        match = re.search(pattern, text, flags=re.IGNORECASE)
-        if match:
-            value = int(match.group(1))
+def _get_positive_int(intent: Dict, *keys: str) -> int | None:
+    for key in keys:
+        raw_value = intent.get(key)
+        if isinstance(raw_value, int) and raw_value > 0:
+            return raw_value
+        if isinstance(raw_value, str) and raw_value.isdigit():
+            value = int(raw_value)
+            return value if value > 0 else None
+    return None
+
+
+def _get_positive_float(intent: Dict, *keys: str) -> float | None:
+    for key in keys:
+        raw_value = intent.get(key)
+        if isinstance(raw_value, (int, float)) and raw_value > 0:
+            return float(raw_value)
+        if isinstance(raw_value, str):
+            try:
+                value = float(raw_value)
+            except ValueError:
+                continue
             return value if value > 0 else None
     return None
 
@@ -86,7 +88,17 @@ def optimize_node(state: AgentState) -> Dict:
         target=target,
         planner_source=planner_path,
         scheduler_source=scheduler_path,
-        iterations=_parse_iterations(intent),
+        iterations=_get_positive_int(intent, "iterations"),
+        evaluation_runs=_get_positive_int(intent, "evaluation_runs", "eval_runs")
+        or DEFAULT_EVALUATION_RUNS,
+        evaluation_workers=_get_positive_int(intent, "evaluation_workers", "eval_workers")
+        or DEFAULT_EVALUATION_WORKERS,
+        simulation_timeout_seconds=_get_positive_float(
+            intent,
+            "simulation_timeout_seconds",
+            "sim_timeout",
+        )
+        or DEFAULT_SIMULATION_TIMEOUT_SECONDS,
         system_config_json=_serialize_system_config(state),
     )
 

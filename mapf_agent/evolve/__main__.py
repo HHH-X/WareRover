@@ -4,7 +4,7 @@ Examples
 --------
   python -m mapf_agent.evolve --target planner --source planner/astar_planner.py
   python -m mapf_agent.evolve --target scheduler --source scheduler/TA_scheduler.py --iterations 100
-  python -m mapf_agent.evolve --target both --planner-source planner/cbs_fw_planner.py --scheduler-source scheduler\TA_scheduler.py --iterations 100
+  python -m mapf_agent.evolve --target both --planner-source planner/cbs_fw_planner.py --scheduler-source scheduler/TA_scheduler.py --iterations 100
   python -m mapf_agent.evolve --target layout --layout-constraints config/layout_constraints/example.yaml --iterations 100
   python -m mapf_agent.evolve --list planner   # list available implementations
 """
@@ -57,6 +57,9 @@ def main() -> None:
     parser.add_argument("--layout-constraints", help="地图布局优化约束 YAML/JSON 文件（target=layout 时使用）")
     parser.add_argument("--config", "-c", help="OpenEvolve 配置 YAML 路径")
     parser.add_argument("--iterations", "-n", type=int, help="迭代次数")
+    parser.add_argument("--eval-runs", type=int, default=80, help="每个候选程序 full evaluation 的仿真次数")
+    parser.add_argument("--eval-workers", type=int, default=8, help="每个候选程序内部并发仿真的 worker 数")
+    parser.add_argument("--sim-timeout", type=float, default=20.0, help="单次仿真的墙钟超时秒数")
     parser.add_argument("--output", "-o", default=None, help="输出根目录 (默认: output/evolve/)")
 
     args = parser.parse_args()
@@ -99,6 +102,9 @@ def main() -> None:
         config_path=args.config,
         iterations=args.iterations,
         output_root=args.output,
+        evaluation_runs=args.eval_runs,
+        evaluation_workers=args.eval_workers,
+        simulation_timeout_seconds=args.sim_timeout,
         launch_argv=sys.argv,
     )
 

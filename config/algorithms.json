@@ -1,14 +1,15 @@
 {
   "planners": {
     "astar": "planner.astar_planner:AStarPlanner",
-    "cbs_fw": "planner.cbs_fw_planner:FixedWindowCBSPlanner",
+    "cbs": "planner.cbs_fw_planner:FixedWindowCBSPlanner",
     "dhc": "planner.dhc_planner:DHCPlanner",
-    "cbs-both-100":"output.evolve.evolve_both_20260510_210747_56d194.openevolve_output.best.best_program:FixedWindowCBSPlanner"
+    "cbs-100":"output.evolve.evolve_planner_20260604_163321_eb107c.openevolve_output.best.best_program:FixedWindowCBSPlanner",
+    "cbs-both-100":"output.evolve.evolve_both_20260531_204333_851cfc.openevolve_output.best.best_program:FixedWindowCBSPlanner"
   },
   "schedulers": {
     "random": "scheduler.random_scheduler:RandomScheduler",
     "ta": "scheduler.TA_scheduler:TAScheduler",
-    "ta-100":"output.evolve.evolve_scheduler_20260510_210043_520df8.openevolve_output.best.best_program:TAScheduler",
-    "ta-both-100":"output.evolve.evolve_both_20260510_210747_56d194.openevolve_output.best.best_program:TAScheduler"
+    "ta-100":"output.evolve.evolve_scheduler_20260603_195906_b9a6cd.openevolve_output.best.best_program:TAScheduler",
+    "ta-both-100":"output.evolve.evolve_both_20260531_204333_851cfc.openevolve_output.best.best_program:TAScheduler"
   }
 }

@@ -13,12 +13,18 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
         return build_layout_evaluator_code(req)
 
     seeds = list(int(s) for s in req.seeds)
+    evaluation_runs = max(1, int(req.evaluation_runs))
+    evaluation_workers = (
+        None if req.evaluation_workers is None else max(1, int(req.evaluation_workers))
+    )
+    simulation_timeout_seconds = max(1.0, float(req.simulation_timeout_seconds))
     planner_reg = "evolve_planner"
     scheduler_reg = "evolve_scheduler"
     sys_cfg_json = req.system_config_json or ""
 
     return textwrap.dedent(f"""\
         from __future__ import annotations
+        from concurrent.futures import ThreadPoolExecutor, as_completed
         import importlib.util, json, os, random, subprocess, sys, tempfile, traceback
         from typing import Any, Dict, Type
         import numpy as np
@@ -39,9 +45,11 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
 
         TARGET = {target.value!r}
         SEEDS = {seeds!r}
+        EVALUATION_RUNS = {evaluation_runs!r}
+        _EVALUATION_WORKERS = {evaluation_workers!r}
         _SYS_CFG_JSON = {sys_cfg_json!r}
-        _STAGE1_MAX_STEPS = 200
-        _SIM_TIMEOUT_SECONDS = 240
+        _STAGE1_MAX_STEPS = 5000
+        _SIM_TIMEOUT_SECONDS = {simulation_timeout_seconds!r}
 
         _registry = AlgorithmRegistry()
 
@@ -224,20 +232,86 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
         def _clamp01(value):
             return min(max(float(value), 0.0), 1.0)
 
+        def _evaluation_seeds(seeds=None):
+            base = [int(s) for s in (seeds or SEEDS)]
+            if not base:
+                base = [0]
+            if len(base) >= EVALUATION_RUNS:
+                return base[:EVALUATION_RUNS]
+            result = list(base)
+            next_seed = result[-1] + 1
+            while len(result) < EVALUATION_RUNS:
+                result.append(next_seed)
+                next_seed += 1
+            return result
+
+        def _default_worker_count(run_count):
+            cpu_count = os.cpu_count() or 1
+            return max(1, min(int(run_count), max(1, cpu_count // 2), 4))
+
+        def _run_batch(program_path, seeds, max_steps=None):
+            use_seeds = [int(s) for s in seeds]
+            if not use_seeds:
+                return []
+            worker_count = min(
+                len(use_seeds),
+                _EVALUATION_WORKERS if _EVALUATION_WORKERS is not None else _default_worker_count(len(use_seeds)),
+            )
+            if worker_count <= 1:
+                return [_run_single(program_path, seed, max_steps=max_steps) for seed in use_seeds]
+
+            results = []
+            with ThreadPoolExecutor(max_workers=worker_count) as executor:
+                futures = {{
+                    executor.submit(_run_single, program_path, seed, max_steps=max_steps): seed
+                    for seed in use_seeds
+                }}
+                for future in as_completed(futures):
+                    seed = futures[future]
+                    try:
+                        results.append(future.result())
+                    except Exception as exc:
+                        results.append(_timeout_result(seed, max_steps, exc))
+            return sorted(results, key=lambda item: int(item.get("seed", 0)))
+
+        def _is_successful_result(result):
+            return (
+                bool(result.get("finished"))
+                and not bool(result.get("timeout"))
+                and not bool(result.get("error"))
+            )
+
+        def _avg_successful(successful, key, default=0.0):
+            values = [
+                float(r[key])
+                for r in successful
+                if isinstance(r.get(key), (int, float)) and not isinstance(r.get(key), bool)
+            ]
+            return sum(values) / len(values) if values else float(default)
+
         def _compute_scores(results):
             n = len(results)
+            if n == 0:
+                return {{"combined_score": 0.0, "success_ratio": 0.0, "successful_runs": 0.0}}
+            successful = [r for r in results if _is_successful_result(r)]
+            success_count = len(successful)
             timed_out_runs = sum(1 for r in results if r.get("timeout"))
-            failed_runs = sum(1 for r in results if r.get("timeout") or r.get("error"))
+            error_runs = sum(1 for r in results if r.get("error") and not r.get("timeout"))
+            unfinished_runs = n - success_count - timed_out_runs - error_runs
+            failed_runs = n - success_count
+            success_ratio = success_count / n
             timeout_rate = timed_out_runs / n
+            error_rate = error_runs / n
             failure_rate = failed_runs / n
-            task_success_rate = sum(r["task_success_rate"] for r in results) / n
-            avg_task_time = sum(r["avg_task_time"] for r in results) / n
-            throughput = sum(r["throughput"] for r in results) / n
-            total_agv_collisions = sum(r["total_agv_collisions"] for r in results) / n
-            max_steps = max(sum(r["max_steps"] for r in results) / n, 1.0)
-            total_orders_limit = max(sum(r["total_orders_limit"] for r in results) / n, 1.0)
 
-            success_score = _clamp01(task_success_rate)
+            task_success_rate = _avg_successful(successful, "task_success_rate")
+            avg_task_time = _avg_successful(successful, "avg_task_time")
+            throughput = _avg_successful(successful, "throughput")
+            total_agv_collisions = _avg_successful(successful, "total_agv_collisions")
+            max_steps = max(_avg_successful(successful or results, "max_steps", 1.0), 1.0)
+            total_orders_limit = max(_avg_successful(successful or results, "total_orders_limit", 1.0), 1.0)
+
+            success_score = _clamp01(success_ratio)
             task_time_scale = max(max_steps / 3.0, 1.0)
             throughput_scale = max(total_orders_limit / max_steps, 1e-9)
             collision_scale = max(2.0 * total_orders_limit, 1.0)
@@ -245,23 +319,34 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
             task_time_score = 1.0 / (1.0 + max(avg_task_time, 0.0) / task_time_scale)
             throughput_score = max(throughput, 0.0) / (max(throughput, 0.0) + throughput_scale)
             collision_score = 1.0 / (1.0 + max(total_agv_collisions, 0.0) / collision_scale)
-
-            task_time_score *= success_score
-            throughput_score *= success_score
+            if success_count == 0:
+                task_time_score = 0.0
+                throughput_score = 0.0
+                collision_score = 0.0
 
             combined = (
-                0.40 * success_score
-                + 0.25 * throughput_score
+                0.55 * success_score
                 + 0.20 * task_time_score
-                + 0.15 * collision_score
-            ) * (1.0 - failure_rate)
+                + 0.15 * throughput_score
+                + 0.10 * collision_score
+            )
             return {{"combined_score": combined,
+                     "success_ratio": success_ratio,
+                     "successful_runs": float(success_count),
+                     "total_runs": float(n),
+                     "task_success_rate": task_success_rate,
+                     "avg_task_time": avg_task_time,
+                     "throughput": throughput,
+                     "total_agv_collisions": total_agv_collisions,
                      "success_score": success_score,
                      "task_time_score": task_time_score,
                      "throughput_score": throughput_score,
                      "collision_score": collision_score,
                      "timeout_rate": timeout_rate,
                      "timed_out_runs": float(timed_out_runs),
+                     "error_rate": error_rate,
+                     "error_runs": float(error_runs),
+                     "unfinished_runs": float(max(unfinished_runs, 0)),
                      "failure_rate": failure_rate}}
 
         # ── cascade stage 1: quick single-seed validation ──
@@ -282,7 +367,7 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
 
         def evaluate(program_path: str):
             try:
-                results = [_run_single(program_path, s) for s in SEEDS]
+                results = _run_batch(program_path, _evaluation_seeds())
                 return _compute_scores(results)
             except Exception as e:
                 print(f"Evaluation failed: {{e}}")
@@ -296,11 +381,17 @@ def build_evaluator_code(req: "EvolveRequest", target: "OptimizationTarget") -> 
 
 def build_layout_evaluator_code(req: "EvolveRequest") -> str:
     seeds = list(int(s) for s in req.seeds)
+    evaluation_runs = max(1, int(req.evaluation_runs))
+    evaluation_workers = (
+        None if req.evaluation_workers is None else max(1, int(req.evaluation_workers))
+    )
+    simulation_timeout_seconds = max(1.0, float(req.simulation_timeout_seconds))
     constraints_json = req.layout_constraints_json or "{}"
     sys_cfg_json = req.system_config_json or ""
 
     return textwrap.dedent(f"""\
         from __future__ import annotations
+        from concurrent.futures import ThreadPoolExecutor, as_completed
         import importlib.util, json, os, random, subprocess, sys, tempfile, traceback
         from typing import Any, Dict, List
         import numpy as np
@@ -320,10 +411,12 @@ def build_layout_evaluator_code(req: "EvolveRequest") -> str:
         from utils.simulation_context import SimulationContext
 
         SEEDS = {seeds!r}
+        EVALUATION_RUNS = {evaluation_runs!r}
+        _EVALUATION_WORKERS = {evaluation_workers!r}
         CONSTRAINTS = json.loads({constraints_json!r})
         _SYS_CFG_JSON = {sys_cfg_json!r}
         _STAGE1_MAX_STEPS = 200
-        _SIM_TIMEOUT_SECONDS = 180
+        _SIM_TIMEOUT_SECONDS = {simulation_timeout_seconds!r}
 
         def _load_module(path: str):
             spec = importlib.util.spec_from_file_location("candidate_layout", path)
@@ -543,23 +636,102 @@ def build_layout_evaluator_code(req: "EvolveRequest") -> str:
         def _clamp01(value):
             return min(max(float(value), 0.0), 1.0)
 
+        def _evaluation_seeds(seeds=None):
+            base = [int(s) for s in (seeds or SEEDS)]
+            if not base:
+                base = [0]
+            if len(base) >= EVALUATION_RUNS:
+                return base[:EVALUATION_RUNS]
+            result = list(base)
+            next_seed = result[-1] + 1
+            while len(result) < EVALUATION_RUNS:
+                result.append(next_seed)
+                next_seed += 1
+            return result
+
+        def _default_worker_count(run_count):
+            cpu_count = os.cpu_count() or 1
+            return max(1, min(int(run_count), max(1, cpu_count // 2), 4))
+
+        def _run_batch(seeds, map_data: Dict[str, Any], max_steps=None, collect_artifacts: bool = False):
+            use_seeds = [int(s) for s in seeds]
+            if not use_seeds:
+                return []
+            worker_count = min(
+                len(use_seeds),
+                _EVALUATION_WORKERS if _EVALUATION_WORKERS is not None else _default_worker_count(len(use_seeds)),
+            )
+            if worker_count <= 1:
+                return [
+                    _run_single(
+                        seed,
+                        map_data,
+                        max_steps=max_steps,
+                        collect_artifacts=(collect_artifacts and idx == 0),
+                    )
+                    for idx, seed in enumerate(use_seeds)
+                ]
+
+            results = []
+            with ThreadPoolExecutor(max_workers=worker_count) as executor:
+                futures = {{
+                    executor.submit(
+                        _run_single,
+                        seed,
+                        map_data,
+                        max_steps=max_steps,
+                        collect_artifacts=(collect_artifacts and idx == 0),
+                    ): seed
+                    for idx, seed in enumerate(use_seeds)
+                }}
+                for future in as_completed(futures):
+                    seed = futures[future]
+                    try:
+                        results.append(future.result())
+                    except Exception as exc:
+                        results.append(_timeout_result(seed, max_steps, exc))
+            return sorted(results, key=lambda item: int(item.get("seed", 0)))
+
+        def _is_successful_result(result):
+            return (
+                bool(result.get("finished"))
+                and not bool(result.get("timeout"))
+                and not bool(result.get("error"))
+            )
+
+        def _avg_successful(successful, key, default=0.0):
+            values = [
+                float(r[key])
+                for r in successful
+                if isinstance(r.get(key), (int, float)) and not isinstance(r.get(key), bool)
+            ]
+            return sum(values) / len(values) if values else float(default)
+
         def _compute_scores(results, validation):
             n = len(results)
+            if n == 0:
+                return {{"combined_score": 0.0, "success_ratio": 0.0, "successful_runs": 0.0}}
+            successful = [r for r in results if _is_successful_result(r)]
+            success_count = len(successful)
             timed_out_runs = sum(1 for r in results if r.get("timeout"))
-            failed_runs = sum(1 for r in results if r.get("timeout") or r.get("error"))
+            error_runs = sum(1 for r in results if r.get("error") and not r.get("timeout"))
+            unfinished_runs = n - success_count - timed_out_runs - error_runs
+            failed_runs = n - success_count
+            success_ratio = success_count / n
             timeout_rate = timed_out_runs / n
+            error_rate = error_runs / n
             failure_rate = failed_runs / n
-            task_success_rate = sum(r["task_success_rate"] for r in results) / n
-            avg_task_time = sum(r["avg_task_time"] for r in results) / n
-            throughput = sum(r["throughput"] for r in results) / n
-            total_agv_collisions = sum(r["total_agv_collisions"] for r in results) / n
-            total_agv_elevator_wait_blocks = sum(r["total_agv_elevator_wait_blocks"] for r in results) / n
-            max_steps = max(sum(r["max_steps"] for r in results) / n, 1.0)
-            total_orders_limit = max(sum(r["total_orders_limit"] for r in results) / n, 1.0)
+            task_success_rate = _avg_successful(successful, "task_success_rate")
+            avg_task_time = _avg_successful(successful, "avg_task_time")
+            throughput = _avg_successful(successful, "throughput")
+            total_agv_collisions = _avg_successful(successful, "total_agv_collisions")
+            total_agv_elevator_wait_blocks = _avg_successful(successful, "total_agv_elevator_wait_blocks")
+            max_steps = max(_avg_successful(successful or results, "max_steps", 1.0), 1.0)
+            total_orders_limit = max(_avg_successful(successful or results, "total_orders_limit", 1.0), 1.0)
 
             validity_score = 1.0
             reachability_score = _clamp01(validation.get("reachability_score", 1.0))
-            success_score = _clamp01(task_success_rate)
+            success_score = _clamp01(success_ratio)
             task_time_scale = max(max_steps / 3.0, 1.0)
             throughput_scale = max(total_orders_limit / max_steps, 1e-9)
             congestion_events = max(total_agv_collisions, 0.0) + max(total_agv_elevator_wait_blocks, 0.0)
@@ -568,26 +740,39 @@ def build_layout_evaluator_code(req: "EvolveRequest") -> str:
             task_time_score = 1.0 / (1.0 + max(avg_task_time, 0.0) / task_time_scale)
             throughput_score = max(throughput, 0.0) / (max(throughput, 0.0) + throughput_scale)
             congestion_score = 1.0 / (1.0 + congestion_events / congestion_scale)
+            if success_count == 0:
+                task_time_score = 0.0
+                throughput_score = 0.0
+                congestion_score = 0.0
 
-            task_time_score *= success_score
-            throughput_score *= success_score
             combined = (
-                0.35 * success_score
-                + 0.20 * throughput_score
+                0.50 * success_score
                 + 0.15 * task_time_score
-                + 0.15 * congestion_score
+                + 0.10 * throughput_score
+                + 0.10 * congestion_score
                 + 0.10 * reachability_score
                 + 0.05 * validity_score
-            ) * (1.0 - failure_rate)
+            )
             return {{"combined_score": combined,
                      "validity_score": validity_score,
                      "reachability_score": reachability_score,
+                     "success_ratio": success_ratio,
+                     "successful_runs": float(success_count),
+                     "total_runs": float(n),
+                     "task_success_rate": task_success_rate,
+                     "avg_task_time": avg_task_time,
+                     "throughput": throughput,
+                     "total_agv_collisions": total_agv_collisions,
+                     "total_agv_elevator_wait_blocks": total_agv_elevator_wait_blocks,
                      "success_score": success_score,
                      "task_time_score": task_time_score,
                      "throughput_score": throughput_score,
                      "congestion_score": congestion_score,
                      "timeout_rate": timeout_rate,
                      "timed_out_runs": float(timed_out_runs),
+                     "error_rate": error_rate,
+                     "error_runs": float(error_runs),
+                     "unfinished_runs": float(max(unfinished_runs, 0)),
                      "failure_rate": failure_rate}}
 
         def _invalid_result(validation, stage: str):
@@ -609,11 +794,12 @@ def build_layout_evaluator_code(req: "EvolveRequest") -> str:
             validation = validate_layout_map(map_data, CONSTRAINTS)
             if not validation.get("valid"):
                 return _invalid_result(validation, stage)
-            use_seeds = list(seeds or SEEDS)
-            results = [
-                _run_single(seed, map_data, max_steps=max_steps, collect_artifacts=(collect_artifacts and idx == 0))
-                for idx, seed in enumerate(use_seeds)
-            ]
+            results = _run_batch(
+                _evaluation_seeds(seeds),
+                map_data,
+                max_steps=max_steps,
+                collect_artifacts=collect_artifacts,
+            )
             metrics = _compute_scores(results, validation)
             if stage == "stage1":
                 metrics["stage1_passed"] = 1.0

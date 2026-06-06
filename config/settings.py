@@ -31,7 +31,7 @@ class SimConfig:
 
     # ==================== Algorithm selection ====================
     scheduler_type: str = "ta"
-    planner_type: str = "astar"
+    planner_type: str = "cbs-100"
     force_replan_every_step: bool = False
     # Whether to force each decision-making AGV to replan its path at every step.
     # Automatically coupled with DHC when enabled.
@@ -41,22 +41,19 @@ class SimConfig:
     # ==================== Simulation parameters ====================
     order_mode: str = "oneshot"  # Order generation mode
     total_orders_limit: int = 150
+    # Map and simulation step configuration
+    map_file: str = "config\\maps\\map_20_15_2floor.json"  # Default map file path
 
     size2_ratio: float = 0
     # Proportion of size-2 orders among all orders, range: 0.0 ~ 1.0
-    cross_floor_order_ratio: float = 0.2
+    cross_floor_order_ratio: float = 0.3
     # Proportion of cross-floor orders among generated orders, range: 0.0 ~ 1.0
 
     order_processing_timeout: int = 30
-    # Order processing timeout in seconds.
-    # Orders not completed within this time will be returned to the pending queue.
-
     order_seed: Optional[int] = None
     # Random seed for order generation; None means non-deterministic
 
-    # Map and simulation step configuration
-    map_file: str = "config\maps\map_20_15_2floor.json"  # Default map file path
-    max_steps: int = 3000
+    max_steps: int = 5000
 
     time_step: float = 1.0        # Duration of each simulation step (seconds)
     agv_max_speed: float = 0.5

@@ -46,7 +46,10 @@
       "detail": "用户关于优化的完整描述，包括想要优化什么、如何优化、优化目标等",
       "algo_type": "planner 或 scheduler 或 both",
       "optimize_source": "用户提及的算法来源描述（如 'astar'、'已有的TA调度器'、'generated' 表示刚生成的，留空表示未明确指定）",
-      "iterations": "用户明确指定的迭代次数，整数；未指定时省略"
+      "iterations": "用户明确指定的迭代次数，整数；未指定时省略",
+      "evaluation_runs": "用户明确指定的每个候选程序 full evaluation 仿真次数，整数；未指定时省略",
+      "evaluation_workers": "用户明确指定的每个候选程序内部并发仿真的 worker 数，整数；未指定时省略",
+      "simulation_timeout_seconds": "用户明确指定的单次仿真超时秒数，数字；未指定时省略"
     },
     {
       "type": "run",
@@ -65,3 +68,6 @@
 - optimize 意图中，algo_type 支持 "planner"、"scheduler" 或 "both"（同时优化两者）
 - optimize_source 只需要记录用户的原始描述，不需要转为精确文件路径。如果用户没有明确指定来源且之前有 codegen 意图，则设为 "generated"
 - iterations 只在用户明确说出“迭代10轮/100次/iterations=20”等次数时输出，值必须是整数
+- evaluation_runs 只在用户明确说出“评估80次/eval_runs=80/每个候选仿真80轮”等次数时输出，值必须是正整数
+- evaluation_workers 只在用户明确说出“8个worker/并发8/eval_workers=8”等并发 worker 数时输出，值必须是正整数
+- simulation_timeout_seconds 只在用户明确说出“单次仿真超时20秒/sim_timeout=20/timeout=20.0”等超时时间时输出，值必须是正数

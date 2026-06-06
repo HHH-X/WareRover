@@ -2,31 +2,30 @@
 from __future__ import annotations
 
 import json
-import os
 import time
 from typing import Any, Dict, List, Optional
 
 from openai import APIConnectionError, APIError, OpenAI, RateLimitError
 
-from utils.api_key import load_api_key
+from mapf_agent.llm_config import build_openai_client_kwargs, load_llm_settings
 
 _CLIENT: Optional[OpenAI] = None
+_CLIENT_SIGNATURE: Optional[tuple[str, str]] = None
 
 
 def _client() -> OpenAI:
-    global _CLIENT
-    if _CLIENT is not None:
+    global _CLIENT, _CLIENT_SIGNATURE
+    settings = load_llm_settings()
+    signature = (settings.api_key, settings.base_url)
+    if _CLIENT is not None and _CLIENT_SIGNATURE == signature:
         return _CLIENT
-    kwargs: Dict[str, Any] = {"api_key": load_api_key()}
-    base_url = os.getenv("OPENAI_BASE_URL", "https://api.modelarts-maas.com/v1")
-    if base_url:
-        kwargs["base_url"] = base_url
-    _CLIENT = OpenAI(**kwargs)
+    _CLIENT = OpenAI(**build_openai_client_kwargs(settings))
+    _CLIENT_SIGNATURE = signature
     return _CLIENT
 
 
 def _model() -> str:
-    return os.getenv("MAPF_AGENT_MODEL", "DeepSeek-V3.2")
+    return load_llm_settings().model
 
 
 def chat(

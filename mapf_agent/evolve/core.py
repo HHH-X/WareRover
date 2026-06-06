@@ -15,6 +15,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, Union
 
+from mapf_agent.llm_config import apply_to_environment, render_openevolve_config
 from mapf_agent.paths import output_dir
 
 CodeSource = Union[str, Path]
@@ -40,6 +41,9 @@ class EvolveRequest:
     iterations: Optional[int] = None
     output_root: Optional[CodeSource] = None
     seeds: Sequence[int] = (42, 43, 44)
+    evaluation_runs: int = 20
+    evaluation_workers: Optional[int] = None
+    simulation_timeout_seconds: float = 30.0
     system_config_json: Optional[str] = None
     layout_constraints_json: Optional[str] = None
     # CLI entry: ``sys.argv``; programmatic callers leave None (manifest marks non-cli)
@@ -271,6 +275,7 @@ def _indent_block(text: str, spaces: int = 4) -> str:
 def _load_default_config(target: OptimizationTarget) -> str:
     tpl_path = _PKG_DIR / "default_config.yaml"
     tpl = tpl_path.read_text(encoding="utf-8")
+    tpl = render_openevolve_config(tpl)
     tpl = tpl.replace("{target}", target.value)
     tpl = tpl.replace("    {target_guidance}", _indent_block(_target_guidance(target)))
     tpl = tpl.replace("    {interface_contracts}", _indent_block(_interface_contracts(target)))
@@ -429,8 +434,7 @@ def run_evolution(request: EvolveRequest) -> EvolveResult:
     cfg_path.write_text(cfg_text, encoding="utf-8")
     _write_run_manifest(run_dir, request.launch_argv)
 
-    from utils.api_key import load_api_key
-    os.environ["OPENAI_API_KEY"] = load_api_key()
+    apply_to_environment()
 
     oe_src = _REPO_ROOT / "openevolve"
     if str(_REPO_ROOT) not in sys.path:

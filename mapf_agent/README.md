@@ -10,6 +10,18 @@ python -m mapf_agent
 
 输入自然语言指令后，Agent 会按 LangGraph 工作流执行；如果需要补充信息，会在命令行继续追问。
 
+## Portable Agent Skill
+
+项目提供了一个通用可迁移的 skill 包，位于 `mapf_agent_skill/`。其他 agent 平台可以读取其中的 `SKILL.md`、`reference.md` 和 `examples.md`，了解如何下载项目并调用 MAPF Agent 的地图生成、配置修改、仿真运行、代码生成和 OpenEvolve 优化能力。
+
+推荐使用非交互 JSON 入口复用现有 LangGraph 工作流：
+
+```bash
+python -m mapf_agent.invoke --message "生成一个 20x20、6 台 AGV 的地图，然后运行仿真" --pretty
+```
+
+该命令会把机器可读的 JSON 状态输出到 stdout，内部进度日志输出到 stderr，便于其他 agent 或自动化平台解析。
+
 ## Web UI
 
 ```bash
