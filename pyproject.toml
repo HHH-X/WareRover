@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "warerover"
+version = "0.1.0"
+description = "AGV warehouse MAPF simulator with a natural-language MAPF Agent."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "HHH-X" },
+]
+dependencies = [
+    "jsonschema>=4.0",
+    "langgraph>=0.2",
+    "numpy>=1.22",
+    "openai>=1.0",
+    "PyYAML>=6.0",
+    "scipy>=1.8",
+    "websockets>=10.0",
+    "dacite>=1.9",
+    "tqdm>=4.64",
+]
+
+[project.optional-dependencies]
+dhc = [
+    "torch",
+]
+viz = [
+    "flask",
+]
+dev = [
+    "pytest>=7.0",
+]
+all = [
+    "warerover[dhc,viz,dev]",
+]
+
+[project.urls]
+Repository = "https://github.com/HHH-X/WareRover"
+
+[project.scripts]
+mapf-agent = "mapf_agent.__main__:main"
+mapf-agent-invoke = "mapf_agent.invoke:main"
+mapf-agent-evolve = "mapf_agent.evolve.__main__:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+namespaces = true
+include = [
+    "algorithm*",
+    "config*",
+    "core*",
+    "mapf_agent*",
+    "order_strategies*",
+    "planner*",
+    "scheduler*",
+    "utils*",
+]
+exclude = [
+    "batch_results*",
+    "docs*",
+    "frontend*",
+    "logs*",
+    "output*",
+    "test*",
+    "tests*",
+]
+
+[tool.setuptools.package-data]
+mapf_agent = [
+    "prompts/*.txt",
+    "schema/*.json",
+    "schema/*.yaml",
+    "skills/*.md",
+    "evolve/*.yaml",
+    "evolve/*.md",
+    "web/*.html",
+    "web/*.css",
+    "web/*.js",
+]

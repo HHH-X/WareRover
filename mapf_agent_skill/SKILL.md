@@ -7,11 +7,23 @@ description: Use the WareRover MAPF Agent to generate MAPF warehouse maps, modif
 
 ## Project
 
-Download the full WareRover MAPF simulator and MAPF Agent project from:
+This skill controls the WareRover MAPF Agent. The skill repository only contains
+agent instructions; the simulator and executable MAPF Agent live in:
 
-`TODO_GITHUB_URL`
+`https://github.com/HHH-X/WareRover`
 
-Run all commands from the project root after installing the project dependencies.
+If the current workspace is not WareRover, clone it first, then run all commands
+from the WareRover project root:
+
+```bash
+git clone https://github.com/HHH-X/WareRover.git
+cd WareRover
+python -m pip install -e .
+python -m mapf_agent.invoke --message "运行一次仿真" --pretty
+```
+
+If editable install is unavailable, install the missing runtime packages reported
+by Python, then retry the JSON bridge command.
 
 ## When To Use
 
@@ -41,6 +53,14 @@ Before invoking LLM-backed tasks, provide an OpenAI-compatible API through the c
 export MAPF_AGENT_API_KEY="..."
 export MAPF_AGENT_BASE_URL="https://api.example.com/v1"
 export MAPF_AGENT_MODEL="model-name"
+```
+
+PowerShell:
+
+```powershell
+$env:MAPF_AGENT_API_KEY = "..."
+$env:MAPF_AGENT_BASE_URL = "https://api.example.com/v1"
+$env:MAPF_AGENT_MODEL = "model-name"
 ```
 
 Existing `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `OPENAI_API_BASE` values are also reused. For local development, `api_key.txt` in the project root is accepted when no key environment variable is set.

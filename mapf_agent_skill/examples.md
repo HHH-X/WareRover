@@ -2,13 +2,34 @@
 
 ## Configure LLM Access
 
+POSIX shell:
+
 ```bash
 export MAPF_AGENT_API_KEY="..."
 export MAPF_AGENT_BASE_URL="https://api.example.com/v1"
 export MAPF_AGENT_MODEL="model-name"
 ```
 
+PowerShell:
+
+```powershell
+$env:MAPF_AGENT_API_KEY = "..."
+$env:MAPF_AGENT_BASE_URL = "https://api.example.com/v1"
+$env:MAPF_AGENT_MODEL = "model-name"
+```
+
 Then run any skill command from the project root. Existing `OPENAI_API_KEY` and OpenAI-compatible base URL variables are reused when the `MAPF_AGENT_*` variables are not set.
+
+## Smoke Test The Bridge
+
+Run this first after downloading WareRover and installing dependencies:
+
+```bash
+python -m mapf_agent.invoke --message "运行一次仿真" --pretty
+```
+
+Expected behavior: stdout is a JSON object. If `error` is non-empty, report it
+and fix the missing configuration or dependency before running larger tasks.
 
 ## Generate A Map
 
@@ -58,6 +79,9 @@ python -m mapf_agent.invoke \
 ```
 
 ## Optimize Algorithms
+
+Prefer optimizing a generated algorithm path from `generated_code`, or an
+existing WareRover planner/scheduler file that is present in the local checkout.
 
 ```bash
 python -m mapf_agent.invoke \
