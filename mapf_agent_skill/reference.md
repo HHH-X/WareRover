@@ -88,6 +88,22 @@ Pretty JSON:
 python -m mapf_agent.invoke --message "<request>" --pretty
 ```
 
+Open the simulator visualization page only:
+
+```bash
+python -m mapf_agent.invoke --visualize --pretty
+```
+
+Open the simulator visualization while running a request:
+
+```bash
+python -m mapf_agent.invoke --message "打开仿真可视化并运行一次仿真" --visualize --pretty
+```
+
+The bridge does not infer visualization from natural language. When the user
+asks for a visual run, the calling agent should decide that intent and add
+`--visualize`.
+
 Request from JSON file:
 
 ```bash
@@ -106,11 +122,13 @@ Request object shape:
 {
   "message": "生成一个 20x20 地图并运行仿真",
   "answers": ["补充回答 1", "补充回答 2"],
-  "thread_id": "optional-stable-id"
+  "thread_id": "optional-stable-id",
+  "visualize": true
 }
 ```
 
-`answers` is optional. The bridge consumes answers only while the workflow is waiting for input.
+`answers` and `visualize` are optional. The bridge consumes answers only while
+the workflow is waiting for input.
 
 ## Response Shape
 
@@ -129,11 +147,19 @@ The bridge returns the current `AgentSession` snapshot as JSON:
   "map_file_path": "",
   "generated_code": {},
   "run_metrics": {},
-  "optimize_result": {}
+  "optimize_result": {},
+  "visualization": {
+    "url": "http://localhost:8000/frontend/index.html?ws=ws%3A%2F%2Flocalhost%3A8765",
+    "status": "ready",
+    "message": "已打开仿真可视化页面。Agent 执行仿真时会在该页面显示过程。"
+  }
 }
 ```
 
 If `waiting_for_input` is `true`, ask the user `question` and retry with an `answers` array. If `error` is non-empty, surface it to the user and decide whether to retry with a clearer request.
+
+`visualization` is present only when visualization is requested. Report
+`visualization.url` if the browser does not open automatically.
 
 ## Supported Task Types
 
@@ -159,13 +185,18 @@ Always use returned paths from JSON instead of guessing filenames.
 
 ## Web UI
 
-The skill does not require the Web UI. For manual observation, the project can still run:
+The skill does not require the MAPF Agent Web UI. For manual observation, the
+project can still run:
 
 ```bash
 python -m mapf_agent.server
 ```
 
 The JSON bridge is preferred for external agent platforms because it is non-interactive and machine-readable.
+
+For simulator-only visualization through the bridge, prefer `--visualize`; it
+opens the existing `frontend/index.html` and streams simulation frames from the
+same process that runs the simulator.
 
 ## Troubleshooting
 
@@ -175,6 +206,8 @@ The JSON bridge is preferred for external agent platforms because it is non-inte
   the missing dependency, then rerun the bridge command.
 - Missing API key: set `MAPF_AGENT_API_KEY` or `OPENAI_API_KEY`, or create
   `api_key.txt` in the WareRover root for local development.
+- Visualization port conflict: stop any existing process using HTTP port `8000`
+  or WebSocket port `8765`, then retry the `--visualize` command.
 - Empty or invalid model response: verify `MAPF_AGENT_BASE_URL` and
   `MAPF_AGENT_MODEL` match the OpenAI-compatible provider.
 - Optimization tasks can run for a long time. Prefer explicit iteration counts

@@ -5,6 +5,8 @@ import asyncio
 import json
 import socket
 import threading
+import time
+import webbrowser
 from functools import partial
 from http.server import SimpleHTTPRequestHandler
 from socketserver import ThreadingTCPServer
@@ -69,13 +71,24 @@ class VisualizerHub:
             raise RuntimeError("可视化 WebSocket 服务启动超时。")
         self._ws_started = True
 
-    def open(self) -> Dict[str, Any]:
+    def open(self, *, open_browser: bool = False) -> Dict[str, Any]:
         self.ensure_started()
+        if open_browser:
+            webbrowser.open(self.url)
         return {
             "url": self.url,
             "status": "ready",
             "message": "已打开仿真可视化页面。Agent 执行仿真时会在该页面显示过程。",
         }
+
+    def wait_for_client(self, timeout: float = 5.0) -> bool:
+        """Wait briefly for a browser page to connect to the visualization stream."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if self.has_clients():
+                return True
+            time.sleep(0.1)
+        return self.has_clients()
 
     def start_run(self) -> None:
         with self._cache_lock:

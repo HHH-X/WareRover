@@ -32,6 +32,7 @@ Use this skill when the user asks to:
 - Generate a MAPF/WareRover warehouse map.
 - Modify simulation settings such as planner, scheduler, map file, max steps, order mode, or fault parameters.
 - Run a MAPF simulation and report metrics.
+- Open the simulator visualization page, or run a simulation with visualization.
 - Generate planner or scheduler algorithm code.
 - Optimize planner, scheduler, or both with OpenEvolve.
 
@@ -44,6 +45,15 @@ python -m mapf_agent.invoke --message "生成一个 20x20、6 台 AGV 的地图�
 ```
 
 The command writes machine-readable JSON to stdout. Internal progress logs are written to stderr.
+
+When the user asks to open or show simulation visualization, the calling agent
+must add `--visualize`:
+
+```bash
+python -m mapf_agent.invoke --message "打开仿真可视化并运行一次仿真" --visualize --pretty
+```
+
+This opens the existing simulator frontend and streams frames while the run task executes.
 
 ## LLM Configuration
 
@@ -88,6 +98,7 @@ Read these fields from the JSON result:
 - `generated_code`: generated planner/scheduler paths.
 - `run_metrics`: simulation metrics.
 - `optimize_result`: OpenEvolve optimization result.
+- `visualization`: simulator visualization status and URL, when visualization is requested.
 
 ## More Details
 

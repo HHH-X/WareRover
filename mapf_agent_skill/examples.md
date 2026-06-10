@@ -51,6 +51,28 @@ python -m mapf_agent.invoke \
 
 Report `run_metrics` and `response` to the user.
 
+## Open Simulation Visualization
+
+Open the existing simulator frontend:
+
+```bash
+python -m mapf_agent.invoke --visualize --pretty
+```
+
+If the browser does not open automatically, report `visualization.url` from the
+JSON response.
+
+Run a simulation and stream frames to the visualization page:
+
+```bash
+python -m mapf_agent.invoke \
+  --message "打开仿真可视化并运行一次仿真" \
+  --visualize \
+  --pretty
+```
+
+Report both `visualization.url` and `run_metrics` when present.
+
 ## Generate A Map Then Run
 
 ```bash
